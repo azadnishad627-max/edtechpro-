@@ -36,7 +36,6 @@ export default function Navbar() {
           {userRole === null && (
             <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
               <Link href="/admin-login" className="btn-primary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem', borderRadius: '50px', background: 'rgba(255, 68, 68, 0.1)', border: '1px solid #ff4444', color: '#ff4444', textDecoration: 'none' }}>Admin</Link>
-              <Link href="/student-setup" className="btn-primary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem', borderRadius: '50px', boxShadow: '0 4px 15px rgba(79, 70, 229, 0.3)' }}>Register Free</Link>
             </div>
           )}
           {userRole === 'student' && (
