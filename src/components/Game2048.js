@@ -171,9 +171,101 @@ export default function Game2048() {
     return colors[val] || '#14b8a6';
   };
 
+  const [timeLeft, setTimeLeft] = useState(15 * 60); // 15 mins
+  const [isLocked, setIsLocked] = useState(false);
+  const [unlockTime, setUnlockTime] = useState(null);
+
+  // Load and manage timer state
+  useEffect(() => {
+    const saved = localStorage.getItem('gameStats');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (parsed.unlockTime && Date.now() < parsed.unlockTime) {
+        setIsLocked(true);
+        setUnlockTime(parsed.unlockTime);
+      } else if (parsed.unlockTime && Date.now() >= parsed.unlockTime) {
+        // Cooldown passed
+        setIsLocked(false);
+        setTimeLeft(15 * 60);
+        localStorage.setItem('gameStats', JSON.stringify({ timeLeft: 15 * 60, unlockTime: null }));
+      } else if (parsed.timeLeft !== undefined) {
+        setTimeLeft(parsed.timeLeft);
+      }
+    }
+  }, []);
+
+  // Timer interval
+  useEffect(() => {
+    if (isLocked) return;
+
+    const timer = setInterval(() => {
+      setTimeLeft((prev) => {
+        if (prev <= 1) {
+          // Lock the game for 1 hour (3600000 ms)
+          const newUnlockTime = Date.now() + 60 * 60 * 1000;
+          setIsLocked(true);
+          setUnlockTime(newUnlockTime);
+          localStorage.setItem('gameStats', JSON.stringify({ timeLeft: 15 * 60, unlockTime: newUnlockTime }));
+          return 0;
+        }
+        localStorage.setItem('gameStats', JSON.stringify({ timeLeft: prev - 1, unlockTime: null }));
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [isLocked]);
+
+  const formatTime = (seconds) => {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m}:${s < 10 ? '0' : ''}${s}`;
+  };
+
+  const getUnlockWaitTime = () => {
+    if (!unlockTime) return '';
+    const diff = Math.max(0, Math.ceil((unlockTime - Date.now()) / 1000));
+    const m = Math.floor(diff / 60);
+    return `${m} min${m !== 1 ? 's' : ''}`;
+  };
+
+  // Prevent interactions if locked
+  const safeHandleKeyDown = useCallback((e) => {
+    if (isLocked) return;
+    handleKeyDown(e);
+  }, [isLocked, handleKeyDown]);
+
+  useEffect(() => {
+    window.addEventListener('keydown', safeHandleKeyDown);
+    return () => window.removeEventListener('keydown', safeHandleKeyDown);
+  }, [safeHandleKeyDown]);
+
+  const safeHandleTouchStart = (e) => {
+    if (isLocked) return;
+    handleTouchStart(e);
+  };
+
+  const safeHandleTouchEnd = (e) => {
+    if (isLocked) return;
+    handleTouchEnd(e);
+  };
+
+  if (isLocked) {
+    return (
+      <div className="game-container glass-card" style={{ maxWidth: '400px', margin: '0 auto', padding: '2rem', textAlign: 'center' }}>
+        <h2 style={{ color: '#ff4444', marginBottom: '1rem' }}>Game Locked 🔒</h2>
+        <p className="text-muted mb-4">You have played your 15 minutes for this session! Time to get back to studying.</p>
+        <div style={{ background: 'var(--bg-dark)', padding: '1rem', borderRadius: '8px', border: '1px solid var(--glass-border)' }}>
+          <p style={{ margin: 0 }}>Unlocks in approx:</p>
+          <h3 className="text-accent" style={{ margin: '0.5rem 0 0' }}>{getUnlockWaitTime()}</h3>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="game-container glass-card" style={{ maxWidth: '400px', margin: '0 auto', padding: '1.5rem' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
         <div>
           <h3 style={{ margin: 0, color: 'var(--text-primary-dark)' }}>2048 Break</h3>
           <p className="text-muted" style={{ margin: 0, fontSize: '0.9rem' }}>Join the numbers!</p>
@@ -184,6 +276,12 @@ export default function Game2048() {
         </div>
       </div>
 
+      <div style={{ background: 'rgba(255, 68, 68, 0.1)', border: '1px solid #ff4444', padding: '0.5rem', borderRadius: '8px', marginBottom: '1.5rem', textAlign: 'center' }}>
+        <p style={{ margin: 0, color: '#ff4444', fontWeight: 'bold', fontSize: '0.9rem' }}>
+          ⏳ Time Remaining: {formatTime(timeLeft)}
+        </p>
+      </div>
+
       <div 
         style={{ 
           background: '#1e293b', 
@@ -192,8 +290,8 @@ export default function Game2048() {
           touchAction: 'none',
           position: 'relative'
         }}
-        onTouchStart={handleTouchStart}
-        onTouchEnd={handleTouchEnd}
+        onTouchStart={safeHandleTouchStart}
+        onTouchEnd={safeHandleTouchEnd}
       >
         {gameOver && (
           <div style={{
