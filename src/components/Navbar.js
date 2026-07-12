@@ -26,7 +26,7 @@ export default function Navbar() {
       <div className="container nav-container">
         <Link href="/" className="logo" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', textDecoration: 'none' }}>
           <img src="/logo.jpg" alt="EdTechPro Logo" style={{ width: '36px', height: '36px', borderRadius: '8px', objectFit: 'cover' }} />
-          <span>EdTech<span className="text-accent">Pro</span></span>
+          <span style={{ background: 'linear-gradient(90deg, #38bdf8 0%, #a855f7 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontWeight: '800', fontSize: '1.3rem', letterSpacing: '-0.5px' }}>EdTechPro</span>
         </Link>
         <div className="nav-links">
           {userRole !== 'admin' && <Link href="/student-dashboard">Dashboard</Link>}
