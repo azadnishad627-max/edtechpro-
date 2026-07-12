@@ -220,6 +220,10 @@ button {
     padding: 1rem;
     font-size: 1.1rem;
   }
+  
+  .footer {
+    padding-bottom: 6rem; /* Ensure footer text is not covered by bottom-nav on mobile */
+  }
 }
 
 /* Bottom Navigation for Mobile */
