@@ -1,19 +1,44 @@
 "use client";
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../../lib/supabaseClient';
 
 export default function StudentSetup() {
   const [formData, setFormData] = useState({ name: '', dob: '', className: '', username: '', password: '' });
+  const [profilePhoto, setProfilePhoto] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const router = useRouter();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setIsSubmitting(true);
+    
     // Check if username already exists
     const { data: existingUser } = await supabase.from('profiles').select('id').eq('username', formData.username).single();
     if (existingUser) {
       alert("Username already taken. Please choose another one.");
+      setIsSubmitting(false);
       return;
+    }
+
+    let finalPhotoUrl = null;
+
+    if (profilePhoto) {
+      const fileExt = profilePhoto.name.split('.').pop();
+      const fileName = `profile_${Math.random()}.${fileExt}`;
+      
+      const { error: uploadError } = await supabase.storage
+        .from('notes')
+        .upload(fileName, profilePhoto);
+
+      if (uploadError) {
+        alert("Error uploading photo: " + uploadError.message);
+        setIsSubmitting(false);
+        return;
+      }
+
+      const { data: publicUrlData } = supabase.storage.from('notes').getPublicUrl(fileName);
+      finalPhotoUrl = publicUrlData.publicUrl;
     }
 
     const studentId = crypto.randomUUID();
@@ -26,16 +51,18 @@ export default function StudentSetup() {
         name: formData.name,
         dob: formData.dob,
         class_name: formData.className,
-        role: 'student'
+        role: 'student',
+        photo_url: finalPhotoUrl
       }
     ]);
 
     if (profileError) {
       alert("Error: " + profileError.message);
+      setIsSubmitting(false);
       return;
     }
 
-    localStorage.setItem('studentInfo', JSON.stringify({ ...formData, id: studentId }));
+    localStorage.setItem('studentInfo', JSON.stringify({ ...formData, id: studentId, photo_url: finalPhotoUrl }));
     router.push('/student-dashboard');
   };
 
@@ -93,10 +120,13 @@ export default function StudentSetup() {
             <input 
               type="file" 
               accept="image/*"
+              onChange={(e) => setProfilePhoto(e.target.files[0])}
               style={{ padding: '1rem', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'var(--glass-bg)', color: 'white', width: '100%' }}
             />
           </div>
-          <button type="submit" className="btn-primary mt-4" style={{ width: '100%' }}>Create Account & Dashboard</button>
+          <button type="submit" disabled={isSubmitting} className="btn-primary mt-4" style={{ width: '100%' }}>
+            {isSubmitting ? 'Creating Account...' : 'Create Account & Dashboard'}
+          </button>
         </form>
         <div className="text-center mt-4">
           <p className="text-muted">Already have an account? <a href="/student-login" className="text-accent" style={{ textDecoration: 'none' }}>Log In</a></p>
