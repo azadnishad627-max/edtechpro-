@@ -1,0 +1,29 @@
+{
+  "name": "edtech-platform",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev -H 0.0.0.0 --webpack",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@capacitor/android": "^6.2.1",
+    "@capacitor/core": "^6.2.1",
+    "@google/genai": "^2.11.0",
+    "@supabase/supabase-js": "^2.110.2",
+    "next": "16.2.10",
+    "next-pwa": "^5.6.0",
+    "pdf-parse": "^2.4.5",
+    "pdf2json": "^4.0.3",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "react-pdf": "^10.4.1"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^6.2.1",
+    "eslint": "^9",
+    "eslint-config-next": "16.2.10"
+  }
+}
