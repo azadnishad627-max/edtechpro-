@@ -1,7 +1,26 @@
 "use client";
 import Link from 'next/link';
+import { useState, useEffect } from 'react';
+import { usePathname } from 'next/navigation';
 
 export default function Navbar() {
+  const [userRole, setUserRole] = useState(null);
+  const pathname = usePathname();
+
+  useEffect(() => {
+    // Check localStorage for session info
+    const adminInfo = localStorage.getItem('adminInfo');
+    const studentInfo = localStorage.getItem('studentInfo');
+    
+    if (adminInfo) {
+      setUserRole('admin');
+    } else if (studentInfo) {
+      setUserRole('student');
+    } else {
+      setUserRole(null);
+    }
+  }, [pathname]);
+
   return (
     <nav className="navbar glass-card">
       <div className="container nav-container">
@@ -9,12 +28,22 @@ export default function Navbar() {
           EdTech<span className="text-accent">Pro</span>
         </Link>
         <div className="nav-links">
-          <Link href="/batch/1">Batches</Link>
-          <Link href="/student-dashboard">Dashboard</Link>
+          {userRole !== 'admin' && <Link href="/student-dashboard">Dashboard</Link>}
+          {userRole === 'admin' && <Link href="/admin-dashboard">Admin Panel</Link>}
         </div>
         <div className="nav-actions flex align-center" style={{ gap: '1rem' }}>
-          <Link href="/admin-login" className="text-muted" style={{ fontSize: '0.875rem' }}>Admin</Link>
-          <Link href="/student-setup" className="btn-primary">Register Free</Link>
+          {userRole === null && (
+            <>
+              <Link href="/admin-login" className="text-muted" style={{ fontSize: '0.875rem' }}>Admin</Link>
+              <Link href="/student-setup" className="btn-primary">Register Free</Link>
+            </>
+          )}
+          {userRole === 'student' && (
+            <Link href="/student-dashboard" className="btn-primary">My Dashboard</Link>
+          )}
+          {userRole === 'admin' && (
+            <Link href="/admin-dashboard" className="btn-primary" style={{ background: '#ff4444' }}>Admin Panel</Link>
+          )}
         </div>
       </div>
     </nav>
