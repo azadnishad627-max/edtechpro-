@@ -24,8 +24,9 @@ export default function Navbar() {
   return (
     <nav className="navbar glass-card">
       <div className="container nav-container">
-        <Link href="/" className="logo">
-          EdTech<span className="text-accent">Pro</span>
+        <Link href="/" className="logo" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', textDecoration: 'none' }}>
+          <img src="/logo.jpg" alt="EdTechPro Logo" style={{ width: '36px', height: '36px', borderRadius: '8px', objectFit: 'cover' }} />
+          <span>EdTech<span className="text-accent">Pro</span></span>
         </Link>
         <div className="nav-links">
           {userRole !== 'admin' && <Link href="/student-dashboard">Dashboard</Link>}
@@ -39,10 +40,10 @@ export default function Navbar() {
             </>
           )}
           {userRole === 'student' && (
-            <Link href="/student-dashboard" className="btn-primary">My Dashboard</Link>
+            <Link href="/student-dashboard" className="btn-primary" style={{ padding: '0.5rem 1.2rem', fontSize: '0.9rem', borderRadius: '50px', boxShadow: '0 4px 15px rgba(79, 70, 229, 0.3)' }}>Dashboard</Link>
           )}
           {userRole === 'admin' && (
-            <Link href="/admin-dashboard" className="btn-primary" style={{ background: '#ff4444' }}>Admin Panel</Link>
+            <Link href="/admin-dashboard" className="btn-primary" style={{ padding: '0.5rem 1.2rem', fontSize: '0.9rem', borderRadius: '50px', background: '#ff4444', boxShadow: '0 4px 15px rgba(255, 68, 68, 0.3)' }}>Admin Panel</Link>
           )}
         </div>
       </div>

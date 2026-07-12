@@ -156,9 +156,18 @@ export default function StudentDashboard() {
 
   return (
     <div className="container py-4 mobile-pb">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-        <h1 className="animate-fade-in" style={{ margin: 0 }}>Welcome, {student.name}!</h1>
-        {/* Removed logout button from header, moved to profile */}
+      <div style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+        <div style={{ width: '50px', height: '50px', borderRadius: '50%', overflow: 'hidden', border: '2px solid var(--accent)', flexShrink: 0 }}>
+          {student.photo_url ? (
+            <img src={student.photo_url} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          ) : (
+            <img src={`https://ui-avatars.com/api/?name=${student.name}&background=random`} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          )}
+        </div>
+        <div>
+          <p className="text-muted" style={{ margin: '0 0 0.25rem 0', fontSize: '0.9rem' }}>Welcome back,</p>
+          <h1 className="animate-fade-in" style={{ margin: 0, fontSize: 'clamp(1.5rem, 5vw, 2.2rem)', lineHeight: '1.2' }}>{student.name} 👋</h1>
+        </div>
       </div>
       
       <div className="flex gap-4 mb-4 mobile-hide" style={{ gap: '1rem', overflowX: 'auto', paddingBottom: '0.5rem', whiteSpace: 'nowrap' }}>
