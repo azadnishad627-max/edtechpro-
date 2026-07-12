@@ -9,6 +9,7 @@ export default function AdminDashboard() {
   const [batches, setBatches] = useState([]);
   const [totalStudents, setTotalStudents] = useState(0);
   const [totalRevenue, setTotalRevenue] = useState(0);
+  const [dbStudents, setDbStudents] = useState([]);
   
   // Batch Manager State
   const [batchTitle, setBatchTitle] = useState('');
@@ -54,8 +55,9 @@ export default function AdminDashboard() {
       const { data: tData } = await supabase.from('tests').select('*, batches(title)');
       if (tData) setDbTests(tData);
 
-      const { count: studentCount } = await supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'student');
+      const { data: studentsData, count: studentCount } = await supabase.from('profiles').select('*', { count: 'exact' }).eq('role', 'student');
       setTotalStudents(studentCount || 0);
+      if (studentsData) setDbStudents(studentsData);
 
       const { data: enrollmentsData } = await supabase.from('enrollments').select('batch_id, batches(price)');
       if (enrollmentsData) {
@@ -415,6 +417,7 @@ export default function AdminDashboard() {
 
       <div className="flex mb-4" style={{ gap: '0.5rem', overflowX: 'auto', paddingBottom: '0.5rem', whiteSpace: 'nowrap' }}>
         <button className={activeTab === 'overview' ? 'btn-primary' : 'btn-outline'} onClick={() => setActiveTab('overview')} style={{ padding: '0.5rem 1rem' }}>Overview</button>
+        <button className={activeTab === 'students' ? 'btn-primary' : 'btn-outline'} onClick={() => setActiveTab('students')} style={{ padding: '0.5rem 1rem' }}>Students List</button>
         <button className={activeTab === 'content' ? 'btn-primary' : 'btn-outline'} onClick={() => setActiveTab('content')} style={{ padding: '0.5rem 1rem' }}>Content Manager</button>
         <button className={activeTab === 'test' ? 'btn-primary' : 'btn-outline'} onClick={() => setActiveTab('test')} style={{ padding: '0.5rem 1rem' }}>Test Manager</button>
       </div>
@@ -427,9 +430,9 @@ export default function AdminDashboard() {
                 <h3 className="text-accent" style={{ fontSize: '2rem' }}>₹{totalRevenue}</h3>
                 <p className="text-muted">Total Revenue</p>
               </div>
-              <div className="glass-card text-center" style={{ flex: 1, minWidth: '150px' }}>
+              <div className="glass-card text-center" style={{ flex: 1, minWidth: '150px', cursor: 'pointer', transition: 'transform 0.2s ease', border: '1px solid var(--accent)' }} onClick={() => setActiveTab('students')}>
                 <h3 className="text-accent" style={{ fontSize: '2rem' }}>{totalStudents}</h3>
-                <p className="text-muted">Total Students</p>
+                <p className="text-muted">Total Students (Click to View)</p>
               </div>
             </div>
 
@@ -589,6 +592,39 @@ export default function AdminDashboard() {
                   <button onClick={() => handleDeleteTest(t.id)} className="btn-outline" style={{ border: '1px solid #ff4444', color: '#ff4444', padding: '0.5rem 1rem' }}>Delete</button>
                 </div>
               ))}
+            </div>
+          </div>
+        </div>
+      )}
+      {activeTab === 'students' && (
+        <div className="animate-fade-in">
+          <div className="glass-card">
+            <h3 className="mb-4">Registered Students ({dbStudents.length})</h3>
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', minWidth: '600px', borderCollapse: 'collapse', textAlign: 'left' }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid var(--glass-border)' }}>
+                    <th style={{ padding: '1rem', color: 'var(--text-secondary-dark)' }}>Name</th>
+                    <th style={{ padding: '1rem', color: 'var(--text-secondary-dark)' }}>Username</th>
+                    <th style={{ padding: '1rem', color: 'var(--text-secondary-dark)' }}>Class</th>
+                    <th style={{ padding: '1rem', color: 'var(--text-secondary-dark)' }}>DOB</th>
+                    <th style={{ padding: '1rem', color: 'var(--text-secondary-dark)' }}>Joined Date</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {dbStudents.length === 0 ? (
+                    <tr><td colSpan="5" style={{ padding: '1rem', textAlign: 'center' }}>No students found.</td></tr>
+                  ) : dbStudents.map(student => (
+                    <tr key={student.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                      <td style={{ padding: '1rem', fontWeight: 'bold' }}>{student.name || 'N/A'}</td>
+                      <td style={{ padding: '1rem' }}>{student.username || 'N/A'}</td>
+                      <td style={{ padding: '1rem' }}>{student.class_name || 'N/A'}</td>
+                      <td style={{ padding: '1rem' }}>{student.dob || 'N/A'}</td>
+                      <td style={{ padding: '1rem' }}>{new Date(student.created_at).toLocaleDateString()}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
         </div>
