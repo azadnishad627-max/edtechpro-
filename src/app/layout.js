@@ -3,7 +3,7 @@ import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 
 export const metadata = {
-  title: "EdTechPro | Premium Online Classes",
+  title: "RK Education | Premium Online Classes",
   description: "Upload educational content and sell your preparation batches.",
   manifest: "/manifest.json",
   themeColor: "#4f46e5",

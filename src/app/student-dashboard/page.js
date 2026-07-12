@@ -2,6 +2,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../../lib/supabaseClient';
+import Game2048 from '../../components/Game2048';
 
 export default function StudentDashboard() {
   const [student, setStudent] = useState(null);
@@ -175,6 +176,7 @@ export default function StudentDashboard() {
         <button className={activeTab === 'tests' ? 'btn-primary' : 'btn-outline'} onClick={() => setActiveTab('tests')}>Online Tests</button>
         <button className={activeTab === 'ai' ? 'btn-primary' : 'btn-outline'} onClick={() => setActiveTab('ai')}>✨ AI Mentor</button>
         <button className={activeTab === 'profile' ? 'btn-primary' : 'btn-outline'} onClick={() => setActiveTab('profile')}>👤 Profile</button>
+        <button className={activeTab === 'more' ? 'btn-primary' : 'btn-outline'} onClick={() => setActiveTab('more')}>🎮 More</button>
       </div>
 
       <div className="animate-fade-in">
@@ -342,6 +344,13 @@ export default function StudentDashboard() {
             </div>
           </div>
         )}
+
+        {activeTab === 'more' && (
+          <div>
+            <h2 className="mb-4 text-accent text-center">Brain Break</h2>
+            <Game2048 />
+          </div>
+        )}
       </div>
 
       {/* Mobile Bottom Navigation */}
@@ -361,6 +370,10 @@ export default function StudentDashboard() {
         <div className={`bottom-nav-item ${activeTab === 'profile' ? 'active' : ''}`} onClick={() => setActiveTab('profile')}>
           <span className="bottom-nav-icon">👤</span>
           <span>Profile</span>
+        </div>
+        <div className={`bottom-nav-item ${activeTab === 'more' ? 'active' : ''}`} onClick={() => setActiveTab('more')}>
+          <span className="bottom-nav-icon">🎮</span>
+          <span>More</span>
         </div>
       </div>
     </div>
