@@ -1,4 +1,24 @@
+"use client";
+import { useState, useEffect } from 'react';
+import { usePathname } from 'next/navigation';
+
 export default function Footer() {
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const pathname = usePathname();
+
+  useEffect(() => {
+    const adminInfo = localStorage.getItem('adminInfo');
+    const studentInfo = localStorage.getItem('studentInfo');
+    
+    if (adminInfo || studentInfo) {
+      setIsLoggedIn(true);
+    } else {
+      setIsLoggedIn(false);
+    }
+  }, [pathname]);
+
+  if (isLoggedIn) return null;
+
   return (
     <footer className="footer" style={{ padding: '2rem 0', textAlign: 'center', borderTop: '1px solid var(--glass-border)' }}>
       <div className="container">
