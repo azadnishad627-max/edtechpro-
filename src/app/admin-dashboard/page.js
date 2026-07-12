@@ -7,6 +7,8 @@ export default function AdminDashboard() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState('overview');
   const [batches, setBatches] = useState([]);
+  const [totalStudents, setTotalStudents] = useState(0);
+  const [totalRevenue, setTotalRevenue] = useState(0);
   
   // Batch Manager State
   const [batchTitle, setBatchTitle] = useState('');
@@ -51,6 +53,18 @@ export default function AdminDashboard() {
 
       const { data: tData } = await supabase.from('tests').select('*, batches(title)');
       if (tData) setDbTests(tData);
+
+      const { count: studentCount } = await supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'student');
+      setTotalStudents(studentCount || 0);
+
+      const { data: enrollmentsData } = await supabase.from('enrollments').select('batch_id, batches(price)');
+      if (enrollmentsData) {
+        let rev = 0;
+        enrollmentsData.forEach(e => {
+          if (e.batches && e.batches.price) rev += Number(e.batches.price);
+        });
+        setTotalRevenue(rev);
+      }
     }
     fetchBatches();
   }, [router]);
@@ -408,13 +422,13 @@ export default function AdminDashboard() {
       {activeTab === 'overview' && (
         <div className="animate-fade-in grid-cols-2" style={{ alignItems: 'flex-start' }}>
           <div>
-            <div className="grid-cols-2 mb-4">
-              <div className="glass-card text-center">
-                <h3 className="text-accent" style={{ fontSize: '2rem' }}>₹1.2L</h3>
+            <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
+              <div className="glass-card text-center" style={{ flex: 1, minWidth: '150px' }}>
+                <h3 className="text-accent" style={{ fontSize: '2rem' }}>₹{totalRevenue}</h3>
                 <p className="text-muted">Total Revenue</p>
               </div>
-              <div className="glass-card text-center">
-                <h3 className="text-accent" style={{ fontSize: '2rem' }}>1,240</h3>
+              <div className="glass-card text-center" style={{ flex: 1, minWidth: '150px' }}>
+                <h3 className="text-accent" style={{ fontSize: '2rem' }}>{totalStudents}</h3>
                 <p className="text-muted">Total Students</p>
               </div>
             </div>
@@ -440,7 +454,7 @@ export default function AdminDashboard() {
             
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', maxHeight: '600px', overflowY: 'auto', paddingRight: '10px' }}>
               {batches.length === 0 ? <p className="text-muted">No courses found.</p> : batches.map(b => (
-                <div key={b.id} style={{ padding: '1rem', border: '1px solid var(--glass-border)', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.02)' }}>
+                <div key={b.id} style={{ padding: '1rem', border: '1px solid var(--glass-border)', borderRadius: '8px', display: 'flex', flexWrap: 'wrap', gap: '1rem', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.02)' }}>
                   <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
                     {b.image_url ? (
                       <img src={b.image_url} alt="thumbnail" style={{ width: '60px', height: '60px', borderRadius: '8px', objectFit: 'cover' }} />
