@@ -46,13 +46,13 @@ export default function StudentSetup() {
         <p className="text-muted text-center mb-4">Create your account to start learning.</p>
         
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          <div style={{ display: 'flex', gap: '1rem' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             <input 
               type="text" 
               placeholder="Username" 
               value={formData.username}
               onChange={(e) => setFormData({...formData, username: e.target.value.toLowerCase().trim()})}
-              style={{ flex: 1, padding: '1rem', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'var(--bg-dark)', color: 'white' }}
+              style={{ padding: '1rem', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'var(--bg-dark)', color: 'white' }}
               required
             />
             <input 
@@ -60,7 +60,7 @@ export default function StudentSetup() {
               placeholder="Password" 
               value={formData.password}
               onChange={(e) => setFormData({...formData, password: e.target.value})}
-              style={{ flex: 1, padding: '1rem', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'var(--bg-dark)', color: 'white' }}
+              style={{ padding: '1rem', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'var(--bg-dark)', color: 'white' }}
               required
             />
           </div>
