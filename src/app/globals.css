@@ -305,6 +305,12 @@ button {
   100% { background-position: 0% 50%; }
 }
 
+@keyframes logoPulse { 
+  0% { box-shadow: 0 0 0px rgba(0, 242, 254, 0.4); transform: scale(1); } 
+  50% { box-shadow: 0 0 40px rgba(0, 242, 254, 0.8); transform: scale(1.05); } 
+  100% { box-shadow: 0 0 0px rgba(0, 242, 254, 0.4); transform: scale(1); } 
+}
+
 .animated-logo-text {
   font-weight: 900;
   text-transform: uppercase;
