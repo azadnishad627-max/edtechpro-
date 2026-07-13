@@ -21,6 +21,12 @@ export default function StudentDashboard() {
   ]);
   const router = useRouter();
 
+  useEffect(() => {
+    if (chatHistory.length > 1) {
+      localStorage.setItem('aiChatHistory', JSON.stringify(chatHistory));
+    }
+  }, [chatHistory]);
+
   const [dbBatches, setDbBatches] = useState([]);
   const [dbTests, setDbTests] = useState([]);
   const [dbMaterials, setDbMaterials] = useState([]);
@@ -57,6 +63,15 @@ export default function StudentDashboard() {
       fetchLatestProfile(parsed.id);
     } else {
       router.push('/student-setup');
+    }
+
+    const savedChat = localStorage.getItem('aiChatHistory');
+    if (savedChat) {
+      try {
+        setChatHistory(JSON.parse(savedChat));
+      } catch(e) {
+        console.error("Failed to load chat history", e);
+      }
     }
 
     async function fetchData() {
@@ -290,9 +305,9 @@ export default function StudentDashboard() {
         )}
 
         {activeTab === 'ai' && (
-          <div>
-            <h2 className="mb-4 text-accent">Chat with AI Mentor</h2>
-            <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 280px)', minHeight: '350px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 220px)' }}>
+            <h2 className="mb-4 text-accent" style={{ flexShrink: 0 }}>Chat with AI Mentor</h2>
+            <div className="glass-card" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
               <div style={{ flex: 1, overflowY: 'auto', padding: '1rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 {chatHistory.map((msg, i) => (
                   <div key={i} style={{ 
