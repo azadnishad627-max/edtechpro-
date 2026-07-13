@@ -218,6 +218,7 @@ export default function StudentDashboard() {
       
       <div className="flex gap-4 mb-4 mobile-hide" style={{ gap: '1rem', overflowX: 'auto', paddingBottom: '0.5rem', whiteSpace: 'nowrap' }}>
         <button className={activeTab === 'courses' ? 'btn-primary' : 'btn-outline'} onClick={() => { setActiveTab('courses'); setSelectedBatch(null); }}>My Courses</button>
+        <button className={activeTab === 'syllabus' ? 'btn-primary' : 'btn-outline'} onClick={() => setActiveTab('syllabus')}>📄 Syllabus</button>
         <button className={activeTab === 'tests' ? 'btn-primary' : 'btn-outline'} onClick={() => setActiveTab('tests')}>Online Tests</button>
         <button className={activeTab === 'ai' ? 'btn-primary' : 'btn-outline'} onClick={() => setActiveTab('ai')}>✨ AI Mentor</button>
         <button className={activeTab === 'profile' ? 'btn-primary' : 'btn-outline'} onClick={() => setActiveTab('profile')}>👤 Profile</button>
@@ -426,6 +427,27 @@ export default function StudentDashboard() {
             <Game2048 />
           </div>
         )}
+
+        {activeTab === 'syllabus' && (
+          <div className="glass-card">
+            <h2 className="mb-4 text-accent text-center">NMMS Syllabus (2025-2026)</h2>
+            <div className="markdown-body" style={{ color: 'var(--text-light)', lineHeight: '1.8' }}>
+              <ReactMarkdown remarkPlugins={[remarkMath, remarkGfm]} rehypePlugins={[rehypeKatex]}>
+                {`**Paper 1: MAT (Mental Ability Test)** - 90 MCQs
+- Analogy & Classification
+- Numerical & Alphabet Series
+- Pattern Perception & Hidden Figures
+- Blood Relations & Coding-Decoding
+- Venn Diagrams
+
+**Paper 2: SAT (Scholastic Aptitude Test)** - 90 MCQs (Class 7 & 8 NCERT)
+- **Maths (20 Marks):** Algebra, Geometry, Mensuration, Data Handling, Fractions, Roots, Exponents.
+- **Science (35 Marks):** Motion, Force, Light, Sound, Electricity, Metals/Non-metals, Acids/Bases, Pollution, Cells, Microorganisms, Reproduction, Environment.
+- **Social Science (35 Marks):** History (Mughal, British, Freedom), Geography (Earth, Climate, Agriculture), Civics (Constitution, Parliament, Fundamental Rights).`}
+              </ReactMarkdown>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Mobile Bottom Navigation */}
@@ -433,6 +455,10 @@ export default function StudentDashboard() {
         <div className={`bottom-nav-item ${activeTab === 'courses' ? 'active' : ''}`} onClick={() => { setActiveTab('courses'); setSelectedBatch(null); }}>
           <span className="bottom-nav-icon">📚</span>
           <span>Courses</span>
+        </div>
+        <div className={`bottom-nav-item ${activeTab === 'syllabus' ? 'active' : ''}`} onClick={() => setActiveTab('syllabus')}>
+          <span className="bottom-nav-icon">📄</span>
+          <span>Syllabus</span>
         </div>
         <div className={`bottom-nav-item ${activeTab === 'tests' ? 'active' : ''}`} onClick={() => setActiveTab('tests')}>
           <span className="bottom-nav-icon">📝</span>
