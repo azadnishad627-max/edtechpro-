@@ -3,6 +3,11 @@ import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../../lib/supabaseClient';
 import Game2048 from '../../components/Game2048';
+import ReactMarkdown from 'react-markdown';
+import remarkMath from 'remark-math';
+import remarkGfm from 'remark-gfm';
+import rehypeKatex from 'rehype-katex';
+import 'katex/dist/katex.min.css';
 
 export default function StudentDashboard() {
   const [student, setStudent] = useState(null);
@@ -300,7 +305,14 @@ export default function StudentDashboard() {
                     wordBreak: 'break-word'
                   }}>
                     {msg.image && <img src={msg.image} alt="Upload" style={{ maxWidth: '100%', borderRadius: '4px', marginBottom: '0.5rem' }} />}
-                    {msg.text}
+                    <div style={{ color: msg.role === 'user' ? 'white' : 'var(--text-light)', lineHeight: '1.6' }} className="markdown-body">
+                      <ReactMarkdown
+                        remarkPlugins={[remarkMath, remarkGfm]}
+                        rehypePlugins={[rehypeKatex]}
+                      >
+                        {msg.text}
+                      </ReactMarkdown>
+                    </div>
                   </div>
                 ))}
               </div>
