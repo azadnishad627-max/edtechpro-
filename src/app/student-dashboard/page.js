@@ -339,27 +339,29 @@ export default function StudentDashboard() {
                 </div>
               )}
 
-              <form onSubmit={handleChatSubmit} style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem', alignItems: 'center', padding: '0 1rem 1rem 1rem' }}>
-                <input 
-                  type="file" 
-                  accept="image/*" 
-                  capture="environment"
-                  ref={chatFileInputRef} 
-                  onChange={handleChatImageChange} 
-                  style={{ display: 'none' }} 
-                  id="chat-file-upload"
-                />
-                <label htmlFor="chat-file-upload" style={{ cursor: 'pointer', padding: '1rem', borderRadius: '8px', background: 'var(--bg-dark)', border: '1px solid var(--glass-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: '1.2rem' }}>
-                  📷
-                </label>
-                <input 
-                  type="text" 
-                  value={chatMessage}
-                  onChange={(e) => setChatMessage(e.target.value)}
-                  placeholder="Ask or scan a question..." 
-                  style={{ flex: 1, padding: '1rem', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'var(--bg-dark)', color: 'white' }} 
-                />
-                <button type="submit" className="btn-primary">Send</button>
+              <form onSubmit={handleChatSubmit} style={{ display: 'flex', gap: '0.5rem', marginTop: 'auto', alignItems: 'center', padding: '0.8rem', background: 'var(--bg-card-dark)', borderTop: '1px solid var(--glass-border)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', flex: 1, background: 'rgba(255,255,255,0.05)', borderRadius: '30px', padding: '0.2rem 0.2rem 0.2rem 1rem', border: '1px solid var(--glass-border)' }}>
+                  <input 
+                    type="file" 
+                    accept="image/*" 
+                    capture="environment"
+                    ref={chatFileInputRef} 
+                    onChange={handleChatImageChange} 
+                    style={{ display: 'none' }} 
+                    id="chat-file-upload"
+                  />
+                  <label htmlFor="chat-file-upload" style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-light)', fontSize: '1.2rem', marginRight: '0.5rem', transition: 'color 0.3s' }} onMouseOver={e => e.currentTarget.style.color='white'} onMouseOut={e => e.currentTarget.style.color='var(--text-light)'}>
+                    📷
+                  </label>
+                  <input 
+                    type="text" 
+                    value={chatMessage}
+                    onChange={(e) => setChatMessage(e.target.value)}
+                    placeholder="Ask or scan a question..." 
+                    style={{ flex: 1, minWidth: 0, padding: '0.8rem 0.5rem', border: 'none', background: 'transparent', color: 'white', outline: 'none' }} 
+                  />
+                  <button type="submit" style={{ background: 'var(--primary-color)', color: 'white', border: 'none', padding: '0.8rem 1.5rem', borderRadius: '25px', cursor: 'pointer', fontWeight: 'bold', marginLeft: '0.5rem' }}>Send</button>
+                </div>
               </form>
             </div>
           </div>
