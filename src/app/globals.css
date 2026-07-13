@@ -1,16 +1,16 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
 :root {
-  --bg-dark: #050505; /* Deep obsidian */
-  --bg-card-dark: rgba(20, 20, 30, 0.65); /* Glassy dark tint */
-  --primary-color: #00f2fe; /* Neon cyan */
-  --primary-hover: #4facfe; /* Deep electric blue */
-  --accent: #ff0844; /* Magenta / Hot Pink */
+  --bg-dark: #090e17; /* Deep Midnight Navy */
+  --bg-card-dark: rgba(15, 23, 42, 0.65); /* Professional Slate */
+  --primary-color: #2563eb; /* Royal Blue */
+  --primary-hover: #1d4ed8; /* Darker Royal Blue */
+  --accent: #0ea5e9; /* Sky Blue (replaces magenta) */
   --text-primary-dark: #ffffff;
-  --text-secondary-dark: #a0aec0;
+  --text-secondary-dark: #94a3b8;
   
-  --gradient-brand: linear-gradient(135deg, #00f2fe 0%, #4facfe 50%, #ff0844 100%);
-  --glass-bg: rgba(15, 15, 20, 0.75);
+  --gradient-brand: linear-gradient(135deg, #2563eb 0%, #06b6d4 100%);
+  --glass-bg: rgba(15, 23, 42, 0.75);
   --glass-border: rgba(255, 255, 255, 0.08);
 }
 
@@ -317,18 +317,18 @@ button {
   letter-spacing: 2px;
   background: linear-gradient(
     270deg, 
-    #ff0844, 
-    #ffb199, 
-    #00f2fe, 
-    #4facfe, 
-    #ff0844
+    #3b82f6, 
+    #0ea5e9, 
+    #06b6d4, 
+    #2563eb, 
+    #3b82f6
   );
   background-size: 400% 400%;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   animation: rgbText 8s ease infinite;
   display: inline-block;
-  filter: drop-shadow(0 0 8px rgba(0, 242, 254, 0.5));
+  filter: drop-shadow(0 0 8px rgba(6, 182, 212, 0.4));
 }
 
 .nav-logo-text {
