@@ -11,13 +11,6 @@ export async function POST(req) {
       });
     }
 
-    const systemInstruction = {
-      role: "user",
-      parts: [
-        { text: "You are an expert educational AI mentor and an advanced homework solver. Your goal is to help students understand concepts clearly. If the student uploads an image of a question, scan it, extract the problem, and provide a 100% correct, step-by-step solution. Be encouraging and clear." }
-      ]
-    };
-
     const userParts = [];
     if (message) {
       userParts.push({ text: message });
@@ -35,8 +28,13 @@ export async function POST(req) {
     }
 
     const requestBody = {
+      systemInstruction: {
+        role: "system",
+        parts: [
+          { text: "You are an expert educational AI mentor and an advanced homework solver. Your goal is to help students understand concepts clearly. If the student uploads an image of a question, scan it, extract the problem, and provide a 100% correct, step-by-step solution. Be encouraging and clear." }
+        ]
+      },
       contents: [
-        systemInstruction,
         { role: "user", parts: userParts }
       ],
       generationConfig: {
