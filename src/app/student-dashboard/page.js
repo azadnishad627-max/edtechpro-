@@ -287,7 +287,7 @@ export default function StudentDashboard() {
         {activeTab === 'ai' && (
           <div>
             <h2 className="mb-4 text-accent">Chat with AI Mentor</h2>
-            <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', height: '60vh', minHeight: '400px' }}>
+            <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 280px)', minHeight: '350px' }}>
               <div style={{ flex: 1, overflowY: 'auto', padding: '1rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 {chatHistory.map((msg, i) => (
                   <div key={i} style={{ 
