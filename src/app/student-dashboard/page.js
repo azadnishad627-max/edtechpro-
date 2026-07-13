@@ -430,7 +430,7 @@ export default function StudentDashboard() {
 
         {activeTab === 'syllabus' && (
           <div className="glass-card">
-            <h2 className="mb-4 text-accent text-center">NMMS Syllabus (2025-2026)</h2>
+            <h2 className="mb-4 text-accent text-center">NMMS Syllabus (2026-2027)</h2>
             <div className="markdown-body" style={{ color: 'var(--text-light)', lineHeight: '1.8' }}>
               <ReactMarkdown remarkPlugins={[remarkMath, remarkGfm]} rehypePlugins={[rehypeKatex]}>
                 {`**Paper 1: MAT (Mental Ability Test)** - 90 MCQs
