@@ -24,9 +24,9 @@ export default function Navbar() {
   return (
     <nav className="navbar glass-card">
       <div className="container nav-container">
-        <Link href="/" className="logo" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', textDecoration: 'none' }}>
-          <img src="/logo.jpg" alt="RK Education Logo" style={{ width: '36px', height: '36px', borderRadius: '8px', objectFit: 'cover' }} />
-          <span style={{ background: 'linear-gradient(90deg, #38bdf8 0%, #a855f7 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontWeight: '800', fontSize: '1.3rem', letterSpacing: '-0.5px' }}>RK Education</span>
+        <Link href="/" className="logo flex align-center" style={{ gap: '0.75rem', textDecoration: 'none' }}>
+          <img src="/logo.jpg" alt="RK Education Logo" style={{ width: '42px', height: '42px', borderRadius: '8px', objectFit: 'cover', boxShadow: '0 0 10px rgba(0, 242, 254, 0.4)' }} />
+          <span className="animated-logo-text nav-logo-text">RK Education</span>
         </Link>
         <div className="nav-links">
           {userRole !== 'admin' && <Link href="/student-dashboard">Dashboard</Link>}

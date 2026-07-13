@@ -20,8 +20,11 @@ export default function Home() {
   }, [router]);
 
   return (
-    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', flexDirection: 'column' }}>
-      <h1 className="text-accent animate-fade-in mb-4">RK Education</h1>
+    <div className="animate-fade-in" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', flexDirection: 'column', background: 'var(--bg-dark)' }}>
+      <div style={{ marginBottom: '2rem', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+        <img src="/logo.jpg" alt="RK Education Hero Logo" style={{ width: '120px', height: '120px', borderRadius: '25px', objectFit: 'cover', boxShadow: '0 0 40px rgba(0, 242, 254, 0.4)', marginBottom: '1.5rem', animation: 'fadeIn 1s ease' }} />
+        <h1 className="animated-logo-text hero-logo-text">RK Education</h1>
+      </div>
       <div style={{ width: '40px', height: '40px', border: '4px solid var(--glass-border)', borderTopColor: 'var(--accent)', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
       <style>{`
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }

@@ -299,6 +299,48 @@ button {
   100% { background-position: 0% 50%; }
 }
 
+@keyframes rgbText {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.animated-logo-text {
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  background: linear-gradient(
+    270deg, 
+    #ff0844, 
+    #ffb199, 
+    #00f2fe, 
+    #4facfe, 
+    #ff0844
+  );
+  background-size: 400% 400%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: rgbText 8s ease infinite;
+  display: inline-block;
+  filter: drop-shadow(0 0 8px rgba(0, 242, 254, 0.5));
+}
+
+.nav-logo-text {
+  font-size: 1.8rem;
+  letter-spacing: 1px;
+}
+
+.hero-logo-text {
+  font-size: 4rem !important;
+  margin-bottom: 0.5rem !important;
+}
+
+@media (max-width: 768px) {
+  .hero-logo-text {
+    font-size: 2.5rem !important;
+  }
+}
+
 .animate-fade-in {
   opacity: 0;
   animation: fadeIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
