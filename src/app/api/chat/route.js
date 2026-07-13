@@ -1,9 +1,8 @@
 import { NextResponse } from 'next/server';
-import { GoogleGenAI } from "@google/genai";
 
 export async function POST(req) {
   try {
-    const { message } = await req.json();
+    const { message, imageBase64, mimeType } = await req.json();
     const apiKey = process.env.GEMINI_API_KEY;
 
     if (!apiKey || apiKey === 'paste_your_gemini_api_key_here') {
@@ -12,29 +11,62 @@ export async function POST(req) {
       });
     }
 
-    const ai = new GoogleGenAI({ apiKey });
+    const systemInstruction = {
+      role: "user",
+      parts: [
+        { text: "You are an expert educational AI mentor and an advanced homework solver. Your goal is to help students understand concepts clearly. If the student uploads an image of a question, scan it, extract the problem, and provide a 100% correct, step-by-step solution. Be encouraging and clear." }
+      ]
+    };
 
-    const systemPrompt = "You are an expert educational AI mentor. Help students understand concepts clearly and guide them instead of just giving direct answers. Keep answers relatively concise and friendly.";
-    const fullPrompt = `${systemPrompt}\n\nStudent asks: ${message}`;
+    const userParts = [];
+    if (message) {
+      userParts.push({ text: message });
+    } else if (imageBase64) {
+      userParts.push({ text: "Please solve the question in this image step by step." });
+    }
 
-    const interaction = await ai.interactions.create({
-      model: "gemini-3.5-flash",
-      input: fullPrompt,
-    });
-    
-    if (interaction.output_text) {
-      return NextResponse.json({ reply: interaction.output_text });
-    } else if (interaction.steps) {
-      const outputStep = interaction.steps.find(s => s.type === 'model_output');
-      if (outputStep && outputStep.content && outputStep.content.length > 0) {
-        return NextResponse.json({ reply: outputStep.content[0].text });
+    if (imageBase64) {
+      userParts.push({
+        inlineData: {
+          data: imageBase64.split(',')[1] || imageBase64,
+          mimeType: mimeType || 'image/jpeg'
+        }
+      });
+    }
+
+    const requestBody = {
+      contents: [
+        systemInstruction,
+        { role: "user", parts: userParts }
+      ],
+      generationConfig: {
+        temperature: 0.2
       }
+    };
+
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(requestBody)
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      console.error("Gemini API Error:", data);
+      return NextResponse.json({ reply: `AI Error: ${data.error?.message || 'Failed to generate response'}` });
+    }
+
+    const replyText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    
+    if (replyText) {
+      return NextResponse.json({ reply: replyText });
     }
     
     return NextResponse.json({ reply: "I'm having trouble thinking right now. Please try again later." });
 
   } catch (error) {
-    console.error("SDK Error:", error);
-    return NextResponse.json({ reply: `API Error: ${error.message}` });
+    console.error("Chat API Error:", error);
+    return NextResponse.json({ reply: `Server Error: ${error.message}` });
   }
 }

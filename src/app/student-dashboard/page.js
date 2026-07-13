@@ -8,8 +8,11 @@ export default function StudentDashboard() {
   const [student, setStudent] = useState(null);
   const [activeTab, setActiveTab] = useState('courses');
   const [chatMessage, setChatMessage] = useState('');
+  const [chatImageFile, setChatImageFile] = useState(null);
+  const [chatImagePreview, setChatImagePreview] = useState(null);
+  const chatFileInputRef = useRef(null);
   const [chatHistory, setChatHistory] = useState([
-    { role: 'ai', text: 'Hello! I am your AI Mentor. How can I help you with your studies today?' }
+    { role: 'ai', text: 'Hello! I am your AI Mentor. Upload a photo of a question or ask me anything!' }
   ]);
   const router = useRouter();
 
@@ -82,20 +85,42 @@ export default function StudentDashboard() {
     }
   }
 
+  const handleChatImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setChatImageFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setChatImagePreview(reader.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleChatSubmit = async (e) => {
     e.preventDefault();
-    if (!chatMessage.trim()) return;
+    if (!chatMessage.trim() && !chatImagePreview) return;
     
     const userMsg = chatMessage;
+    const userImg = chatImagePreview;
+    const mime = chatImageFile?.type;
+    
     // Add user message
-    setChatHistory(prev => [...prev, { role: 'user', text: userMsg }]);
+    setChatHistory(prev => [...prev, { role: 'user', text: userMsg, image: userImg }]);
     setChatMessage('');
+    setChatImageFile(null);
+    setChatImagePreview(null);
+    if (chatFileInputRef.current) chatFileInputRef.current.value = '';
     
     try {
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: userMsg })
+        body: JSON.stringify({ 
+          message: userMsg,
+          imageBase64: userImg,
+          mimeType: mime
+        })
       });
       const data = await res.json();
       setChatHistory(prev => [...prev, { role: 'ai', text: data.reply || "Error connecting to AI." }]);
@@ -274,16 +299,37 @@ export default function StudentDashboard() {
                     maxWidth: '85%',
                     wordBreak: 'break-word'
                   }}>
+                    {msg.image && <img src={msg.image} alt="Upload" style={{ maxWidth: '100%', borderRadius: '4px', marginBottom: '0.5rem' }} />}
                     {msg.text}
                   </div>
                 ))}
               </div>
-              <form onSubmit={handleChatSubmit} style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
+              
+              {chatImagePreview && (
+                <div style={{ padding: '0.5rem 1rem', background: 'var(--bg-dark)', display: 'flex', alignItems: 'center', gap: '1rem', borderTop: '1px solid var(--glass-border)' }}>
+                  <img src={chatImagePreview} alt="Preview" style={{ height: '40px', borderRadius: '4px' }} />
+                  <button type="button" onClick={() => { setChatImageFile(null); setChatImagePreview(null); if (chatFileInputRef.current) chatFileInputRef.current.value = ''; }} style={{ background: 'transparent', border: 'none', color: '#ff4444', cursor: 'pointer', fontSize: '0.9rem' }}>✖ Remove Photo</button>
+                </div>
+              )}
+
+              <form onSubmit={handleChatSubmit} style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem', alignItems: 'center', padding: '0 1rem 1rem 1rem' }}>
+                <input 
+                  type="file" 
+                  accept="image/*" 
+                  capture="environment"
+                  ref={chatFileInputRef} 
+                  onChange={handleChatImageChange} 
+                  style={{ display: 'none' }} 
+                  id="chat-file-upload"
+                />
+                <label htmlFor="chat-file-upload" style={{ cursor: 'pointer', padding: '1rem', borderRadius: '8px', background: 'var(--bg-dark)', border: '1px solid var(--glass-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: '1.2rem' }}>
+                  📷
+                </label>
                 <input 
                   type="text" 
                   value={chatMessage}
                   onChange={(e) => setChatMessage(e.target.value)}
-                  placeholder="Ask a question..." 
+                  placeholder="Ask or scan a question..." 
                   style={{ flex: 1, padding: '1rem', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'var(--bg-dark)', color: 'white' }} 
                 />
                 <button type="submit" className="btn-primary">Send</button>
