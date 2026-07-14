@@ -1,11 +1,11 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.edtechpro.app',
-  appName: 'EdTechPro',
-  webDir: 'public',
+  appId: 'com.rkeducation.app',
+  appName: 'RK EDUCATION',
+  webDir: 'out',
   server: {
-    url: 'http://10.12.32.149:3000',
+    url: 'https://edtechpro-five.vercel.app',
     cleartext: true
   }
 };
