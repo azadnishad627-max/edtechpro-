@@ -1,4 +1,4 @@
-package com.edtechpro.app;
+package com.rkeducation.app;
 
 import com.getcapacitor.BridgeActivity;
 
