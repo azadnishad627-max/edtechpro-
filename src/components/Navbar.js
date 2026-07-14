@@ -35,14 +35,16 @@ export default function Navbar() {
         <div className="nav-actions flex align-center" style={{ gap: '1rem' }}>
           {userRole === null && (
             <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-              <Link href="/admin-login" className="btn-primary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem', borderRadius: '50px', background: 'rgba(255, 68, 68, 0.1)', border: '1px solid #ff4444', color: '#ff4444', textDecoration: 'none' }}>Admin</Link>
+              <Link href="/admin-login" className="btn-primary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem', background: 'rgba(255, 68, 68, 0.1)', border: '1px solid #ff4444', color: '#ff4444', textDecoration: 'none' }}>Admin</Link>
             </div>
           )}
           {userRole === 'student' && (
-            <Link href="/student-dashboard" className="btn-primary" style={{ padding: '0.5rem 1.2rem', fontSize: '0.9rem', borderRadius: '50px', boxShadow: '0 4px 15px rgba(79, 70, 229, 0.3)' }}>Dashboard</Link>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+              <Link href="/student-dashboard" className="btn-primary mobile-hide" style={{ padding: '0.5rem 1.2rem', fontSize: '0.9rem' }}>Dashboard</Link>
+            </div>
           )}
           {userRole === 'admin' && (
-            <Link href="/admin-dashboard" className="btn-primary" style={{ padding: '0.5rem 1.2rem', fontSize: '0.9rem', borderRadius: '50px', background: '#ff4444', boxShadow: '0 4px 15px rgba(255, 68, 68, 0.3)' }}>Admin Panel</Link>
+            <Link href="/admin-dashboard" className="btn-primary" style={{ padding: '0.5rem 1.2rem', fontSize: '0.9rem', background: '#ff4444', boxShadow: '0 4px 15px rgba(255, 68, 68, 0.3)' }}>Admin Panel</Link>
           )}
         </div>
       </div>

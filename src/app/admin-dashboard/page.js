@@ -38,6 +38,12 @@ export default function AdminDashboard() {
   const [rawText, setRawText] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
 
+  // Announcements & Feedback State
+  const [announcementTitle, setAnnouncementTitle] = useState('');
+  const [announcementContent, setAnnouncementContent] = useState('');
+  const [dbAnnouncements, setDbAnnouncements] = useState([]);
+  const [dbFeedback, setDbFeedback] = useState([]);
+
   useEffect(() => {
     // Admin Route Protection
     if (!localStorage.getItem('adminInfo')) {
@@ -67,9 +73,29 @@ export default function AdminDashboard() {
         });
         setTotalRevenue(rev);
       }
+
+      const { data: aData } = await supabase.from('announcements').select('*').order('created_at', { ascending: false });
+      if (aData) setDbAnnouncements(aData);
+
+      const { data: fData } = await supabase.from('feedback').select('*').order('created_at', { ascending: false });
+      if (fData) setDbFeedback(fData);
     }
     fetchBatches();
   }, [router]);
+
+  const handleCreateAnnouncement = async (e) => {
+    e.preventDefault();
+    if (!announcementTitle || !announcementContent) return;
+    const { data, error } = await supabase.from('announcements').insert([{ title: announcementTitle, content: announcementContent }]).select();
+    if (error) {
+      alert("Error posting announcement: " + error.message);
+    } else {
+      alert("Announcement posted successfully!");
+      setDbAnnouncements([data[0], ...dbAnnouncements]);
+      setAnnouncementTitle('');
+      setAnnouncementContent('');
+    }
+  };
 
   const handleCreateBatch = async (e) => {
     e.preventDefault();
@@ -400,7 +426,7 @@ export default function AdminDashboard() {
   };
 
   return (
-    <div className="container py-4">
+    <div className="container pt-navbar mobile-pb">
       <div className="flex justify-between align-center mb-4 animate-fade-in" style={{ flexWrap: 'wrap', gap: '1rem' }}>
         <h1 style={{ margin: 0 }}>Admin Dashboard</h1>
         <button 
@@ -420,6 +446,8 @@ export default function AdminDashboard() {
         <button className={activeTab === 'students' ? 'btn-primary' : 'btn-outline'} onClick={() => setActiveTab('students')} style={{ padding: '0.5rem 1rem' }}>Students List</button>
         <button className={activeTab === 'content' ? 'btn-primary' : 'btn-outline'} onClick={() => setActiveTab('content')} style={{ padding: '0.5rem 1rem' }}>Content Manager</button>
         <button className={activeTab === 'test' ? 'btn-primary' : 'btn-outline'} onClick={() => setActiveTab('test')} style={{ padding: '0.5rem 1rem' }}>Test Manager</button>
+        <button className={activeTab === 'announcements' ? 'btn-primary' : 'btn-outline'} onClick={() => setActiveTab('announcements')} style={{ padding: '0.5rem 1rem' }}>Announcements</button>
+        <button className={activeTab === 'feedback' ? 'btn-primary' : 'btn-outline'} onClick={() => setActiveTab('feedback')} style={{ padding: '0.5rem 1rem' }}>Student Feedback</button>
       </div>
 
       {activeTab === 'overview' && (
@@ -625,6 +653,51 @@ export default function AdminDashboard() {
                   ))}
                 </tbody>
               </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'announcements' && (
+        <div className="animate-fade-in grid-cols-2" style={{ alignItems: 'flex-start' }}>
+          <div className="glass-card">
+            <h3 className="mb-4">Post New Announcement</h3>
+            <form onSubmit={handleCreateAnnouncement} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <input type="text" placeholder="Title (e.g. Server Maintenance)" value={announcementTitle} onChange={(e) => setAnnouncementTitle(e.target.value)} style={{ padding: '1rem', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'var(--bg-dark)', color: 'white' }} required />
+              <textarea placeholder="Announcement Content" value={announcementContent} onChange={(e) => setAnnouncementContent(e.target.value)} style={{ padding: '1rem', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'var(--bg-dark)', color: 'white', minHeight: '150px' }} required></textarea>
+              <button type="submit" className="btn-primary mt-2" style={{ alignSelf: 'flex-start' }}>Post to All Students</button>
+            </form>
+          </div>
+          
+          <div className="glass-card">
+            <h3 className="mb-4">Recent Announcements</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', maxHeight: '500px', overflowY: 'auto' }}>
+              {dbAnnouncements.length === 0 ? <p className="text-muted">No announcements posted yet.</p> : dbAnnouncements.map(ann => (
+                <div key={ann.id} style={{ padding: '1rem', border: '1px solid var(--glass-border)', borderRadius: '8px', background: 'rgba(255,255,255,0.02)' }}>
+                  <h4 style={{ margin: '0 0 0.5rem 0' }}>{ann.title}</h4>
+                  <p className="text-muted" style={{ fontSize: '0.9rem', margin: '0 0 0.5rem 0', whiteSpace: 'pre-wrap' }}>{ann.content}</p>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{new Date(ann.created_at).toLocaleString()}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'feedback' && (
+        <div className="animate-fade-in">
+          <div className="glass-card">
+            <h3 className="mb-4">Student Feedback & Reports</h3>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1rem' }}>
+              {dbFeedback.length === 0 ? <p className="text-muted">No feedback received yet.</p> : dbFeedback.map(fb => (
+                <div key={fb.id} style={{ padding: '1rem', border: '1px solid var(--glass-border)', borderRadius: '8px', background: 'rgba(255,255,255,0.02)', borderTop: '4px solid #f59e0b' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                    <h4 style={{ margin: 0, color: 'var(--text-light)' }}>{fb.student_name}</h4>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{new Date(fb.created_at).toLocaleDateString()}</span>
+                  </div>
+                  <p style={{ margin: '0', fontSize: '0.9rem', color: 'white', whiteSpace: 'pre-wrap', lineHeight: '1.5' }}>{fb.message}</p>
+                </div>
+              ))}
             </div>
           </div>
         </div>

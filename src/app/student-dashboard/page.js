@@ -15,6 +15,14 @@ export default function StudentDashboard() {
   const [chatMessage, setChatMessage] = useState('');
   const [chatImageFile, setChatImageFile] = useState(null);
   const [chatImagePreview, setChatImagePreview] = useState(null);
+
+  // New Features State
+  const [announcements, setAnnouncements] = useState([]);
+  const [showAnnouncements, setShowAnnouncements] = useState(false);
+  const [feedbackMessage, setFeedbackMessage] = useState('');
+  const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
+
+  const photoInputRef = useRef(null);
   const chatFileInputRef = useRef(null);
   const [chatHistory, setChatHistory] = useState([
     { role: 'ai', text: 'Hello! I am your AI Mentor. Upload a photo of a question or ask me anything!' }
@@ -38,7 +46,6 @@ export default function StudentDashboard() {
   const [editClass, setEditClass] = useState('');
   const [newPhotoFile, setNewPhotoFile] = useState(null);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
-  const photoInputRef = useRef(null);
 
   // Helper to extract Youtube ID for embedding
   const getYouTubeEmbedUrl = (url) => {
@@ -75,17 +82,33 @@ export default function StudentDashboard() {
     }
 
     async function fetchData() {
-      const { data: bData } = await supabase.from('batches').select('*');
-      if (bData) setDbBatches(bData);
-      
-      const { data: tData } = await supabase.from('tests').select('*, batches(title)');
-      if (tData) setDbTests(tData);
-
-      const { data: mData } = await supabase.from('content_materials').select('*');
-      if (mData) setDbMaterials(mData);
+      fetchBatches();
+      fetchMaterials();
+      fetchTests();
+      fetchAnnouncements();
     }
     fetchData();
   }, [router]);
+
+  const fetchAnnouncements = async () => {
+    const { data } = await supabase.from('announcements').select('*').order('created_at', { ascending: false });
+    if (data) setAnnouncements(data);
+  };
+
+  const fetchBatches = async () => {
+    const { data: bData } = await supabase.from('batches').select('*');
+    if (bData) setDbBatches(bData);
+  };
+
+  const fetchMaterials = async () => {
+    const { data: mData } = await supabase.from('content_materials').select('*');
+    if (mData) setDbMaterials(mData);
+  };
+
+  const fetchTests = async () => {
+    const { data: tData } = await supabase.from('tests').select('*, batches(title)');
+    if (tData) setDbTests(tData);
+  };
 
   async function fetchLatestProfile(id) {
     const { data } = await supabase.from('profiles').select('*').eq('id', id).single();
@@ -154,6 +177,26 @@ export default function StudentDashboard() {
     router.push('/student-login');
   };
 
+  const handleSubmitFeedback = async (e) => {
+    e.preventDefault();
+    if (!feedbackMessage.trim()) return;
+    setIsSubmittingFeedback(true);
+    
+    const { error } = await supabase.from('feedback').insert([{
+      student_id: student.id,
+      student_name: student.name,
+      message: feedbackMessage
+    }]);
+
+    if (error) {
+      alert("Error submitting feedback: " + error.message);
+    } else {
+      alert("Feedback submitted successfully! Thank you.");
+      setFeedbackMessage('');
+    }
+    setIsSubmittingFeedback(false);
+  };
+
   const handleSaveProfile = async (e) => {
     e.preventDefault();
     setIsSavingProfile(true);
@@ -198,22 +241,31 @@ export default function StudentDashboard() {
     setIsSavingProfile(false);
   };
 
-  if (!student) return <div className="container py-4 text-center">Loading...</div>;
+  if (!student) return <div className="container pt-navbar text-center">Loading...</div>;
 
   return (
-    <div className="container py-4 mobile-pb">
-      <div style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
-        <div style={{ width: '50px', height: '50px', borderRadius: '50%', overflow: 'hidden', border: '2px solid var(--accent)', flexShrink: 0 }}>
-          {student.photo_url ? (
-            <img src={student.photo_url} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-          ) : (
-            <img src={`https://ui-avatars.com/api/?name=${student.name}&background=random`} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-          )}
+    <div className="container pt-navbar mobile-pb">
+      <div style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <div style={{ width: '55px', height: '55px', borderRadius: '50%', overflow: 'hidden', border: '2px solid var(--primary-color)', flexShrink: 0, boxShadow: '0 4px 15px rgba(0,0,0,0.3)' }}>
+            {student.photo_url ? (
+              <img src={student.photo_url} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            ) : (
+              <img src={`https://ui-avatars.com/api/?name=${student.name}&background=random`} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            )}
+          </div>
+          <div>
+            <p className="text-muted" style={{ margin: '0 0 0.2rem 0', fontSize: '0.85rem' }}>Welcome back,</p>
+            <h1 className="animate-fade-in" style={{ margin: 0, fontSize: 'clamp(1.4rem, 5vw, 1.8rem)', lineHeight: '1.2', fontWeight: '700' }}>{student.name} 👋</h1>
+          </div>
         </div>
-        <div>
-          <p className="text-muted" style={{ margin: '0 0 0.25rem 0', fontSize: '0.9rem' }}>Welcome back,</p>
-          <h1 className="animate-fade-in" style={{ margin: 0, fontSize: 'clamp(1.5rem, 5vw, 2.2rem)', lineHeight: '1.2' }}>{student.name} 👋</h1>
-        </div>
+        <button 
+          onClick={() => setShowAnnouncements(true)}
+          style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid var(--glass-border)', borderRadius: '50%', width: '45px', height: '45px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', position: 'relative' }}
+        >
+          🔔
+          {announcements.length > 0 && <span style={{ position: 'absolute', top: '0px', right: '0px', width: '12px', height: '12px', background: '#ff4444', borderRadius: '50%', border: '2px solid var(--bg-dark)' }}></span>}
+        </button>
       </div>
       
       <div className="flex gap-4 mb-4 mobile-hide" style={{ gap: '1rem', overflowX: 'auto', paddingBottom: '0.5rem', whiteSpace: 'nowrap' }}>
@@ -307,20 +359,21 @@ export default function StudentDashboard() {
 
         {activeTab === 'ai' && (
           <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 220px)' }}>
-            <h2 className="mb-4 text-accent" style={{ flexShrink: 0 }}>Chat with AI Mentor</h2>
-            <div className="glass-card" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+            <h2 className="mb-4 text-accent" style={{ flexShrink: 0, fontSize: '1.5rem' }}>AI Mentor</h2>
+            <div className="glass-card" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', padding: 0, borderRadius: '16px' }}>
               <div style={{ flex: 1, overflowY: 'auto', padding: '1rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 {chatHistory.map((msg, i) => (
                   <div key={i} style={{ 
                     alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start',
-                    background: msg.role === 'user' ? 'var(--primary-color)' : 'var(--bg-card-dark)',
+                    background: msg.role === 'user' ? 'var(--primary-color)' : 'rgba(255,255,255,0.05)',
                     border: msg.role === 'user' ? 'none' : '1px solid var(--glass-border)',
                     padding: '1rem',
-                    borderRadius: '8px',
+                    borderRadius: msg.role === 'user' ? '20px 20px 0 20px' : '20px 20px 20px 0',
                     maxWidth: '85%',
-                    wordBreak: 'break-word'
+                    wordBreak: 'break-word',
+                    boxShadow: '0 4px 15px rgba(0,0,0,0.1)'
                   }}>
-                    {msg.image && <img src={msg.image} alt="Upload" style={{ maxWidth: '100%', borderRadius: '4px', marginBottom: '0.5rem' }} />}
+                    {msg.image && <img src={msg.image} alt="Upload" style={{ maxWidth: '100%', borderRadius: '8px', marginBottom: '0.5rem' }} />}
                     <div style={{ color: msg.role === 'user' ? 'white' : 'var(--text-light)', lineHeight: '1.6' }} className="markdown-body">
                       <ReactMarkdown
                         remarkPlugins={[remarkMath, remarkGfm]}
@@ -340,8 +393,8 @@ export default function StudentDashboard() {
                 </div>
               )}
 
-              <form onSubmit={handleChatSubmit} style={{ display: 'flex', gap: '0.5rem', marginTop: 'auto', alignItems: 'center', padding: '0.8rem', background: 'var(--bg-card-dark)', borderTop: '1px solid var(--glass-border)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', flex: 1, background: 'rgba(255,255,255,0.05)', borderRadius: '30px', padding: '0.2rem 0.2rem 0.2rem 1rem', border: '1px solid var(--glass-border)' }}>
+              <div style={{ padding: '1rem', background: 'transparent' }}>
+                <form onSubmit={handleChatSubmit} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', background: 'rgba(30, 41, 59, 0.8)', backdropFilter: 'blur(10px)', border: '1px solid var(--glass-border)', borderRadius: '50px', padding: '0.3rem', boxShadow: '0 10px 25px rgba(0,0,0,0.2)' }}>
                   <input 
                     type="file" 
                     accept="image/*" 
@@ -351,19 +404,21 @@ export default function StudentDashboard() {
                     style={{ display: 'none' }} 
                     id="chat-file-upload"
                   />
-                  <label htmlFor="chat-file-upload" style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-light)', fontSize: '1.2rem', marginRight: '0.5rem', transition: 'color 0.3s' }} onMouseOver={e => e.currentTarget.style.color='white'} onMouseOut={e => e.currentTarget.style.color='var(--text-light)'}>
-                    📷
+                  <label htmlFor="chat-file-upload" style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-light)', fontSize: '1.3rem', width: '40px', height: '40px', borderRadius: '50%', background: 'rgba(255,255,255,0.05)', marginLeft: '0.2rem', transition: 'all 0.3s' }}>
+                    📸
                   </label>
                   <input 
                     type="text" 
                     value={chatMessage}
                     onChange={(e) => setChatMessage(e.target.value)}
-                    placeholder="Ask or scan a question..." 
-                    style={{ flex: 1, minWidth: 0, padding: '0.8rem 0.5rem', border: 'none', background: 'transparent', color: 'white', outline: 'none' }} 
+                    placeholder="Ask a question..." 
+                    style={{ flex: 1, minWidth: 0, padding: '0.8rem 0.5rem', border: 'none', background: 'transparent', color: 'white', outline: 'none', fontSize: '0.95rem' }} 
                   />
-                  <button type="submit" style={{ background: 'var(--primary-color)', color: 'white', border: 'none', padding: '0.8rem 1.5rem', borderRadius: '25px', cursor: 'pointer', fontWeight: 'bold', marginLeft: '0.5rem' }}>Send</button>
-                </div>
-              </form>
+                  <button type="submit" style={{ background: 'var(--gradient-brand)', color: 'white', border: 'none', width: '42px', height: '42px', borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', marginRight: '0.2rem', boxShadow: '0 4px 10px rgba(6, 182, 212, 0.3)', transition: 'transform 0.2s' }} onMouseOver={e => e.currentTarget.style.transform='scale(1.05)'} onMouseOut={e => e.currentTarget.style.transform='scale(1)'}>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                  </button>
+                </form>
+              </div>
             </div>
           </div>
         )}
@@ -422,9 +477,27 @@ export default function StudentDashboard() {
         )}
 
         {activeTab === 'more' && (
-          <div>
-            <h2 className="mb-4 text-accent text-center">Brain Break</h2>
-            <Game2048 />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+            <div className="glass-card">
+              <h2 className="mb-4 text-accent">Report Issue / Feedback</h2>
+              <form onSubmit={handleSubmitFeedback} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <textarea 
+                  value={feedbackMessage}
+                  onChange={(e) => setFeedbackMessage(e.target.value)}
+                  placeholder="Tell us what you like or report a glitch you found..."
+                  style={{ width: '100%', minHeight: '120px', padding: '1rem', borderRadius: '12px', border: '1px solid var(--glass-border)', background: 'rgba(255,255,255,0.05)', color: 'white', outline: 'none', resize: 'vertical' }}
+                  required
+                />
+                <button type="submit" disabled={isSubmittingFeedback} className="btn-primary" style={{ alignSelf: 'flex-start' }}>
+                  {isSubmittingFeedback ? 'Submitting...' : 'Send Feedback'}
+                </button>
+              </form>
+            </div>
+
+            <div className="glass-card">
+              <h2 className="mb-4 text-primary">Brain Break 🎮</h2>
+              <Game2048 />
+            </div>
           </div>
         )}
 
@@ -477,6 +550,31 @@ export default function StudentDashboard() {
           <span>More</span>
         </div>
       </div>
+
+      {/* Notifications Modal */}
+      {showAnnouncements && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(5px)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
+          <div className="glass-card" style={{ width: '100%', maxWidth: '500px', maxHeight: '80vh', display: 'flex', flexDirection: 'column', padding: '1.5rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+              <h2 style={{ margin: 0, color: 'white' }}>🔔 Notifications</h2>
+              <button onClick={() => setShowAnnouncements(false)} style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', fontSize: '1.5rem', cursor: 'pointer' }}>×</button>
+            </div>
+            <div style={{ overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              {announcements.length === 0 ? (
+                <p className="text-muted text-center" style={{ margin: '2rem 0' }}>No new announcements.</p>
+              ) : (
+                announcements.map(ann => (
+                  <div key={ann.id} style={{ background: 'rgba(255,255,255,0.05)', padding: '1rem', borderRadius: '8px', borderLeft: '4px solid var(--primary-color)' }}>
+                    <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.1rem', color: 'white' }}>{ann.title}</h3>
+                    <p style={{ margin: '0 0 0.5rem 0', color: 'var(--text-light)', fontSize: '0.9rem', lineHeight: '1.5' }}>{ann.content}</p>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{new Date(ann.created_at).toLocaleDateString()}</span>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
