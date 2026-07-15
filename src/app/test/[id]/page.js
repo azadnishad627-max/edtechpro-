@@ -160,7 +160,7 @@ export default function TakeTest() {
                   <h4 style={{ marginBottom: '1rem' }}>Q{idx + 1}. {q.question_text}</h4>
                   
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1rem' }}>
-                    {['option_a', 'option_b', 'option_c', 'option_d'].map(optKey => {
+                    {['option_a', 'option_b', 'option_c', 'option_d'].map((optKey, optIdx) => {
                       const optText = q[optKey];
                       const originalOptText = originalQ[optKey];
                       const isUserSelection = userAnswer === originalOptText;
@@ -178,7 +178,7 @@ export default function TakeTest() {
 
                       return (
                         <div key={optKey} style={{ padding: '0.8rem 1rem', borderRadius: '8px', background: bg, border: border, display: 'flex', justifyContent: 'space-between' }}>
-                          <span>{optText}</span>
+                          <span><strong style={{ color: isActualCorrect ? '#00e676' : 'var(--accent)', marginRight: '10px' }}>{String.fromCharCode(65 + optIdx)}.</strong> {optText}</span>
                           {isActualCorrect && <span style={{ color: '#00e676', fontWeight: 'bold', flexShrink: 0, marginLeft: '1rem' }}>✓ Correct</span>}
                           {isUserSelection && !isActualCorrect && <span style={{ color: '#ff1744', fontWeight: 'bold', flexShrink: 0, marginLeft: '1rem' }}>✗ Your Answer</span>}
                         </div>
@@ -235,7 +235,7 @@ export default function TakeTest() {
       ) : (
         <div className="glass-card animate-fade-in mb-4">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem', marginBottom: '1rem' }}>
-          <h3 style={{ fontSize: '1.25rem', lineHeight: '1.5', margin: 0 }}>{q.question_text}</h3>
+          <h3 style={{ fontSize: '1.25rem', lineHeight: '1.5', margin: 0 }}>Q{currentIdx + 1}. {q.question_text}</h3>
           <button 
             onClick={() => handleBookmark(q.id)}
             title={bookmarkedQs.has(q.id) ? "Remove Bookmark" : "Save for Revision"}
@@ -252,7 +252,7 @@ export default function TakeTest() {
         </div>
         
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          {['option_a', 'option_b', 'option_c', 'option_d'].map(optKey => {
+          {['option_a', 'option_b', 'option_c', 'option_d'].map((optKey, optIdx) => {
             const originalOptText = originalQ[optKey];
             const translatedOptText = q[optKey];
             return (
@@ -274,7 +274,7 @@ export default function TakeTest() {
                   fontSize: '1.1rem'
                 }}
               >
-                {translatedOptText}
+                <strong style={{ color: 'var(--accent)', marginRight: '10px' }}>{String.fromCharCode(65 + optIdx)}.</strong> {translatedOptText}
               </button>
             )
           })}
