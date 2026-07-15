@@ -111,21 +111,98 @@ export default function TakeTest() {
   if (!test) return <div className="container py-4 text-center">Loading Test...</div>;
   if (questions.length === 0) return <div className="container py-4 text-center">No questions found for this test. Maybe they are still being generated!</div>;
 
+  const currentQuestions = language === 'hi' && translatedQuestions ? translatedQuestions : questions;
+
   if (isSubmitted) {
     return (
-      <div className="container py-4 text-center animate-fade-in" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', minHeight: '60vh', justifyContent: 'center' }}>
-        <h1 className="mb-4">Test Completed!</h1>
-        <div className="glass-card mb-4" style={{ padding: '3rem' }}>
+      <div className="container py-4 animate-fade-in">
+        <div className="flex justify-between align-center mb-4">
+          <h1 className="mb-4">Test Completed!</h1>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <div style={{ background: 'rgba(255,255,255,0.05)', padding: '0.2rem', borderRadius: '8px', display: 'flex', gap: '0.2rem', border: '1px solid var(--glass-border)' }}>
+              <button 
+                onClick={() => handleLanguageSwitch('en')} 
+                style={{ background: language === 'en' ? 'var(--primary-color)' : 'transparent', color: language === 'en' ? '#0a0a0a' : 'white', border: 'none', padding: '0.4rem 1rem', borderRadius: '6px', cursor: 'pointer', fontWeight: language === 'en' ? 'bold' : 'normal', transition: 'all 0.3s' }}
+              >
+                English
+              </button>
+              <button 
+                onClick={() => handleLanguageSwitch('hi')} 
+                style={{ background: language === 'hi' ? 'var(--primary-color)' : 'transparent', color: language === 'hi' ? '#0a0a0a' : 'white', border: 'none', padding: '0.4rem 1rem', borderRadius: '6px', cursor: 'pointer', fontWeight: language === 'hi' ? 'bold' : 'normal', transition: 'all 0.3s' }}
+              >
+                Hindi
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div className="glass-card mb-4 text-center" style={{ padding: '2rem' }}>
           <h2 className="text-accent" style={{ fontSize: '3rem' }}>{score} / {questions.length}</h2>
           <p className="text-muted mt-2">Your Score</p>
+          <button className="btn-primary mt-4" onClick={() => router.push('/student-dashboard')}>Back to Dashboard</button>
         </div>
-        <button className="btn-primary" onClick={() => router.push('/student-dashboard')}>Back to Dashboard</button>
+
+        <h3 className="mb-4">Answer Key & Explanations</h3>
+        
+        {isTranslating ? (
+          <div className="glass-card text-center py-5">
+            <p className="text-accent" style={{ fontSize: '1.2rem' }}>अनुवाद किया जा रहा है... (Translating to Hindi...)</p>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+            {currentQuestions.map((q, idx) => {
+              const originalQ = questions[idx]; // We match by original answer keys
+              const userAnswer = answers[idx];
+              const isCorrect = userAnswer === originalQ.correct_answer;
+              
+              return (
+                <div key={idx} className="glass-card" style={{ borderLeft: `4px solid ${isCorrect ? '#00e676' : '#ff1744'}` }}>
+                  <h4 style={{ marginBottom: '1rem' }}>Q{idx + 1}. {q.question_text}</h4>
+                  
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1rem' }}>
+                    {['option_a', 'option_b', 'option_c', 'option_d'].map(optKey => {
+                      const optText = q[optKey];
+                      const originalOptText = originalQ[optKey];
+                      const isUserSelection = userAnswer === originalOptText;
+                      const isActualCorrect = originalQ.correct_answer === originalOptText;
+                      
+                      let bg = 'rgba(255,255,255,0.05)';
+                      let border = '1px solid var(--glass-border)';
+                      if (isActualCorrect) {
+                        bg = 'rgba(0, 230, 118, 0.1)';
+                        border = '1px solid #00e676';
+                      } else if (isUserSelection && !isCorrect) {
+                        bg = 'rgba(255, 23, 68, 0.1)';
+                        border = '1px solid #ff1744';
+                      }
+
+                      return (
+                        <div key={optKey} style={{ padding: '0.8rem 1rem', borderRadius: '8px', background: bg, border: border, display: 'flex', justifyContent: 'space-between' }}>
+                          <span>{optText}</span>
+                          {isActualCorrect && <span style={{ color: '#00e676', fontWeight: 'bold', flexShrink: 0, marginLeft: '1rem' }}>✓ Correct</span>}
+                          {isUserSelection && !isActualCorrect && <span style={{ color: '#ff1744', fontWeight: 'bold', flexShrink: 0, marginLeft: '1rem' }}>✗ Your Answer</span>}
+                        </div>
+                      )
+                    })}
+                  </div>
+
+                  {q.explanation && (
+                    <div style={{ padding: '1rem', background: 'rgba(0, 229, 255, 0.05)', borderRadius: '8px', border: '1px solid rgba(0, 229, 255, 0.2)' }}>
+                      <strong className="text-accent">Explanation:</strong>
+                      <p style={{ margin: '0.5rem 0 0 0', color: 'var(--text-secondary)', lineHeight: '1.5' }}>{q.explanation}</p>
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        )}
       </div>
     );
   }
 
-  const currentQuestions = language === 'hi' && translatedQuestions ? translatedQuestions : questions;
   const q = currentQuestions[currentIdx];
+  const originalQ = questions[currentIdx];
 
   return (
     <div className="container py-4">
@@ -175,25 +252,29 @@ export default function TakeTest() {
         </div>
         
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          {['option_a', 'option_b', 'option_c', 'option_d'].map((optKey, idx) => {
-            const val = q[optKey];
-            const isSelected = answers[currentIdx] === val;
+          {['option_a', 'option_b', 'option_c', 'option_d'].map(optKey => {
+            const originalOptText = originalQ[optKey];
+            const translatedOptText = q[optKey];
             return (
               <button 
                 key={optKey} 
-                onClick={() => handleSelect(val)}
+                onClick={() => handleSelect(originalOptText)}
                 style={{ 
+                  display: 'block', 
+                  width: '100%', 
                   textAlign: 'left', 
                   padding: '1rem', 
+                  marginBottom: '0.5rem', 
+                  background: answers[currentIdx] === originalOptText ? 'rgba(0, 229, 255, 0.1)' : 'rgba(255,255,255,0.05)', 
+                  border: answers[currentIdx] === originalOptText ? '1px solid var(--primary-color)' : '1px solid var(--glass-border)', 
                   borderRadius: '8px', 
-                  border: isSelected ? '2px solid var(--accent)' : '1px solid var(--glass-border)',
-                  background: isSelected ? 'rgba(0, 229, 255, 0.1)' : 'var(--bg-dark)',
-                  color: 'white',
+                  color: 'var(--text-primary)',
                   cursor: 'pointer',
-                  transition: 'all 0.2s'
+                  transition: '0.2s',
+                  fontSize: '1.1rem'
                 }}
               >
-                <strong style={{ color: 'var(--accent)', marginRight: '10px' }}>{String.fromCharCode(65 + idx)}.</strong> {val}
+                {translatedOptText}
               </button>
             )
           })}

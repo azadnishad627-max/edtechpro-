@@ -19,8 +19,9 @@ export async function POST(req) {
     const systemPrompt = `You are an expert educational test generator. The user has provided raw text containing questions and an answer key.
 Your task is to extract exactly ${questionCount} multiple choice questions from this text.
 Return ONLY a valid JSON array of objects. Do not include markdown blocks like \`\`\`json.
-Each object must have exactly these keys: "question_text", "option_a", "option_b", "option_c", "option_d", "correct_answer".
+Each object must have exactly these keys: "question_text", "option_a", "option_b", "option_c", "option_d", "correct_answer", "explanation".
 The "correct_answer" MUST be the exact full text of the correct option (not just A/B/C/D).
+The "explanation" MUST be a short sentence explaining why the correct answer is right.
 If the text doesn't contain exactly ${questionCount} questions, extract as many as you can up to that number.
 
 Here is the raw text:

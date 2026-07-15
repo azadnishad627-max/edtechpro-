@@ -14,8 +14,9 @@ export async function POST(req) {
 
     const systemPrompt = `You are an expert educational test generator. Generate ${questionCount} multiple choice questions about "${topic}".
 Return ONLY a valid JSON array of objects. Do not include markdown blocks like \`\`\`json.
-Each object must have exactly these keys: "question_text", "option_a", "option_b", "option_c", "option_d", "correct_answer".
-The "correct_answer" MUST be the exact full text of the correct option (not just A/B/C/D).`;
+Each object must have exactly these keys: "question_text", "option_a", "option_b", "option_c", "option_d", "correct_answer", "explanation".
+The "correct_answer" MUST be the exact full text of the correct option (not just A/B/C/D).
+The "explanation" MUST be a short sentence explaining why the correct answer is right.`;
 
     const interaction = await ai.interactions.create({
       model: "gemini-3.5-flash",

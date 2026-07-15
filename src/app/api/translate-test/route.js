@@ -11,7 +11,7 @@ export async function POST(req) {
       return NextResponse.json({ translatedQuestions: questions });
     }
 
-    const keysToTranslate = ['question_text', 'option_a', 'option_b', 'option_c', 'option_d', 'correct_answer'];
+    const keysToTranslate = ['question_text', 'option_a', 'option_b', 'option_c', 'option_d', 'correct_answer', 'explanation'];
     const allStrings = [];
     
     questions.forEach(q => {
