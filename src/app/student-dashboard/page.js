@@ -22,6 +22,11 @@ export default function StudentDashboard() {
   const [feedbackMessage, setFeedbackMessage] = useState('');
   const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
 
+  // Live Classes & Leaderboard State
+  const [liveClasses, setLiveClasses] = useState([]);
+  const [leaderboard, setLeaderboard] = useState([]);
+  const [bookmarkedQuestions, setBookmarkedQuestions] = useState([]);
+
   const photoInputRef = useRef(null);
   const chatFileInputRef = useRef(null);
   const [chatHistory, setChatHistory] = useState([
@@ -86,9 +91,47 @@ export default function StudentDashboard() {
       fetchMaterials();
       fetchTests();
       fetchAnnouncements();
+      fetchLiveClasses();
+      fetchLeaderboard();
+      fetchBookmarks();
     }
     fetchData();
   }, [router]);
+
+  const fetchBookmarks = async () => {
+    const sData = localStorage.getItem('studentInfo');
+    if (sData) {
+      const student = JSON.parse(sData);
+      const { data } = await supabase
+        .from('bookmarks')
+        .select(`
+          id,
+          question_id,
+          questions (
+            question_text,
+            option_a,
+            option_b,
+            option_c,
+            option_d,
+            correct_answer
+          )
+        `)
+        .eq('student_id', student.id)
+        .order('created_at', { ascending: false });
+      if (data) setBookmarkedQuestions(data);
+    }
+  };
+
+  const fetchLiveClasses = async () => {
+    // Only fetch upcoming or recently started classes
+    const { data } = await supabase.from('live_classes').select('*, batches(title)').order('scheduled_time', { ascending: true });
+    if (data) setLiveClasses(data);
+  };
+
+  const fetchLeaderboard = async () => {
+    const { data } = await supabase.from('profiles').select('*').eq('role', 'student').order('points', { ascending: false }).limit(10);
+    if (data) setLeaderboard(data);
+  };
 
   const fetchAnnouncements = async () => {
     const { data } = await supabase.from('announcements').select('*').order('created_at', { ascending: false });
@@ -113,12 +156,59 @@ export default function StudentDashboard() {
   async function fetchLatestProfile(id) {
     const { data } = await supabase.from('profiles').select('*').eq('id', id).single();
     if (data) {
+      let updatedPoints = data.points || 0;
+      let updatedStreak = data.streak_days || 0;
+      let lastLogin = data.last_login_date ? new Date(data.last_login_date) : null;
+      let today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      let shouldUpdateDb = false;
+
+      if (!lastLogin) {
+        // First login ever
+        updatedPoints += 10;
+        updatedStreak = 1;
+        shouldUpdateDb = true;
+      } else {
+        let lastLoginMidnight = new Date(lastLogin);
+        lastLoginMidnight.setHours(0,0,0,0);
+        const diffTime = Math.abs(today - lastLoginMidnight);
+        const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+        if (diffDays === 1) {
+          // Consecutive day login
+          updatedPoints += 10;
+          updatedStreak += 1;
+          shouldUpdateDb = true;
+        } else if (diffDays > 1) {
+          // Streak broken
+          updatedPoints += 10;
+          updatedStreak = 1;
+          shouldUpdateDb = true;
+        }
+      }
+
+      if (shouldUpdateDb) {
+        // Update DB
+        await supabase.from('profiles').update({ 
+          points: updatedPoints, 
+          streak_days: updatedStreak, 
+          last_login_date: new Date().toISOString() 
+        }).eq('id', id);
+        
+        // Optimistically update data object
+        data.points = updatedPoints;
+        data.streak_days = updatedStreak;
+      }
+
       const updatedStudent = {
         ...JSON.parse(localStorage.getItem('studentInfo')),
         name: data.name,
         dob: data.dob,
         className: data.class_name,
-        photo_url: data.photo_url
+        photo_url: data.photo_url,
+        points: data.points,
+        streak: data.streak_days
       };
       setStudent(updatedStudent);
       setEditName(data.name || '');
@@ -257,6 +347,10 @@ export default function StudentDashboard() {
           <div>
             <p className="text-muted" style={{ margin: '0 0 0.2rem 0', fontSize: '0.85rem' }}>Welcome back,</p>
             <h1 className="animate-fade-in" style={{ margin: 0, fontSize: 'clamp(1.4rem, 5vw, 1.8rem)', lineHeight: '1.2', fontWeight: '700' }}>{student.name} 👋</h1>
+            <div style={{ display: 'flex', gap: '0.8rem', marginTop: '0.3rem' }}>
+              <span style={{ fontSize: '0.85rem', background: 'rgba(255, 215, 0, 0.1)', color: '#ffd700', padding: '0.2rem 0.6rem', borderRadius: '20px', border: '1px solid rgba(255, 215, 0, 0.3)' }}>🏆 {student.points || 0} Pts</span>
+              <span style={{ fontSize: '0.85rem', background: 'rgba(255, 68, 68, 0.1)', color: '#ff4444', padding: '0.2rem 0.6rem', borderRadius: '20px', border: '1px solid rgba(255, 68, 68, 0.3)' }}>🔥 {student.streak || 0} Day Streak</span>
+            </div>
           </div>
         </div>
         <button 
@@ -270,7 +364,7 @@ export default function StudentDashboard() {
       
       <div className="flex gap-4 mb-4 mobile-hide" style={{ gap: '1rem', overflowX: 'auto', paddingBottom: '0.5rem', whiteSpace: 'nowrap' }}>
         <button className={activeTab === 'courses' ? 'btn-primary' : 'btn-outline'} onClick={() => { setActiveTab('courses'); setSelectedBatch(null); }}>My Courses</button>
-        <button className={activeTab === 'syllabus' ? 'btn-primary' : 'btn-outline'} onClick={() => setActiveTab('syllabus')}>📄 Syllabus</button>
+        <button className={activeTab === 'leaderboard' ? 'btn-primary' : 'btn-outline'} onClick={() => setActiveTab('leaderboard')}>🏆 Leaderboard</button>
         <button className={activeTab === 'tests' ? 'btn-primary' : 'btn-outline'} onClick={() => setActiveTab('tests')}>Online Tests</button>
         <button className={activeTab === 'ai' ? 'btn-primary' : 'btn-outline'} onClick={() => setActiveTab('ai')}>✨ AI Mentor</button>
         <button className={activeTab === 'profile' ? 'btn-primary' : 'btn-outline'} onClick={() => setActiveTab('profile')}>👤 Profile</button>
@@ -279,8 +373,28 @@ export default function StudentDashboard() {
 
       <div className="animate-fade-in">
         {activeTab === 'courses' && !selectedBatch && (
-          <div>
-            <h2 className="mb-4 text-muted">Available Batches</h2>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+            
+            {liveClasses.length > 0 && (
+              <div>
+                <h2 className="mb-4 text-primary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><span style={{ display: 'inline-block', width: '10px', height: '10px', background: '#ff4444', borderRadius: '50%', animation: 'pulse 1.5s infinite' }}></span>🔴 Live / Upcoming Classes</h2>
+                <div className="grid-cols-2">
+                  {liveClasses.map(lc => (
+                    <div key={lc.id} className="glass-card" style={{ borderLeft: '4px solid #ff4444', background: 'rgba(255, 68, 68, 0.05)' }}>
+                      <h3 className="mb-2">{lc.title}</h3>
+                      <p className="text-muted mb-4">Batch: {lc.batches?.title}</p>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ color: 'white', fontWeight: 'bold' }}>{new Date(lc.scheduled_time).toLocaleString()}</span>
+                        <a href={lc.join_url} target="_blank" rel="noopener noreferrer" className="btn-primary" style={{ background: '#ff4444', padding: '0.5rem 1rem' }}>Join Now</a>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div>
+              <h2 className="mb-4 text-muted">Available Batches</h2>
             <div className="grid-cols-3">
               {dbBatches.map(batch => (
                 <div key={batch.id} className="glass-card" style={{ display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden' }}>
@@ -302,6 +416,7 @@ export default function StudentDashboard() {
                 </div>
               ))}
             </div>
+          </div>
           </div>
         )}
 
@@ -354,6 +469,26 @@ export default function StudentDashboard() {
                 <button onClick={() => router.push(`/test/${test.id}`)} className="btn-primary" style={{ padding: '0.5rem 1rem' }}>Start Test</button>
               </div>
             ))}
+
+            <h2 className="mb-4 text-accent mt-5" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>⭐ Saved Questions (For Revision)</h2>
+            {bookmarkedQuestions.length === 0 ? <p className="text-muted">You haven't bookmarked any questions yet. Start a test and click the ⭐ icon on difficult questions to save them here!</p> : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                {bookmarkedQuestions.map(bm => (
+                  <div key={bm.id} className="glass-card" style={{ borderLeft: '4px solid #ffd700', background: 'rgba(255, 215, 0, 0.05)' }}>
+                    <h3 className="mb-3" style={{ fontSize: '1.1rem', lineHeight: '1.5' }}>{bm.questions?.question_text}</h3>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                      <p style={{ margin: 0, color: bm.questions?.correct_answer === bm.questions?.option_a ? '#4CAF50' : 'var(--text-muted)' }}><strong style={{ color: 'var(--accent)' }}>A.</strong> {bm.questions?.option_a}</p>
+                      <p style={{ margin: 0, color: bm.questions?.correct_answer === bm.questions?.option_b ? '#4CAF50' : 'var(--text-muted)' }}><strong style={{ color: 'var(--accent)' }}>B.</strong> {bm.questions?.option_b}</p>
+                      <p style={{ margin: 0, color: bm.questions?.correct_answer === bm.questions?.option_c ? '#4CAF50' : 'var(--text-muted)' }}><strong style={{ color: 'var(--accent)' }}>C.</strong> {bm.questions?.option_c}</p>
+                      <p style={{ margin: 0, color: bm.questions?.correct_answer === bm.questions?.option_d ? '#4CAF50' : 'var(--text-muted)' }}><strong style={{ color: 'var(--accent)' }}>D.</strong> {bm.questions?.option_d}</p>
+                    </div>
+                    <div style={{ marginTop: '1rem', padding: '0.5rem', background: 'rgba(76, 175, 80, 0.1)', borderRadius: '4px', border: '1px solid rgba(76, 175, 80, 0.3)' }}>
+                      <span style={{ color: '#4CAF50', fontWeight: 'bold' }}>Correct Answer:</span> {bm.questions?.correct_answer}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
@@ -419,6 +554,42 @@ export default function StudentDashboard() {
                   </button>
                 </form>
               </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'leaderboard' && (
+          <div className="animate-fade-in">
+            <h2 className="mb-4 text-accent text-center" style={{ fontSize: '2rem' }}>🏆 Global Leaderboard</h2>
+            <div className="glass-card" style={{ padding: '0', overflow: 'hidden' }}>
+              {leaderboard.length === 0 ? <p className="text-muted text-center" style={{ padding: '2rem' }}>No data available yet.</p> : leaderboard.map((lbStudent, idx) => (
+                <div key={lbStudent.id} style={{ 
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between', 
+                  padding: '1.5rem', 
+                  borderBottom: idx === leaderboard.length - 1 ? 'none' : '1px solid rgba(255,255,255,0.05)',
+                  background: idx === 0 ? 'rgba(255, 215, 0, 0.1)' : idx === 1 ? 'rgba(192, 192, 192, 0.1)' : idx === 2 ? 'rgba(205, 127, 50, 0.1)' : 'transparent',
+                  transition: 'background 0.3s'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                    <div style={{ width: '40px', fontWeight: 'bold', fontSize: '1.5rem', color: idx === 0 ? '#ffd700' : idx === 1 ? '#c0c0c0' : idx === 2 ? '#cd7f32' : 'var(--text-muted)' }}>
+                      #{idx + 1}
+                    </div>
+                    <div style={{ width: '50px', height: '50px', borderRadius: '50%', overflow: 'hidden', border: `2px solid ${idx === 0 ? '#ffd700' : idx === 1 ? '#c0c0c0' : idx === 2 ? '#cd7f32' : 'transparent'}` }}>
+                      <img src={lbStudent.photo_url || `https://ui-avatars.com/api/?name=${lbStudent.name}&background=random`} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    </div>
+                    <div>
+                      <h3 style={{ margin: '0 0 0.2rem 0', color: student.id === lbStudent.id ? 'var(--primary-color)' : 'white' }}>
+                        {lbStudent.name} {student.id === lbStudent.id && '(You)'}
+                      </h3>
+                      <p className="text-muted" style={{ margin: 0, fontSize: '0.85rem' }}>@{lbStudent.username || 'student'}</p>
+                    </div>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <h3 style={{ margin: '0 0 0.2rem 0', color: '#ffd700' }}>{lbStudent.points || 0} Pts</h3>
+                    <p style={{ margin: 0, color: '#ff4444', fontSize: '0.85rem', fontWeight: 'bold' }}>🔥 {lbStudent.streak_days || 0} Days</p>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         )}

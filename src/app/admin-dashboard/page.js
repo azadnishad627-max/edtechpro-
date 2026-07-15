@@ -44,6 +44,13 @@ export default function AdminDashboard() {
   const [dbAnnouncements, setDbAnnouncements] = useState([]);
   const [dbFeedback, setDbFeedback] = useState([]);
 
+  // Live Classes State
+  const [liveBatch, setLiveBatch] = useState('');
+  const [liveTitle, setLiveTitle] = useState('');
+  const [liveUrl, setLiveUrl] = useState('');
+  const [liveTime, setLiveTime] = useState('');
+  const [dbLiveClasses, setDbLiveClasses] = useState([]);
+
   useEffect(() => {
     // Admin Route Protection
     if (!localStorage.getItem('adminInfo')) {
@@ -79,9 +86,38 @@ export default function AdminDashboard() {
 
       const { data: fData } = await supabase.from('feedback').select('*').order('created_at', { ascending: false });
       if (fData) setDbFeedback(fData);
+
+      const { data: lData } = await supabase.from('live_classes').select('*, batches(title)').order('scheduled_time', { ascending: true });
+      if (lData) setDbLiveClasses(lData);
     }
     fetchBatches();
   }, [router]);
+
+  const handleCreateLiveClass = async (e) => {
+    e.preventDefault();
+    if (!liveBatch || !liveTitle || !liveUrl || !liveTime) return;
+    
+    const { data, error } = await supabase.from('live_classes').insert([
+      { batch_id: liveBatch, title: liveTitle, join_url: liveUrl, scheduled_time: new Date(liveTime).toISOString() }
+    ]).select('*, batches(title)');
+
+    if (error) {
+      alert("Error scheduling live class: " + error.message);
+    } else {
+      alert("Live class scheduled successfully!");
+      setDbLiveClasses([...dbLiveClasses, data[0]]);
+      setLiveTitle(''); setLiveUrl(''); setLiveTime('');
+    }
+  };
+
+  const handleDeleteLiveClass = async (id) => {
+    if (!window.confirm("Delete this live class?")) return;
+    const { error } = await supabase.from('live_classes').delete().eq('id', id);
+    if (!error) {
+      setDbLiveClasses(dbLiveClasses.filter(c => c.id !== id));
+      alert("Live class deleted.");
+    }
+  };
 
   const handleCreateAnnouncement = async (e) => {
     e.preventDefault();
@@ -94,6 +130,17 @@ export default function AdminDashboard() {
       setDbAnnouncements([data[0], ...dbAnnouncements]);
       setAnnouncementTitle('');
       setAnnouncementContent('');
+    }
+  };
+
+  const handleDeleteAnnouncement = async (id) => {
+    if (!window.confirm("Are you sure you want to delete this announcement?")) return;
+    const { error } = await supabase.from('announcements').delete().eq('id', id);
+    if (!error) {
+      setDbAnnouncements(dbAnnouncements.filter(a => a.id !== id));
+      alert("Announcement deleted.");
+    } else {
+      alert("Error deleting announcement: " + error.message);
     }
   };
 
@@ -446,6 +493,7 @@ export default function AdminDashboard() {
         <button className={activeTab === 'students' ? 'btn-primary' : 'btn-outline'} onClick={() => setActiveTab('students')} style={{ padding: '0.5rem 1rem' }}>Students List</button>
         <button className={activeTab === 'content' ? 'btn-primary' : 'btn-outline'} onClick={() => setActiveTab('content')} style={{ padding: '0.5rem 1rem' }}>Content Manager</button>
         <button className={activeTab === 'test' ? 'btn-primary' : 'btn-outline'} onClick={() => setActiveTab('test')} style={{ padding: '0.5rem 1rem' }}>Test Manager</button>
+        <button className={activeTab === 'live' ? 'btn-primary' : 'btn-outline'} onClick={() => setActiveTab('live')} style={{ padding: '0.5rem 1rem' }}>Live Classes</button>
         <button className={activeTab === 'announcements' ? 'btn-primary' : 'btn-outline'} onClick={() => setActiveTab('announcements')} style={{ padding: '0.5rem 1rem' }}>Announcements</button>
         <button className={activeTab === 'feedback' ? 'btn-primary' : 'btn-outline'} onClick={() => setActiveTab('feedback')} style={{ padding: '0.5rem 1rem' }}>Student Feedback</button>
       </div>
@@ -658,6 +706,43 @@ export default function AdminDashboard() {
         </div>
       )}
 
+      {activeTab === 'live' && (
+        <div className="animate-fade-in grid-cols-2" style={{ alignItems: 'flex-start' }}>
+          <div className="glass-card">
+            <h3 className="mb-4">Schedule Live Class</h3>
+            <form onSubmit={handleCreateLiveClass} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <select value={liveBatch} onChange={(e) => setLiveBatch(e.target.value)} style={{ padding: '1rem', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'var(--bg-dark)', color: 'white' }} required>
+                <option value="">Select Batch...</option>
+                {batches.map(b => <option key={b.id} value={b.id}>{b.title}</option>)}
+              </select>
+              <input type="text" placeholder="Class Title (e.g. Science Chapter 1 Doubt Class)" value={liveTitle} onChange={(e) => setLiveTitle(e.target.value)} style={{ padding: '1rem', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'var(--bg-dark)', color: 'white' }} required />
+              <input type="url" placeholder="Meeting URL (Zoom / YouTube Live / GMeet)" value={liveUrl} onChange={(e) => setLiveUrl(e.target.value)} style={{ padding: '1rem', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'var(--bg-dark)', color: 'white' }} required />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                <label className="text-muted" style={{ fontSize: '0.9rem' }}>Scheduled Date & Time</label>
+                <input type="datetime-local" value={liveTime} onChange={(e) => setLiveTime(e.target.value)} style={{ padding: '1rem', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'var(--bg-dark)', color: 'white' }} required />
+              </div>
+              <button type="submit" className="btn-primary mt-2">Schedule Class</button>
+            </form>
+          </div>
+          
+          <div className="glass-card">
+            <h3 className="mb-4">Scheduled Classes</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', maxHeight: '500px', overflowY: 'auto' }}>
+              {dbLiveClasses.length === 0 ? <p className="text-muted">No live classes scheduled.</p> : dbLiveClasses.map(lc => (
+                <div key={lc.id} style={{ padding: '1rem', border: '1px solid var(--glass-border)', borderRadius: '8px', background: 'rgba(255,255,255,0.02)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <h4 style={{ margin: '0 0 0.5rem 0' }}>{lc.title}</h4>
+                    <p className="text-muted" style={{ fontSize: '0.9rem', margin: '0 0 0.25rem 0' }}>Batch: {lc.batches?.title}</p>
+                    <p style={{ margin: 0, color: 'var(--primary-color)', fontSize: '0.85rem' }}>{new Date(lc.scheduled_time).toLocaleString()}</p>
+                  </div>
+                  <button onClick={() => handleDeleteLiveClass(lc.id)} className="btn-outline" style={{ border: '1px solid #ff4444', color: '#ff4444', padding: '0.5rem 1rem' }}>Delete</button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
       {activeTab === 'announcements' && (
         <div className="animate-fade-in grid-cols-2" style={{ alignItems: 'flex-start' }}>
           <div className="glass-card">
@@ -673,10 +758,13 @@ export default function AdminDashboard() {
             <h3 className="mb-4">Recent Announcements</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', maxHeight: '500px', overflowY: 'auto' }}>
               {dbAnnouncements.length === 0 ? <p className="text-muted">No announcements posted yet.</p> : dbAnnouncements.map(ann => (
-                <div key={ann.id} style={{ padding: '1rem', border: '1px solid var(--glass-border)', borderRadius: '8px', background: 'rgba(255,255,255,0.02)' }}>
-                  <h4 style={{ margin: '0 0 0.5rem 0' }}>{ann.title}</h4>
-                  <p className="text-muted" style={{ fontSize: '0.9rem', margin: '0 0 0.5rem 0', whiteSpace: 'pre-wrap' }}>{ann.content}</p>
-                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{new Date(ann.created_at).toLocaleString()}</span>
+                <div key={ann.id} style={{ padding: '1rem', border: '1px solid var(--glass-border)', borderRadius: '8px', background: 'rgba(255,255,255,0.02)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
+                  <div style={{ flex: 1 }}>
+                    <h4 style={{ margin: '0 0 0.5rem 0' }}>{ann.title}</h4>
+                    <p className="text-muted" style={{ fontSize: '0.9rem', margin: '0 0 0.5rem 0', whiteSpace: 'pre-wrap' }}>{ann.content}</p>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{new Date(ann.created_at).toLocaleString()}</span>
+                  </div>
+                  <button onClick={() => handleDeleteAnnouncement(ann.id)} className="btn-outline" style={{ border: '1px solid #ff4444', color: '#ff4444', padding: '0.4rem 0.8rem', fontSize: '0.85rem' }}>Delete</button>
                 </div>
               ))}
             </div>
