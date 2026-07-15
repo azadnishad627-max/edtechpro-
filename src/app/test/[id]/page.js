@@ -188,7 +188,7 @@ export default function TakeTest() {
 
                   {q.explanation && (
                     <div style={{ padding: '1rem', background: 'rgba(0, 229, 255, 0.05)', borderRadius: '8px', border: '1px solid rgba(0, 229, 255, 0.2)' }}>
-                      <strong className="text-accent">Explanation:</strong>
+                      <strong className="text-accent">Solution / Explanation:</strong>
                       <p style={{ margin: '0.5rem 0 0 0', color: 'var(--text-secondary)', lineHeight: '1.5' }}>{q.explanation}</p>
                     </div>
                   )}

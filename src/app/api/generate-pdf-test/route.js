@@ -42,7 +42,7 @@ Your task is to extract exactly ${questionCount} multiple choice questions from 
   Return ONLY a valid JSON array of objects. Do not include markdown blocks like \`\`\`json.
   Each object must have exactly these keys: "question_text", "option_a", "option_b", "option_c", "option_d", "correct_answer", "explanation".
   The "correct_answer" MUST be the exact full text of the correct option (not just A/B/C/D).
-  The "explanation" MUST be a short sentence explaining why the correct answer is right.
+  The "explanation" MUST be a detailed step-by-step solution or reason explaining how to arrive at the correct answer.
   If the PDF doesn't contain exactly ${questionCount} questions, extract as many as you can up to that number.
 
 Here is the text extracted from the PDF:
