@@ -22,10 +22,25 @@ export default function StudentDashboard() {
   const [feedbackMessage, setFeedbackMessage] = useState('');
   const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
 
-  // Live Classes & Leaderboard State
   const [liveClasses, setLiveClasses] = useState([]);
   const [leaderboard, setLeaderboard] = useState([]);
   const [bookmarkedQuestions, setBookmarkedQuestions] = useState([]);
+  const [activeLiveClassUrl, setActiveLiveClassUrl] = useState(null);
+
+  const extractYouTubeId = (url) => {
+    if (!url) return null;
+    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+    const match = url.match(regExp);
+    return (match && match[2].length === 11) ? match[2] : null;
+  };
+
+  const handleJoinLiveClass = (e, url) => {
+    const ytId = extractYouTubeId(url);
+    if (ytId) {
+      e.preventDefault();
+      setActiveLiveClassUrl(`https://www.youtube.com/embed/${ytId}?autoplay=1`);
+    }
+  };
 
   const photoInputRef = useRef(null);
   const chatFileInputRef = useRef(null);
@@ -376,7 +391,7 @@ export default function StudentDashboard() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
             
             {liveClasses.length > 0 && (
-              <div>
+              <div style={{ marginBottom: '2rem' }}>
                 <h2 className="mb-4 text-primary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><span style={{ display: 'inline-block', width: '10px', height: '10px', background: '#ff4444', borderRadius: '50%', animation: 'pulse 1.5s infinite' }}></span>🔴 Live / Upcoming Classes</h2>
                 <div className="grid-cols-2">
                   {liveClasses.map(lc => (
@@ -385,7 +400,16 @@ export default function StudentDashboard() {
                       <p className="text-muted mb-4">Batch: {lc.batches?.title}</p>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <span style={{ color: 'white', fontWeight: 'bold' }}>{new Date(lc.scheduled_time).toLocaleString()}</span>
-                        <a href={lc.join_url} target="_blank" rel="noopener noreferrer" className="btn-primary" style={{ background: '#ff4444', padding: '0.5rem 1rem' }}>Join Now</a>
+                        <a 
+                          href={lc.join_url} 
+                          target="_blank" 
+                          rel="noopener noreferrer" 
+                          className="btn-primary" 
+                          onClick={(e) => handleJoinLiveClass(e, lc.join_url)}
+                          style={{ background: '#ff4444', padding: '0.5rem 1rem' }}
+                        >
+                          Join Now
+                        </a>
                       </div>
                     </div>
                   ))}
@@ -746,6 +770,36 @@ export default function StudentDashboard() {
           </div>
         </div>
       )}
+      {/* Embedded Live Class Modal */}
+      {activeLiveClassUrl && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0,0,0,0.9)', zIndex: 10000,
+          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+          padding: '2rem'
+        }}>
+          <div style={{ width: '100%', maxWidth: '900px', background: 'var(--bg-dark)', borderRadius: '16px', overflow: 'hidden', border: '1px solid var(--glass-border)', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ padding: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--glass-border)' }}>
+              <h3 style={{ margin: 0, color: 'var(--text-primary)' }}>🔴 Live Class</h3>
+              <button 
+                onClick={() => setActiveLiveClassUrl(null)} 
+                style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', fontSize: '1.5rem', cursor: 'pointer' }}
+              >
+                &times;
+              </button>
+            </div>
+            <div style={{ width: '100%', paddingTop: '56.25%', position: 'relative' }}>
+              <iframe 
+                src={activeLiveClassUrl} 
+                style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 'none' }}
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              ></iframe>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
