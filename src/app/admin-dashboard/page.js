@@ -845,7 +845,7 @@ export default function AdminDashboard() {
         </div>
       )}
       {activeTab === 'admin_chats' && (
-        <div className="animate-fade-in grid-cols-2" style={{ alignItems: 'flex-start', height: 'calc(100vh - 200px)' }}>
+        <div className="animate-fade-in" style={{ height: 'calc(100vh - 200px)' }}>
           <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
             <h3 className="mb-4">Student Messages</h3>
             <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
@@ -857,18 +857,18 @@ export default function AdminDashboard() {
                 return (
                   <div 
                     key={studentId} 
-                    onClick={() => setActiveChatStudentId(studentId)}
+                    onClick={() => { setActiveChatStudentId(studentId); document.body.style.overflow = 'hidden'; }}
                     style={{ 
                       padding: '1rem', border: '1px solid var(--glass-border)', borderRadius: '8px', cursor: 'pointer',
-                      background: activeChatStudentId === studentId ? 'rgba(255, 215, 0, 0.1)' : 'rgba(255,255,255,0.02)',
+                      background: 'rgba(255,255,255,0.02)',
                       display: 'flex', gap: '1rem', alignItems: 'center'
                     }}
                   >
-                    <div style={{ width: '40px', height: '40px', borderRadius: '50%', overflow: 'hidden', border: '1px solid var(--glass-border)' }}>
+                    <div style={{ width: '45px', height: '45px', borderRadius: '50%', overflow: 'hidden', border: '1px solid var(--glass-border)' }}>
                       <img src={p?.photo_url || `https://ui-avatars.com/api/?name=${p?.name || 'Student'}&background=random`} alt="Student" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <h4 style={{ margin: '0 0 0.2rem 0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      <h4 style={{ margin: '0 0 0.2rem 0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: 'white' }}>
                         {p?.name || 'Student'} <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>@{p?.username}</span>
                       </h4>
                       <p style={{ margin: 0, fontSize: '0.85rem', color: unreadCount > 0 ? 'white' : 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
@@ -886,50 +886,71 @@ export default function AdminDashboard() {
               {adminChats.length === 0 && <p className="text-muted text-center" style={{ marginTop: '2rem' }}>No messages yet.</p>}
             </div>
           </div>
-          
-          <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', height: '100%', padding: 0, overflow: 'hidden' }}>
-            {activeChatStudentId ? (
-              <>
-                <div style={{ padding: '1rem', borderBottom: '1px solid var(--glass-border)', background: 'rgba(255,255,255,0.02)' }}>
-                  <h3 style={{ margin: 0 }}>Chat with {adminChats.find(m => m.student_id === activeChatStudentId)?.profiles?.name || 'Student'}</h3>
-                </div>
-                <div style={{ flex: 1, overflowY: 'auto', padding: '1rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                  {adminChats.filter(m => m.student_id === activeChatStudentId).map(msg => (
-                    <div key={msg.id} style={{ 
-                      alignSelf: msg.sender === 'admin' ? 'flex-end' : 'flex-start',
-                      background: msg.sender === 'admin' ? 'var(--primary-color)' : 'rgba(255,255,255,0.05)',
-                      border: msg.sender === 'admin' ? 'none' : '1px solid var(--glass-border)',
-                      padding: '1rem', borderRadius: msg.sender === 'admin' ? '16px 16px 0 16px' : '16px 16px 16px 0',
-                      maxWidth: '85%'
-                    }}>
-                      <div style={{ color: msg.sender === 'admin' ? 'white' : 'var(--text-light)', lineHeight: '1.5' }}>{msg.message}</div>
-                      <div style={{ fontSize: '0.7rem', color: msg.sender === 'admin' ? 'rgba(255,255,255,0.7)' : 'var(--text-muted)', marginTop: '0.5rem', textAlign: msg.sender === 'admin' ? 'right' : 'left' }}>
-                        {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </div>
-                    </div>
-                  ))}
-                  <div ref={adminChatEndRef} />
-                </div>
-                <div style={{ padding: '1rem', borderTop: '1px solid var(--glass-border)' }}>
-                  <form onSubmit={handleAdminChatReply} style={{ display: 'flex', gap: '0.5rem' }}>
-                    <input 
-                      type="text" 
-                      value={adminReplyMessage}
-                      onChange={e => setAdminReplyMessage(e.target.value)}
-                      placeholder="Type a reply..."
-                      style={{ flex: 1, padding: '0.8rem 1rem', borderRadius: '50px', border: '1px solid var(--glass-border)', background: 'var(--bg-dark)', color: 'white', outline: 'none' }} 
-                    />
-                    <button type="submit" style={{ background: 'var(--gradient-brand)', color: 'white', border: 'none', width: '42px', height: '42px', borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
-                    </button>
-                  </form>
-                </div>
-              </>
-            ) : (
-              <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>
-                Select a student to view chat
+        </div>
+      )}
+
+      {/* Full Screen Admin Chat Modal */}
+      {activeChatStudentId && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, width: '100vw', height: '100vh', background: 'var(--bg-dark)', zIndex: 10000, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          {/* Chat Header */}
+          <div style={{ padding: '0.8rem 1rem', borderBottom: '1px solid var(--glass-border)', display: 'flex', alignItems: 'center', background: 'linear-gradient(135deg, rgba(6,182,212,0.15), rgba(139,92,246,0.15))', flexShrink: 0 }}>
+            <button 
+              onClick={() => { setActiveChatStudentId(null); document.body.style.overflow = ''; }}
+              style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: 'white', fontSize: '1.2rem', marginRight: '0.8rem', cursor: 'pointer', width: '36px', height: '36px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            >
+              ←
+            </button>
+            <div style={{ width: '40px', height: '40px', borderRadius: '50%', overflow: 'hidden', border: '1px solid var(--glass-border)', flexShrink: 0 }}>
+              <img 
+                src={adminChats.find(m => m.student_id === activeChatStudentId)?.profiles?.photo_url || `https://ui-avatars.com/api/?name=${adminChats.find(m => m.student_id === activeChatStudentId)?.profiles?.name || 'Student'}&background=random`} 
+                alt="Student" style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+              />
+            </div>
+            <div style={{ marginLeft: '0.8rem' }}>
+              <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'white', fontWeight: '700' }}>{adminChats.find(m => m.student_id === activeChatStudentId)?.profiles?.name || 'Student'}</h3>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginTop: '0.1rem' }}>
+                <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#4CAF50' }}></div>
+                <p style={{ margin: 0, fontSize: '0.8rem', color: '#4CAF50', fontWeight: '500' }}>Online</p>
               </div>
-            )}
+            </div>
+          </div>
+
+          {/* Chat Messages */}
+          <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.8rem', WebkitOverflowScrolling: 'touch' }}>
+            {adminChats.filter(m => m.student_id === activeChatStudentId).map(msg => (
+              <div key={msg.id} style={{ 
+                alignSelf: msg.sender === 'admin' ? 'flex-end' : 'flex-start',
+                background: msg.sender === 'admin' ? 'var(--primary-color)' : 'rgba(255,255,255,0.08)',
+                border: msg.sender === 'admin' ? 'none' : '1px solid var(--glass-border)',
+                padding: '0.7rem 1rem', 
+                borderRadius: msg.sender === 'admin' ? '18px 18px 0 18px' : '18px 18px 18px 0',
+                maxWidth: '80%',
+                wordBreak: 'break-word',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
+              }}>
+                <div style={{ color: msg.sender === 'admin' ? 'white' : 'var(--text-light)', lineHeight: '1.5', fontSize: '0.95rem' }}>{msg.message}</div>
+                <div style={{ fontSize: '0.65rem', color: msg.sender === 'admin' ? 'rgba(255,255,255,0.6)' : 'var(--text-muted)', marginTop: '0.3rem', textAlign: msg.sender === 'admin' ? 'right' : 'left' }}>
+                  {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </div>
+              </div>
+            ))}
+            <div ref={adminChatEndRef} />
+          </div>
+
+          {/* Chat Input */}
+          <div style={{ padding: '0.6rem 0.8rem', background: 'var(--bg-dark)', borderTop: '1px solid var(--glass-border)', flexShrink: 0 }}>
+            <form onSubmit={handleAdminChatReply} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', background: 'rgba(255,255,255,0.05)', borderRadius: '50px', padding: '0.25rem', border: '1px solid var(--glass-border)' }}>
+              <input 
+                type="text" 
+                value={adminReplyMessage}
+                onChange={e => setAdminReplyMessage(e.target.value)}
+                placeholder="Type a reply..."
+                style={{ flex: 1, minWidth: 0, padding: '0.7rem 1rem', border: 'none', background: 'transparent', color: 'white', outline: 'none', fontSize: '0.95rem' }} 
+              />
+              <button type="submit" style={{ background: 'var(--gradient-brand)', color: 'white', border: 'none', width: '38px', height: '38px', borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', marginRight: '0.2rem', flexShrink: 0 }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+              </button>
+            </form>
           </div>
         </div>
       )}
