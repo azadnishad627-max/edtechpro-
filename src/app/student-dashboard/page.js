@@ -35,6 +35,10 @@ export default function StudentDashboard() {
   const [showAdminChatModal, setShowAdminChatModal] = useState(false);
   const adminChatEndRef = useRef(null);
 
+  const showAdminChatModalRef = useRef(false);
+  useEffect(() => { showAdminChatModalRef.current = showAdminChatModal; }, [showAdminChatModal]);
+
+
   const extractYouTubeId = (url) => {
     if (!url) return null;
     const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
@@ -56,6 +60,16 @@ export default function StudentDashboard() {
     { role: 'ai', text: 'Hello! I am your AI Mentor. Upload a photo of a question or ask me anything!' }
   ]);
   const router = useRouter();
+
+  
+  // Request notification permission
+  useEffect(() => {
+    if (typeof window !== 'undefined' && 'Notification' in window) {
+      if (Notification.permission !== 'granted' && Notification.permission !== 'denied') {
+        Notification.requestPermission();
+      }
+    }
+  }, []);
 
   useEffect(() => {
     if (chatHistory.length > 1) {
@@ -273,12 +287,11 @@ export default function StudentDashboard() {
   };
 
   useEffect(() => {
-    if (showAdminChatModal) {
-      fetchAdminChats();
-      const interval = setInterval(fetchAdminChats, 3000);
-      return () => clearInterval(interval);
-    }
-  }, [showAdminChatModal, student]);
+    if (!student) return;
+    fetchAdminChats();
+    const interval = setInterval(fetchAdminChats, 3000);
+    return () => clearInterval(interval);
+  }, [student]);
 
   useEffect(() => {
     if (showAdminChatModal && adminChatEndRef.current) {

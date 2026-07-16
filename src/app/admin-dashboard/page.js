@@ -58,6 +58,20 @@ export default function AdminDashboard() {
   const [isAdminUploading, setIsAdminUploading] = useState(false);
   const adminChatEndRef = useRef(null);
 
+  const activeChatStudentIdRef = useRef(null);
+  useEffect(() => { activeChatStudentIdRef.current = activeChatStudentId; }, [activeChatStudentId]);
+
+
+  
+  // Request notification permission
+  useEffect(() => {
+    if (typeof window !== 'undefined' && 'Notification' in window) {
+      if (Notification.permission !== 'granted' && Notification.permission !== 'denied') {
+        Notification.requestPermission();
+      }
+    }
+  }, []);
+
   useEffect(() => {
     if (activeChatStudentId && adminChatEndRef.current) {
       adminChatEndRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -110,7 +124,25 @@ export default function AdminDashboard() {
         .from('admin_chats')
         .select('*, profiles(name, photo_url, username)')
         .order('created_at', { ascending: true });
-      if (data) setAdminChats(data);
+      if (data) {
+        setAdminChats(prev => {
+          if (prev.length > 0 && data.length > prev.length) {
+            const newMessages = data.slice(prev.length);
+            const newStudentMsgs = newMessages.filter(m => m.sender === 'student' && m.student_id !== activeChatStudentIdRef.current);
+            if (newStudentMsgs.length > 0 && typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+              const latestMsg = newStudentMsgs[newStudentMsgs.length - 1];
+              const msgBody = latestMsg.message.startsWith('[ATTACHMENT') ? '📎 File attached' : latestMsg.message;
+              new Notification('New message from ' + (latestMsg.profiles?.name || 'Student'), { body: msgBody });
+              // Also try to play a sound if possible (may be blocked by browser without interaction)
+              try {
+                const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
+                audio.play().catch(e => console.log('Audio blocked', e));
+              } catch(e) {}
+            }
+          }
+          return data;
+        });
+      }
     };
     fetchAdminChats();
     const chatInterval = setInterval(fetchAdminChats, 3000);
