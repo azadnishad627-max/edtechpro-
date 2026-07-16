@@ -36,32 +36,36 @@ export default function StudentDashboard() {
 
   const showAdminChatModalRef = useRef(false);
 
-  const activeTabRef = useRef(activeTab);
-  useEffect(() => { activeTabRef.current = activeTab; }, [activeTab]);
+  useEffect(() => {
+    if (showAdminChatModal) {
+      if (window.location.hash !== '#chat') window.location.hash = 'chat';
+    } else {
+      const targetHash = `#${activeTab}`;
+      if (window.location.hash !== targetHash) {
+        if (window.location.hash === '' && activeTab === 'overview') {
+          window.history.replaceState(null, null, '#overview');
+        } else {
+          window.location.hash = activeTab;
+        }
+      }
+    }
+  }, [activeTab, showAdminChatModal]);
 
   useEffect(() => {
-    // Push an initial dummy state so we can intercept the first back press
-    window.history.pushState({ isDummy: true }, '');
-
-    const handlePopState = (e) => {
-      let preventExit = false;
-      
-      if (showAdminChatModalRef.current) {
+    const handleHashChange = () => {
+      const hash = window.location.hash.replace('#', '');
+      if (hash === 'chat') {
+        // chat modal opened via forward button, theoretically possible, let it be handled by state if needed
+      } else if (hash) {
         setShowAdminChatModal(false);
-        preventExit = true;
-      } else if (activeTabRef.current !== 'overview') {
+        setActiveTab(hash);
+      } else {
+        setShowAdminChatModal(false);
         setActiveTab('overview');
-        preventExit = true;
-      }
-
-      if (preventExit) {
-        // Push dummy state again to trap the back button
-        window.history.pushState({ isDummy: true }, '');
       }
     };
-
-    window.addEventListener('popstate', handlePopState);
-    return () => window.removeEventListener('popstate', handlePopState);
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
   }, []);
 
   useEffect(() => { showAdminChatModalRef.current = showAdminChatModal; }, [showAdminChatModal]);

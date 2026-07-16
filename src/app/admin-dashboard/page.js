@@ -60,31 +60,38 @@ export default function AdminDashboard() {
 
   const activeChatStudentIdRef = useRef(null);
 
-  const activeTabRef = useRef(activeTab);
-  useEffect(() => { activeTabRef.current = activeTab; }, [activeTab]);
+  useEffect(() => {
+    if (activeChatStudentId) {
+      if (window.location.hash !== '#chat') window.location.hash = 'chat';
+    } else {
+      const targetHash = `#${activeTab}`;
+      if (window.location.hash !== targetHash) {
+        if (window.location.hash === '' && activeTab === 'overview') {
+          window.history.replaceState(null, null, '#overview');
+        } else {
+          window.location.hash = activeTab;
+        }
+      }
+    }
+  }, [activeTab, activeChatStudentId]);
 
   useEffect(() => {
-    window.history.pushState({ isDummy: true }, '');
-
-    const handlePopState = (e) => {
-      let preventExit = false;
-      
-      if (activeChatStudentIdRef.current) {
+    const handleHashChange = () => {
+      const hash = window.location.hash.replace('#', '');
+      if (hash === 'chat') {
+        // do nothing
+      } else if (hash) {
         setActiveChatStudentId(null);
         document.body.style.overflow = '';
-        preventExit = true;
-      } else if (activeTabRef.current !== 'overview') {
+        setActiveTab(hash);
+      } else {
+        setActiveChatStudentId(null);
+        document.body.style.overflow = '';
         setActiveTab('overview');
-        preventExit = true;
-      }
-
-      if (preventExit) {
-        window.history.pushState({ isDummy: true }, '');
       }
     };
-
-    window.addEventListener('popstate', handlePopState);
-    return () => window.removeEventListener('popstate', handlePopState);
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
   }, []);
 
   useEffect(() => { activeChatStudentIdRef.current = activeChatStudentId; }, [activeChatStudentId]);
