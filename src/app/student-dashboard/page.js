@@ -834,7 +834,7 @@ export default function StudentDashboard() {
           <span>More</span>
         </div>
       </div>
-
+      </div>
     </PullToRefresh>
 
 {showAdminChatModal && (
@@ -963,7 +963,6 @@ export default function StudentDashboard() {
         </div>
       )}
 
-      </div>
     </>
   );
 }
