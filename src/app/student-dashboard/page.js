@@ -3,7 +3,6 @@ import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../../lib/supabaseClient';
 import Game2048 from '../../components/Game2048';
-import PullToRefresh from '../../components/PullToRefresh';
 import ReactMarkdown from 'react-markdown';
 import remarkMath from 'remark-math';
 import remarkGfm from 'remark-gfm';
@@ -36,6 +35,35 @@ export default function StudentDashboard() {
   const adminChatEndRef = useRef(null);
 
   const showAdminChatModalRef = useRef(false);
+
+  const activeTabRef = useRef(activeTab);
+  useEffect(() => { activeTabRef.current = activeTab; }, [activeTab]);
+
+  useEffect(() => {
+    // Push an initial dummy state so we can intercept the first back press
+    window.history.pushState({ isDummy: true }, '');
+
+    const handlePopState = (e) => {
+      let preventExit = false;
+      
+      if (showAdminChatModalRef.current) {
+        setShowAdminChatModal(false);
+        preventExit = true;
+      } else if (activeTabRef.current !== 'overview') {
+        setActiveTab('overview');
+        preventExit = true;
+      }
+
+      if (preventExit) {
+        // Push dummy state again to trap the back button
+        window.history.pushState({ isDummy: true }, '');
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
   useEffect(() => { showAdminChatModalRef.current = showAdminChatModal; }, [showAdminChatModal]);
 
 
@@ -496,8 +524,7 @@ export default function StudentDashboard() {
 
   return (
     <>
-      <PullToRefresh onRefresh={handleRefresh}>
-      <div className="container pt-navbar mobile-pb">
+            <div className="container pt-navbar mobile-pb">
       <div style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
           <div style={{ width: '55px', height: '55px', borderRadius: '50%', overflow: 'hidden', border: '2px solid var(--primary-color)', flexShrink: 0, boxShadow: '0 4px 15px rgba(0,0,0,0.3)' }}>
@@ -910,8 +937,7 @@ export default function StudentDashboard() {
         </div>
       </div>
       </div>
-    </PullToRefresh>
-
+    
 {showAdminChatModal && (
           <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, width: '100vw', height: '100vh', background: 'var(--bg-dark)', zIndex: 10000, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
             {/* Chat Header */}

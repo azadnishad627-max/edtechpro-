@@ -59,6 +59,34 @@ export default function AdminDashboard() {
   const adminChatEndRef = useRef(null);
 
   const activeChatStudentIdRef = useRef(null);
+
+  const activeTabRef = useRef(activeTab);
+  useEffect(() => { activeTabRef.current = activeTab; }, [activeTab]);
+
+  useEffect(() => {
+    window.history.pushState({ isDummy: true }, '');
+
+    const handlePopState = (e) => {
+      let preventExit = false;
+      
+      if (activeChatStudentIdRef.current) {
+        setActiveChatStudentId(null);
+        document.body.style.overflow = '';
+        preventExit = true;
+      } else if (activeTabRef.current !== 'overview') {
+        setActiveTab('overview');
+        preventExit = true;
+      }
+
+      if (preventExit) {
+        window.history.pushState({ isDummy: true }, '');
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
   useEffect(() => { activeChatStudentIdRef.current = activeChatStudentId; }, [activeChatStudentId]);
 
 
