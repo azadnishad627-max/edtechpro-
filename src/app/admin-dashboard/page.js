@@ -60,38 +60,56 @@ export default function AdminDashboard() {
 
   const activeChatStudentIdRef = useRef(null);
 
-  useEffect(() => {
-    if (activeChatStudentId) {
-      if (window.location.hash !== '#chat') window.location.hash = 'chat';
-    } else {
-      const targetHash = `#${activeTab}`;
-      if (window.location.hash !== targetHash) {
-        if (window.location.hash === '' && activeTab === 'overview') {
-          window.history.replaceState(null, null, '#overview');
-        } else {
-          window.location.hash = activeTab;
-        }
-      }
-    }
-  }, [activeTab, activeChatStudentId]);
+  const trapPushedRef = useRef(false);
 
   useEffect(() => {
-    const handleHashChange = () => {
-      const hash = window.location.hash.replace('#', '');
-      if (hash === 'chat') {
-        // do nothing
-      } else if (hash) {
-        setActiveChatStudentId(null);
-        document.body.style.overflow = '';
-        setActiveTab(hash);
-      } else {
-        setActiveChatStudentId(null);
-        document.body.style.overflow = '';
-        setActiveTab('overview');
+    // Unregister service workers to clear cache for clients that are stuck on old versions
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(function(registrations) {
+        for(let registration of registrations) {
+          registration.unregister();
+        }
+      });
+    }
+
+    const pushTrap = () => {
+      if (!trapPushedRef.current) {
+        window.history.pushState({ trap: true }, '');
+        trapPushedRef.current = true;
       }
     };
-    window.addEventListener('hashchange', handleHashChange);
-    return () => window.removeEventListener('hashchange', handleHashChange);
+
+    document.addEventListener('click', pushTrap);
+    document.addEventListener('touchstart', pushTrap, { passive: true });
+
+    const handlePopState = (e) => {
+      trapPushedRef.current = false;
+
+      let preventExit = false;
+      
+      if (activeChatStudentIdRef.current) {
+        setActiveChatStudentId(null);
+        document.body.style.overflow = '';
+        preventExit = true;
+      } else if (activeTabRef.current !== 'overview') {
+        setActiveTab('overview');
+        preventExit = true;
+      }
+
+      if (preventExit) {
+        window.history.pushState({ trap: true }, '');
+        trapPushedRef.current = true;
+      } else {
+        window.history.back();
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+      document.removeEventListener('click', pushTrap);
+      document.removeEventListener('touchstart', pushTrap);
+    };
   }, []);
 
   useEffect(() => { activeChatStudentIdRef.current = activeChatStudentId; }, [activeChatStudentId]);

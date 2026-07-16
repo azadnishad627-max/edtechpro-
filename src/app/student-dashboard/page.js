@@ -36,36 +36,55 @@ export default function StudentDashboard() {
 
   const showAdminChatModalRef = useRef(false);
 
-  useEffect(() => {
-    if (showAdminChatModal) {
-      if (window.location.hash !== '#chat') window.location.hash = 'chat';
-    } else {
-      const targetHash = `#${activeTab}`;
-      if (window.location.hash !== targetHash) {
-        if (window.location.hash === '' && activeTab === 'overview') {
-          window.history.replaceState(null, null, '#overview');
-        } else {
-          window.location.hash = activeTab;
-        }
-      }
-    }
-  }, [activeTab, showAdminChatModal]);
+  const trapPushedRef = useRef(false);
 
   useEffect(() => {
-    const handleHashChange = () => {
-      const hash = window.location.hash.replace('#', '');
-      if (hash === 'chat') {
-        // chat modal opened via forward button, theoretically possible, let it be handled by state if needed
-      } else if (hash) {
-        setShowAdminChatModal(false);
-        setActiveTab(hash);
-      } else {
-        setShowAdminChatModal(false);
-        setActiveTab('overview');
+    // Unregister service workers to clear cache for clients that are stuck on old versions
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(function(registrations) {
+        for(let registration of registrations) {
+          registration.unregister();
+        }
+      });
+    }
+
+    const pushTrap = () => {
+      if (!trapPushedRef.current) {
+        window.history.pushState({ trap: true }, '');
+        trapPushedRef.current = true;
       }
     };
-    window.addEventListener('hashchange', handleHashChange);
-    return () => window.removeEventListener('hashchange', handleHashChange);
+
+    document.addEventListener('click', pushTrap);
+    document.addEventListener('touchstart', pushTrap, { passive: true });
+
+    const handlePopState = (e) => {
+      trapPushedRef.current = false;
+
+      let preventExit = false;
+      
+      if (showAdminChatModalRef.current) {
+        setShowAdminChatModal(false);
+        preventExit = true;
+      } else if (activeTabRef.current !== 'overview') {
+        setActiveTab('overview');
+        preventExit = true;
+      }
+
+      if (preventExit) {
+        window.history.pushState({ trap: true }, '');
+        trapPushedRef.current = true;
+      } else {
+        window.history.back();
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+      document.removeEventListener('click', pushTrap);
+      document.removeEventListener('touchstart', pushTrap);
+    };
   }, []);
 
   useEffect(() => { showAdminChatModalRef.current = showAdminChatModal; }, [showAdminChatModal]);
