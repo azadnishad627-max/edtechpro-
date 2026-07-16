@@ -818,7 +818,17 @@ export default function AdminDashboard() {
                       <td style={{ padding: '1rem' }}>{student.class_name || 'N/A'}</td>
                       <td style={{ padding: '1rem' }}>{student.dob || 'N/A'}</td>
                       <td style={{ padding: '1rem' }}>{new Date(student.created_at).toLocaleDateString()}</td>
+                      <td style={{ padding: '1rem', textAlign: 'right' }}>
+                        <button 
+                          onClick={() => { setActiveTab('admin_chats'); setActiveChatStudentId(student.id); document.body.style.overflow = 'hidden'; }}
+                          className="btn-primary" 
+                          style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem', display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}
+                        >
+                          💬 Chat
+                        </button>
+                      </td>
                     </tr>
+
                   ))}
                 </tbody>
               </table>
