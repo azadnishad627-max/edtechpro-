@@ -51,6 +51,16 @@ export default function AdminDashboard() {
   const [liveTime, setLiveTime] = useState('');
   const [dbLiveClasses, setDbLiveClasses] = useState([]);
 
+  // Admin Chat State
+  const [adminChats, setAdminChats] = useState([]);
+  const [activeChatStudentId, setActiveChatStudentId] = useState(null);
+  const [adminReplyMessage, setAdminReplyMessage] = useState('');
+  const adminChatEndRef = useRef(null);
+
+  useEffect(() => {
+    adminChatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [adminChats, activeChatStudentId]);
+
   useEffect(() => {
     // Admin Route Protection
     if (!localStorage.getItem('adminInfo')) {
@@ -91,7 +101,48 @@ export default function AdminDashboard() {
       if (lData) setDbLiveClasses(lData);
     }
     fetchBatches();
+
+    const fetchAdminChats = async () => {
+      const { data } = await supabase
+        .from('admin_chats')
+        .select('*, profiles(name, photo_url, username)')
+        .order('created_at', { ascending: true });
+      if (data) setAdminChats(data);
+    };
+    fetchAdminChats();
+    const chatInterval = setInterval(fetchAdminChats, 3000);
+
+    return () => clearInterval(chatInterval);
   }, [router]);
+
+  // When admin selects a student, mark messages from them as read
+  useEffect(() => {
+    if (activeChatStudentId) {
+      const unreadFromStudent = adminChats.filter(m => m.student_id === activeChatStudentId && m.sender === 'student' && !m.is_read).map(m => m.id);
+      if (unreadFromStudent.length > 0) {
+        supabase.from('admin_chats').update({ is_read: true }).in('id', unreadFromStudent).then(() => {
+          setAdminChats(prev => prev.map(m => unreadFromStudent.includes(m.id) ? { ...m, is_read: true } : m));
+        });
+      }
+    }
+  }, [activeChatStudentId, adminChats]);
+
+  const handleAdminChatReply = async (e) => {
+    e.preventDefault();
+    if (!adminReplyMessage.trim() || !activeChatStudentId) return;
+    
+    const msg = adminReplyMessage;
+    setAdminReplyMessage('');
+    
+    setAdminChats(prev => [...prev, { student_id: activeChatStudentId, sender: 'admin', message: msg, created_at: new Date().toISOString() }]);
+
+    const { error } = await supabase.from('admin_chats').insert([{
+      student_id: activeChatStudentId,
+      sender: 'admin',
+      message: msg
+    }]);
+    if (error) console.error("Error sending admin reply:", error);
+  };
 
   const handleCreateLiveClass = async (e) => {
     e.preventDefault();
@@ -496,6 +547,7 @@ export default function AdminDashboard() {
         <button className={activeTab === 'live' ? 'btn-primary' : 'btn-outline'} onClick={() => setActiveTab('live')} style={{ padding: '0.5rem 1rem' }}>Live Classes</button>
         <button className={activeTab === 'announcements' ? 'btn-primary' : 'btn-outline'} onClick={() => setActiveTab('announcements')} style={{ padding: '0.5rem 1rem' }}>Announcements</button>
         <button className={activeTab === 'feedback' ? 'btn-primary' : 'btn-outline'} onClick={() => setActiveTab('feedback')} style={{ padding: '0.5rem 1rem' }}>Student Feedback</button>
+        <button className={activeTab === 'admin_chats' ? 'btn-primary' : 'btn-outline'} onClick={() => setActiveTab('admin_chats')} style={{ padding: '0.5rem 1rem' }}>💬 Student Chats</button>
       </div>
 
       {activeTab === 'overview' && (
@@ -787,6 +839,95 @@ export default function AdminDashboard() {
                 </div>
               ))}
             </div>
+          </div>
+        </div>
+      )}
+      {activeTab === 'admin_chats' && (
+        <div className="animate-fade-in grid-cols-2" style={{ alignItems: 'flex-start', height: 'calc(100vh - 200px)' }}>
+          <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+            <h3 className="mb-4">Student Messages</h3>
+            <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              {Array.from(new Set(adminChats.map(m => m.student_id))).map(studentId => {
+                const latestMsg = adminChats.filter(m => m.student_id === studentId).slice(-1)[0];
+                const unreadCount = adminChats.filter(m => m.student_id === studentId && m.sender === 'student' && !m.is_read).length;
+                if (!latestMsg) return null;
+                const p = latestMsg.profiles;
+                return (
+                  <div 
+                    key={studentId} 
+                    onClick={() => setActiveChatStudentId(studentId)}
+                    style={{ 
+                      padding: '1rem', border: '1px solid var(--glass-border)', borderRadius: '8px', cursor: 'pointer',
+                      background: activeChatStudentId === studentId ? 'rgba(255, 215, 0, 0.1)' : 'rgba(255,255,255,0.02)',
+                      display: 'flex', gap: '1rem', alignItems: 'center'
+                    }}
+                  >
+                    <div style={{ width: '40px', height: '40px', borderRadius: '50%', overflow: 'hidden', border: '1px solid var(--glass-border)' }}>
+                      <img src={p?.photo_url || `https://ui-avatars.com/api/?name=${p?.name || 'Student'}&background=random`} alt="Student" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <h4 style={{ margin: '0 0 0.2rem 0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {p?.name || 'Student'} <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>@{p?.username}</span>
+                      </h4>
+                      <p style={{ margin: 0, fontSize: '0.85rem', color: unreadCount > 0 ? 'white' : 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {latestMsg.sender === 'admin' ? 'You: ' : ''}{latestMsg.message}
+                      </p>
+                    </div>
+                    {unreadCount > 0 && (
+                      <div style={{ background: '#ff4444', color: 'white', borderRadius: '50%', width: '24px', height: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 'bold' }}>
+                        {unreadCount}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+              {adminChats.length === 0 && <p className="text-muted text-center" style={{ marginTop: '2rem' }}>No messages yet.</p>}
+            </div>
+          </div>
+          
+          <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', height: '100%', padding: 0, overflow: 'hidden' }}>
+            {activeChatStudentId ? (
+              <>
+                <div style={{ padding: '1rem', borderBottom: '1px solid var(--glass-border)', background: 'rgba(255,255,255,0.02)' }}>
+                  <h3 style={{ margin: 0 }}>Chat with {adminChats.find(m => m.student_id === activeChatStudentId)?.profiles?.name || 'Student'}</h3>
+                </div>
+                <div style={{ flex: 1, overflowY: 'auto', padding: '1rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  {adminChats.filter(m => m.student_id === activeChatStudentId).map(msg => (
+                    <div key={msg.id} style={{ 
+                      alignSelf: msg.sender === 'admin' ? 'flex-end' : 'flex-start',
+                      background: msg.sender === 'admin' ? 'var(--primary-color)' : 'rgba(255,255,255,0.05)',
+                      border: msg.sender === 'admin' ? 'none' : '1px solid var(--glass-border)',
+                      padding: '1rem', borderRadius: msg.sender === 'admin' ? '16px 16px 0 16px' : '16px 16px 16px 0',
+                      maxWidth: '85%'
+                    }}>
+                      <div style={{ color: msg.sender === 'admin' ? 'white' : 'var(--text-light)', lineHeight: '1.5' }}>{msg.message}</div>
+                      <div style={{ fontSize: '0.7rem', color: msg.sender === 'admin' ? 'rgba(255,255,255,0.7)' : 'var(--text-muted)', marginTop: '0.5rem', textAlign: msg.sender === 'admin' ? 'right' : 'left' }}>
+                        {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </div>
+                    </div>
+                  ))}
+                  <div ref={adminChatEndRef} />
+                </div>
+                <div style={{ padding: '1rem', borderTop: '1px solid var(--glass-border)' }}>
+                  <form onSubmit={handleAdminChatReply} style={{ display: 'flex', gap: '0.5rem' }}>
+                    <input 
+                      type="text" 
+                      value={adminReplyMessage}
+                      onChange={e => setAdminReplyMessage(e.target.value)}
+                      placeholder="Type a reply..."
+                      style={{ flex: 1, padding: '0.8rem 1rem', borderRadius: '50px', border: '1px solid var(--glass-border)', background: 'var(--bg-dark)', color: 'white', outline: 'none' }} 
+                    />
+                    <button type="submit" style={{ background: 'var(--gradient-brand)', color: 'white', border: 'none', width: '42px', height: '42px', borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                    </button>
+                  </form>
+                </div>
+              </>
+            ) : (
+              <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>
+                Select a student to view chat
+              </div>
+            )}
           </div>
         </div>
       )}
