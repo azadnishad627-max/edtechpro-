@@ -58,7 +58,9 @@ export default function AdminDashboard() {
   const adminChatEndRef = useRef(null);
 
   useEffect(() => {
-    adminChatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (activeChatStudentId && adminChatEndRef.current) {
+      adminChatEndRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
   }, [adminChats, activeChatStudentId]);
 
   useEffect(() => {
