@@ -1030,25 +1030,38 @@ export default function StudentDashboard() {
                   <p style={{ textAlign: 'center', color: 'var(--text-muted)' }}>Send a message to start chatting<br/>with the Admin.</p>
                 </div>
               ) : (
-                adminChatHistory.map((msg, i) => (
+                adminChatHistory.filter(m => !m.deleted_for_student).map((msg, i) => {
+                  const isMine = msg.sender === 'student';
+                  const isDeleted = msg.is_deleted_for_everyone;
+                  return (
                   <div key={msg.id || i} style={{ 
-                    alignSelf: msg.sender === 'student' ? 'flex-end' : 'flex-start',
-                    background: msg.sender === 'student' ? 'var(--primary-color)' : 'rgba(255,255,255,0.08)',
-                    border: msg.sender === 'student' ? 'none' : '1px solid var(--glass-border)',
+                    alignSelf: isMine ? 'flex-end' : 'flex-start',
+                    background: isMine ? 'var(--primary-color)' : 'rgba(255,255,255,0.08)',
+                    border: isMine ? 'none' : '1px solid var(--glass-border)',
                     padding: '0.7rem 1rem',
-                    borderRadius: msg.sender === 'student' ? '18px 18px 0 18px' : '18px 18px 18px 0',
+                    borderRadius: isMine ? '18px 18px 0 18px' : '18px 18px 18px 0',
                     maxWidth: '80%',
                     wordBreak: 'break-word',
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                    position: 'relative',
+                    minWidth: '100px'
                   }}>
-                    <div style={{ color: msg.sender === 'student' ? 'white' : 'var(--text-light)', lineHeight: '1.5', fontSize: '0.95rem' }}>
-                      {renderChatMessage(msg.message)}
+                    <div onClick={() => handleDeleteMessage(msg)} style={{ position: 'absolute', top: '-5px', right: isMine ? 'auto' : '-5px', left: isMine ? '-5px' : 'auto', background: 'rgba(0,0,0,0.5)', borderRadius: '50%', width: '20px', height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: '10px' }}>🗑️</div>
+                    <div style={{ color: isMine ? 'white' : 'var(--text-light)', lineHeight: '1.5', fontSize: '0.95rem' }}>
+                      {isDeleted ? (
+                        <div style={{ fontStyle: 'italic', color: '#cbd5e1' }}>🚫 This message was deleted</div>
+                      ) : renderChatMessage(msg.message)}
                     </div>
-                    <div style={{ fontSize: '0.65rem', color: msg.sender === 'student' ? 'rgba(255,255,255,0.6)' : 'var(--text-muted)', marginTop: '0.3rem', textAlign: msg.sender === 'student' ? 'right' : 'left' }}>
-                      {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '0.4rem', marginTop: '0.2rem', fontSize: '0.7rem', color: isMine ? 'rgba(255,255,255,0.6)' : 'var(--text-muted)' }}>
+                      <span>{msg.created_at ? new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}</span>
+                      {isMine && (
+                        <span style={{ color: msg.is_read ? '#60a5fa' : 'rgba(255,255,255,0.6)', fontWeight: 'bold' }}>
+                          ✓✓
+                        </span>
+                      )}
                     </div>
                   </div>
-                ))
+                )})
               )}
               <div ref={adminChatEndRef} />
             </div>

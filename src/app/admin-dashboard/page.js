@@ -1093,25 +1093,38 @@ export default function AdminDashboard() {
 
           {/* Chat Messages */}
           <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.8rem', WebkitOverflowScrolling: 'touch' }}>
-            {adminChats.filter(m => m.student_id === activeChatStudentId).map(msg => (
+            {adminChats.filter(m => m.student_id === activeChatStudentId && !m.deleted_for_admin).map(msg => {
+              const isAdmin = msg.sender === 'admin';
+              const isDeleted = msg.is_deleted_for_everyone;
+              return (
               <div key={msg.id} style={{ 
-                alignSelf: msg.sender === 'admin' ? 'flex-end' : 'flex-start',
-                background: msg.sender === 'admin' ? 'var(--primary-color)' : 'rgba(255,255,255,0.08)',
-                border: msg.sender === 'admin' ? 'none' : '1px solid var(--glass-border)',
+                alignSelf: isAdmin ? 'flex-end' : 'flex-start',
+                background: isAdmin ? 'var(--primary-color)' : 'rgba(255,255,255,0.08)',
+                border: isAdmin ? 'none' : '1px solid var(--glass-border)',
                 padding: '0.7rem 1rem', 
-                borderRadius: msg.sender === 'admin' ? '18px 18px 0 18px' : '18px 18px 18px 0',
+                borderRadius: isAdmin ? '18px 18px 0 18px' : '18px 18px 18px 0',
                 maxWidth: '80%',
                 wordBreak: 'break-word',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
+                boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                position: 'relative',
+                minWidth: '100px'
               }}>
-                <div style={{ color: msg.sender === 'admin' ? 'white' : 'var(--text-light)', lineHeight: '1.5', fontSize: '0.95rem' }}>
-                  {renderChatMessage(msg.message)}
+                <div onClick={() => handleDeleteMessage(msg)} style={{ position: 'absolute', top: '-5px', right: isAdmin ? 'auto' : '-5px', left: isAdmin ? '-5px' : 'auto', background: 'rgba(0,0,0,0.5)', borderRadius: '50%', width: '20px', height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: '10px' }}>🗑️</div>
+                <div style={{ color: isAdmin ? 'white' : 'var(--text-light)', lineHeight: '1.5', fontSize: '0.95rem' }}>
+                  {isDeleted ? (
+                     <div style={{ fontStyle: 'italic', color: '#cbd5e1' }}>🚫 This message was deleted</div>
+                  ) : renderChatMessage(msg.message)}
                 </div>
-                <div style={{ fontSize: '0.65rem', color: msg.sender === 'admin' ? 'rgba(255,255,255,0.6)' : 'var(--text-muted)', marginTop: '0.3rem', textAlign: msg.sender === 'admin' ? 'right' : 'left' }}>
-                  {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '0.4rem', marginTop: '0.2rem', fontSize: '0.7rem', color: isAdmin ? 'rgba(255,255,255,0.6)' : 'var(--text-muted)' }}>
+                  <span>{new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                  {isAdmin && (
+                    <span style={{ color: msg.is_read ? '#60a5fa' : 'rgba(255,255,255,0.6)', fontWeight: 'bold' }}>
+                      ✓✓
+                    </span>
+                  )}
                 </div>
               </div>
-            ))}
+            )})}
             {adminChats.filter(m => m.student_id === activeChatStudentId).length === 0 && (
               <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', flexDirection: 'column' }}>
                 <span style={{ fontSize: '3rem', marginBottom: '1rem' }}>👋</span>
