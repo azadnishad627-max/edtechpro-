@@ -1014,10 +1014,17 @@ export default function StudentDashboard() {
               <div style={{ marginLeft: '0.8rem' }}>
                 <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'white', fontWeight: '700' }}>RK Education Support</h3>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginTop: '0.1rem' }}>
-                  <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: adminStatus.is_online ? '#4CAF50' : '#a1a1aa' }}></div>
-                  <p style={{ margin: 0, fontSize: '0.8rem', color: adminStatus.is_online ? '#4CAF50' : '#a1a1aa', fontWeight: '500' }}>
-                    {adminStatus.is_online ? 'Online' : `Last seen: ${adminStatus.last_seen ? new Date(adminStatus.last_seen).toLocaleString() : 'N/A'}`}
-                  </p>
+                  {(() => {
+                    const isActuallyOnline = adminStatus.last_seen && (new Date() - new Date(adminStatus.last_seen)) < 120000;
+                    return (
+                      <>
+                        <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: isActuallyOnline ? '#4CAF50' : '#a1a1aa' }}></div>
+                        <p style={{ margin: 0, fontSize: '0.8rem', color: isActuallyOnline ? '#4CAF50' : '#a1a1aa', fontWeight: '500' }}>
+                          {isActuallyOnline ? 'Online' : `Last seen: ${adminStatus.last_seen ? new Date(adminStatus.last_seen).toLocaleString([], {hour: '2-digit', minute:'2-digit', month:'short', day:'numeric'}) : 'N/A'}`}
+                        </p>
+                      </>
+                    );
+                  })()}
                 </div>
               </div>
             </div>
@@ -1055,8 +1062,8 @@ export default function StudentDashboard() {
                     <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '0.4rem', marginTop: '0.2rem', fontSize: '0.7rem', color: isMine ? 'rgba(255,255,255,0.6)' : 'var(--text-muted)' }}>
                       <span>{msg.created_at ? new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}</span>
                       {isMine && (
-                        <span style={{ color: msg.is_read ? '#60a5fa' : 'rgba(255,255,255,0.6)', fontWeight: 'bold' }}>
-                          ✓✓
+                        <span style={{ color: msg.is_read ? '#60a5fa' : 'rgba(255,255,255,0.6)', fontStyle: msg.is_read ? 'normal' : 'italic', fontSize: '0.65rem' }}>
+                          {msg.is_read ? 'Seen' : 'Delivered'}
                         </span>
                       )}
                     </div>
