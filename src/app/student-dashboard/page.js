@@ -376,16 +376,30 @@ export default function StudentDashboard() {
 
   useEffect(() => {
     if (!student) return;
-    fetchAdminChats();
+      fetchAdminChats();
     const interval = setInterval(fetchAdminChats, 3000);
     return () => clearInterval(interval);
   }, [student]);
 
-  useEffect(() => {
-    if (showAdminChatModal && adminChatEndRef.current) {
-      adminChatEndRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' });
-    }
-  }, [adminChatHistory]);
+    const chatLengthRef = useRef(0);
+    useEffect(() => {
+      if (!showAdminChatModal) chatLengthRef.current = 0;
+    }, [showAdminChatModal]);
+
+    useEffect(() => {
+      if (showAdminChatModal && adminChatEndRef.current) {
+        const container = adminChatEndRef.current.parentElement;
+        const isAtBottom = container.scrollHeight - container.scrollTop <= container.clientHeight + 150;
+        
+        const currentMsgs = adminChatHistory.filter(m => !m.deleted_for_student);
+        if (currentMsgs.length > chatLengthRef.current || chatLengthRef.current === 0) {
+          if (chatLengthRef.current === 0 || isAtBottom) {
+            adminChatEndRef.current.scrollIntoView({ behavior: chatLengthRef.current === 0 ? 'auto' : 'smooth', block: 'end' });
+          }
+          chatLengthRef.current = currentMsgs.length;
+        }
+      }
+    }, [adminChatHistory, showAdminChatModal]);
 
   useEffect(() => {
     if (showAdminChatModal) {
@@ -1156,3 +1170,4 @@ export default function StudentDashboard() {
     </>
   );
 }
+

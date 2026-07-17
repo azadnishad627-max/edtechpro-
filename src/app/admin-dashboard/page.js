@@ -125,11 +125,25 @@ export default function AdminDashboard() {
     }
   }, []);
 
-  useEffect(() => {
-    if (activeChatStudentId && adminChatEndRef.current) {
-      adminChatEndRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    }
-  }, [adminChats, activeChatStudentId]);
+    const chatLengthRef = useRef(0);
+    useEffect(() => {
+      if (!activeChatStudentId) chatLengthRef.current = 0;
+    }, [activeChatStudentId]);
+
+    useEffect(() => {
+      if (activeChatStudentId && adminChatEndRef.current) {
+        const container = adminChatEndRef.current.parentElement;
+        const isAtBottom = container.scrollHeight - container.scrollTop <= container.clientHeight + 150;
+        
+        const currentMsgs = adminChats.filter(m => m.student_id === activeChatStudentId && !m.deleted_for_admin);
+        if (currentMsgs.length > chatLengthRef.current || chatLengthRef.current === 0) {
+          if (chatLengthRef.current === 0 || isAtBottom) {
+            adminChatEndRef.current.scrollIntoView({ behavior: chatLengthRef.current === 0 ? 'auto' : 'smooth', block: 'end' });
+          }
+          chatLengthRef.current = currentMsgs.length;
+        }
+      }
+    }, [adminChats, activeChatStudentId]);
 
   useEffect(() => {
     // Admin Route Protection
@@ -1170,3 +1184,4 @@ export default function AdminDashboard() {
     </div>
   );
 }
+
