@@ -29,6 +29,9 @@ export default function StudentDashboard() {
 
   // Admin Chat State
   const [adminChatHistory, setAdminChatHistory] = useState([]);
+
+  const [adminStatus, setAdminStatus] = useState({ is_online: false, last_seen: null });
+
   const [adminChatMessage, setAdminChatMessage] = useState('');
   const [isStudentUploading, setIsStudentUploading] = useState(false);
   const [showAdminChatModal, setShowAdminChatModal] = useState(false);
@@ -256,6 +259,20 @@ export default function StudentDashboard() {
   };
 
   
+  
+  const handleDeleteMessage = async (msg) => {
+    const isMine = msg.sender === 'student';
+    const options = isMine ? "1. Delete for Me\n2. Delete for Everyone\nCancel" : "1. Delete for Me\nCancel";
+    const choice = window.prompt(`Type 1 or 2 to delete:\n${options}`);
+    if (choice === '1') {
+      await supabase.from('admin_chats').update({ deleted_for_student: true }).eq('id', msg.id);
+      setAdminChatHistory(prev => prev.map(m => m.id === msg.id ? { ...m, deleted_for_student: true } : m));
+    } else if (choice === '2' && isMine) {
+      await supabase.from('admin_chats').update({ is_deleted_for_everyone: true }).eq('id', msg.id);
+      setAdminChatHistory(prev => prev.map(m => m.id === msg.id ? { ...m, is_deleted_for_everyone: true } : m));
+    }
+  };
+
   const handleStudentFileUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -336,6 +353,26 @@ export default function StudentDashboard() {
     }]);
     if (error) console.error("Error sending admin chat:", error);
   };
+
+  
+  useEffect(() => {
+    if (!student) return;
+    const updateOnlineStatus = async () => {
+      await supabase.from('profiles').update({ is_online: true, last_seen: new Date().toISOString() }).eq('id', student.id);
+    };
+    updateOnlineStatus();
+    const interval = setInterval(updateOnlineStatus, 60000);
+    
+    const setOffline = () => {
+      supabase.from('profiles').update({ is_online: false, last_seen: new Date().toISOString() }).eq('id', student.id);
+    };
+    window.addEventListener('beforeunload', setOffline);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('beforeunload', setOffline);
+      setOffline();
+    };
+  }, [student]);
 
   useEffect(() => {
     if (!student) return;
@@ -977,8 +1014,10 @@ export default function StudentDashboard() {
               <div style={{ marginLeft: '0.8rem' }}>
                 <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'white', fontWeight: '700' }}>RK Education Support</h3>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginTop: '0.1rem' }}>
-                  <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#4CAF50' }}></div>
-                  <p style={{ margin: 0, fontSize: '0.8rem', color: '#4CAF50', fontWeight: '500' }}>Online</p>
+                  <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: adminStatus.is_online ? '#4CAF50' : '#a1a1aa' }}></div>
+                  <p style={{ margin: 0, fontSize: '0.8rem', color: adminStatus.is_online ? '#4CAF50' : '#a1a1aa', fontWeight: '500' }}>
+                    {adminStatus.is_online ? 'Online' : `Last seen: ${adminStatus.last_seen ? new Date(adminStatus.last_seen).toLocaleString() : 'N/A'}`}
+                  </p>
                 </div>
               </div>
             </div>

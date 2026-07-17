@@ -175,7 +175,7 @@ export default function AdminDashboard() {
     const fetchAdminChats = async () => {
       const { data } = await supabase
         .from('admin_chats')
-        .select('*, profiles(name, photo_url, username)')
+        .select('*, profiles(name, photo_url, username, last_seen, is_online)')
         .order('created_at', { ascending: true });
       if (data) {
         setAdminChats(prev => {
@@ -216,6 +216,20 @@ export default function AdminDashboard() {
   }, [activeChatStudentId, adminChats]);
 
   
+  
+  const handleDeleteMessage = async (msg) => {
+    const isMine = msg.sender === 'admin';
+    const options = isMine ? "1. Delete for Me\n2. Delete for Everyone\nCancel" : "1. Delete for Me\nCancel";
+    const choice = window.prompt(`Type 1 or 2 to delete:\n${options}`);
+    if (choice === '1') {
+      await supabase.from('admin_chats').update({ deleted_for_admin: true }).eq('id', msg.id);
+      setAdminChats(prev => prev.map(m => m.id === msg.id ? { ...m, deleted_for_admin: true } : m));
+    } else if (choice === '2' && isMine) {
+      await supabase.from('admin_chats').update({ is_deleted_for_everyone: true }).eq('id', msg.id);
+      setAdminChats(prev => prev.map(m => m.id === msg.id ? { ...m, is_deleted_for_everyone: true } : m));
+    }
+  };
+
   const handleAdminFileUpload = async (e) => {
     const file = e.target.files[0];
     if (!file || !activeChatStudentId) return;
