@@ -593,15 +593,28 @@ export default function AdminDashboard() {
           const testId = testData[0].id;
 
           // 2. Insert Questions
-          const questionsToInsert = rows.map(r => ({
-            test_id: testId,
-            question_text: r.question_text || r.Question || r.Q || '',
-            option_a: r.option_a || r.A || '',
-            option_b: r.option_b || r.B || '',
-            option_c: r.option_c || r.C || '',
-            option_d: r.option_d || r.D || '',
-            correct_answer: r.correct_answer || r.Answer || ''
-          }));
+          const questionsToInsert = rows.map(r => {
+            const optA = r.option_a || r.A || '';
+            const optB = r.option_b || r.B || '';
+            const optC = r.option_c || r.C || '';
+            const optD = r.option_d || r.D || '';
+            let correct = (r.correct_answer || r.Answer || '').trim();
+            
+            if (correct.toUpperCase() === 'A') correct = optA;
+            else if (correct.toUpperCase() === 'B') correct = optB;
+            else if (correct.toUpperCase() === 'C') correct = optC;
+            else if (correct.toUpperCase() === 'D') correct = optD;
+
+            return {
+              test_id: testId,
+              question_text: r.question_text || r.Question || r.Q || '',
+              option_a: optA,
+              option_b: optB,
+              option_c: optC,
+              option_d: optD,
+              correct_answer: correct
+            };
+          });
           
           const { error: qError } = await supabase.from('questions').insert(questionsToInsert);
           if (qError) throw qError;
