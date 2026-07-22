@@ -21,20 +21,14 @@ export async function POST(req) {
     }
 
     let score = 0;
-    const evaluatedResults = questions.map((q, idx) => {
-      // Find the answer the user submitted for this question ID, or rely on index matching.
-      // Since the client maps answers by index (0, 1, 2...), we need to ensure the order matches.
-      // Wait, client just did supabase.from('questions').select('*').eq('test_id', id)
-      // Supabase returns them in the order of insertion if no order is specified, which should be consistent.
-      // To be safe, we will just use the index as passed from the client assuming the same fetch order.
-      const userAnswer = answers[idx];
-      
+    const evaluatedResults = questions.map((q) => {
       let actualCorrect = (q.correct_answer || '').trim();
       if (actualCorrect.toUpperCase() === 'A') actualCorrect = q.option_a;
       else if (actualCorrect.toUpperCase() === 'B') actualCorrect = q.option_b;
       else if (actualCorrect.toUpperCase() === 'C') actualCorrect = q.option_c;
       else if (actualCorrect.toUpperCase() === 'D') actualCorrect = q.option_d;
 
+      const userAnswer = answers[q.id] || null;
       const isCorrect = userAnswer === actualCorrect;
       
       if (isCorrect) {
@@ -42,6 +36,7 @@ export async function POST(req) {
       }
 
       return {
+        question_id: q.id,
         question_text: q.question_text,
         option_a: q.option_a,
         option_b: q.option_b,

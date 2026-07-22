@@ -68,7 +68,8 @@ export default function TakeTest() {
   };
 
   const handleSelect = (option) => {
-    setAnswers({ ...answers, [currentIdx]: option });
+    const qId = questions[currentIdx].id;
+    setAnswers({ ...answers, [qId]: option });
   };
 
   const handleSubmit = async () => {
@@ -140,13 +141,15 @@ export default function TakeTest() {
         <h3 className="mb-4">Answer Key & Explanations</h3>
         
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-          {evaluationData.results.map((q, idx) => {
+          {currentQuestions.map((cq, idx) => {
+            const q = evaluationData.results.find(r => r.question_id === cq.id);
+            if (!q) return null;
             const isCorrect = q.isCorrect;
             const userAnswer = q.userAnswer;
             const actualCorrect = q.actualCorrect;
             
             // Try to match translated question if available
-            const displayQText = currentQuestions[idx]?.question_text || q.question_text;
+            const displayQText = cq.question_text;
 
             return (
               <div key={idx} className="glass-card" style={{ borderLeft: `4px solid ${isCorrect ? '#00e676' : '#ff1744'}` }}>
@@ -155,7 +158,7 @@ export default function TakeTest() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1rem' }}>
                   {['option_a', 'option_b', 'option_c', 'option_d'].map((optKey, optIdx) => {
                     // Display text (might be translated) vs logic text
-                    const displayOptText = currentQuestions[idx]?.[optKey] || q[optKey];
+                    const displayOptText = cq[optKey];
                     const originalOptText = q[optKey];
                     
                     const isUserSelection = userAnswer === originalOptText;
@@ -259,8 +262,8 @@ export default function TakeTest() {
                   textAlign: 'left', 
                   padding: '1rem', 
                   marginBottom: '0.5rem', 
-                  background: answers[currentIdx] === originalOptText ? 'rgba(0, 229, 255, 0.1)' : 'rgba(255,255,255,0.05)', 
-                  border: answers[currentIdx] === originalOptText ? '1px solid var(--primary-color)' : '1px solid var(--glass-border)', 
+                  background: answers[originalQ.id] === originalOptText ? 'rgba(0, 229, 255, 0.1)' : 'rgba(255,255,255,0.05)', 
+                  border: answers[originalQ.id] === originalOptText ? '1px solid var(--primary-color)' : '1px solid var(--glass-border)', 
                   borderRadius: '8px', 
                   color: 'var(--text-primary)',
                   cursor: 'pointer',
