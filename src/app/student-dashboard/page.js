@@ -26,6 +26,7 @@ export default function StudentDashboard() {
   const [leaderboard, setLeaderboard] = useState([]);
   const [bookmarkedQuestions, setBookmarkedQuestions] = useState([]);
   const [activeLiveClassUrl, setActiveLiveClassUrl] = useState(null);
+  const [activeTestUrl, setActiveTestUrl] = useState(null);
 
   // Admin Chat State
   const [adminChatHistory, setAdminChatHistory] = useState([]);
@@ -739,7 +740,13 @@ export default function StudentDashboard() {
                   <h3 className="mb-2">{test.title}</h3>
                   <p className="text-muted">Batch: {test.batches?.title} | Duration: {test.duration_mins} Mins | {test.total_questions} Questions</p>
                 </div>
-                <button onClick={() => router.push(`/test/${test.id}`)} className="btn-primary" style={{ padding: '0.5rem 1rem' }}>Start Test</button>
+                <button onClick={() => {
+                  if(test.test_url) {
+                    setActiveTestUrl(test.test_url);
+                  } else {
+                    router.push(`/test/${test.id}`);
+                  }
+                }} className="btn-primary" style={{ padding: '0.5rem 1rem' }}>Start Test</button>
               </div>
             ))}
 
@@ -1164,6 +1171,15 @@ export default function StudentDashboard() {
               ></iframe>
             </div>
           </div>
+        </div>
+      )}
+      {activeTestUrl && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, width: '100vw', height: '100vh', background: 'var(--bg-dark)', zIndex: 10000, display: 'flex', flexDirection: 'column' }}>
+          <div style={{ padding: '1rem', borderBottom: '1px solid var(--glass-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-dark)' }}>
+            <h3 style={{ margin: 0, color: 'white' }}>Online Test</h3>
+            <button onClick={() => { setActiveTestUrl(null); }} className="btn-outline" style={{ border: '1px solid #ff4444', color: '#ff4444', padding: '0.5rem 1rem' }}>Close Test</button>
+          </div>
+          <iframe src={activeTestUrl} style={{ flex: 1, width: '100%', border: 'none', background: 'white' }} />
         </div>
       )}
 
