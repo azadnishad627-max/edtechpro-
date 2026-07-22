@@ -7,6 +7,37 @@ import Papa from 'papaparse';
 export default function AdminDashboard() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState('overview');
+
+  const switchTab = (tab) => {
+    window.history.pushState({ tab }, '', '#' + tab);
+    setActiveTab(tab);
+  };
+
+  useEffect(() => {
+    const handlePopState = (e) => {
+      if (e.state && e.state.tab) {
+        setActiveTab(e.state.tab);
+      } else {
+        const hashTab = window.location.hash.replace('#', '');
+        if (hashTab) {
+          setActiveTab(hashTab);
+        } else {
+          setActiveTab('overview');
+        }
+      }
+    };
+    window.addEventListener('popstate', handlePopState);
+    
+    const hashTab = window.location.hash.replace('#', '');
+    if (hashTab) {
+      switchTab(hashTab);
+    } else {
+      window.history.replaceState({ tab: 'overview' }, '', '#' + 'overview'.replace(/['"]/g, ''));
+    }
+    
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
   const [batches, setBatches] = useState([]);
   const [totalStudents, setTotalStudents] = useState(0);
   const [totalRevenue, setTotalRevenue] = useState(0);
@@ -96,7 +127,7 @@ export default function AdminDashboard() {
         document.body.style.overflow = '';
         preventExit = true;
       } else if (activeTabRef.current !== 'overview') {
-        setActiveTab('overview');
+        switchTab('overview');
         preventExit = true;
       }
 
@@ -842,15 +873,15 @@ export default function AdminDashboard() {
       </div>
 
       <div className="flex mb-4" style={{ gap: '0.5rem', overflowX: 'auto', paddingBottom: '0.5rem', whiteSpace: 'nowrap' }}>
-        <button className={activeTab === 'overview' ? 'btn-primary' : 'btn-outline'} onClick={() => setActiveTab('overview')} style={{ padding: '0.5rem 1rem' }}>Overview</button>
-        <button className={activeTab === 'students' ? 'btn-primary' : 'btn-outline'} onClick={() => setActiveTab('students')} style={{ padding: '0.5rem 1rem' }}>Students List</button>
-        <button className={activeTab === 'results' ? 'btn-primary' : 'btn-outline'} onClick={() => setActiveTab('results')} style={{ padding: '0.5rem 1rem' }}>Test Results</button>
-        <button className={activeTab === 'content' ? 'btn-primary' : 'btn-outline'} onClick={() => setActiveTab('content')} style={{ padding: '0.5rem 1rem' }}>Content Manager</button>
-        <button className={activeTab === 'test' ? 'btn-primary' : 'btn-outline'} onClick={() => setActiveTab('test')} style={{ padding: '0.5rem 1rem' }}>Test Manager</button>
-        <button className={activeTab === 'live' ? 'btn-primary' : 'btn-outline'} onClick={() => setActiveTab('live')} style={{ padding: '0.5rem 1rem' }}>Live Classes</button>
-        <button className={activeTab === 'announcements' ? 'btn-primary' : 'btn-outline'} onClick={() => setActiveTab('announcements')} style={{ padding: '0.5rem 1rem' }}>Announcements</button>
-        <button className={activeTab === 'feedback' ? 'btn-primary' : 'btn-outline'} onClick={() => setActiveTab('feedback')} style={{ padding: '0.5rem 1rem' }}>Student Feedback</button>
-        <button className={activeTab === 'admin_chats' ? 'btn-primary' : 'btn-outline'} onClick={() => setActiveTab('admin_chats')} style={{ padding: '0.5rem 1rem' }}>💬 Student Chats</button>
+        <button className={activeTab === 'overview' ? 'btn-primary' : 'btn-outline'} onClick={() => switchTab('overview')} style={{ padding: '0.5rem 1rem' }}>Overview</button>
+        <button className={activeTab === 'students' ? 'btn-primary' : 'btn-outline'} onClick={() => switchTab('students')} style={{ padding: '0.5rem 1rem' }}>Students List</button>
+        <button className={activeTab === 'results' ? 'btn-primary' : 'btn-outline'} onClick={() => switchTab('results')} style={{ padding: '0.5rem 1rem' }}>Test Results</button>
+        <button className={activeTab === 'content' ? 'btn-primary' : 'btn-outline'} onClick={() => switchTab('content')} style={{ padding: '0.5rem 1rem' }}>Content Manager</button>
+        <button className={activeTab === 'test' ? 'btn-primary' : 'btn-outline'} onClick={() => switchTab('test')} style={{ padding: '0.5rem 1rem' }}>Test Manager</button>
+        <button className={activeTab === 'live' ? 'btn-primary' : 'btn-outline'} onClick={() => switchTab('live')} style={{ padding: '0.5rem 1rem' }}>Live Classes</button>
+        <button className={activeTab === 'announcements' ? 'btn-primary' : 'btn-outline'} onClick={() => switchTab('announcements')} style={{ padding: '0.5rem 1rem' }}>Announcements</button>
+        <button className={activeTab === 'feedback' ? 'btn-primary' : 'btn-outline'} onClick={() => switchTab('feedback')} style={{ padding: '0.5rem 1rem' }}>Student Feedback</button>
+        <button className={activeTab === 'admin_chats' ? 'btn-primary' : 'btn-outline'} onClick={() => switchTab('admin_chats')} style={{ padding: '0.5rem 1rem' }}>💬 Student Chats</button>
       </div>
 
       {activeTab === 'overview' && (
@@ -861,7 +892,7 @@ export default function AdminDashboard() {
                 <h3 className="text-accent" style={{ fontSize: '2rem' }}>₹{totalRevenue}</h3>
                 <p className="text-muted">Total Revenue</p>
               </div>
-              <div className="glass-card text-center" style={{ flex: 1, minWidth: '150px', cursor: 'pointer', transition: 'transform 0.2s ease', border: '1px solid var(--accent)' }} onClick={() => setActiveTab('students')}>
+              <div className="glass-card text-center" style={{ flex: 1, minWidth: '150px', cursor: 'pointer', transition: 'transform 0.2s ease', border: '1px solid var(--accent)' }} onClick={() => switchTab('students')}>
                 <h3 className="text-accent" style={{ fontSize: '2rem' }}>{totalStudents}</h3>
                 <p className="text-muted">Total Students (Click to View)</p>
               </div>
@@ -1163,7 +1194,7 @@ export default function AdminDashboard() {
                       <td style={{ padding: '1rem' }}>{new Date(student.created_at).toLocaleDateString()}</td>
                       <td style={{ padding: '1rem', textAlign: 'right' }}>
                         <button 
-                          onClick={() => { setActiveTab('admin_chats'); setActiveChatStudentId(student.id); document.body.style.overflow = 'hidden'; }}
+                          onClick={() => { switchTab('admin_chats'); setActiveChatStudentId(student.id); document.body.style.overflow = 'hidden'; }}
                           className="btn-primary" 
                           style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem', display: 'inline-flex', alignItems: 'center', gap: '0.4rem', marginRight: '0.5rem' }}
                         >

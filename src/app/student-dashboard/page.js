@@ -12,6 +12,37 @@ import 'katex/dist/katex.min.css';
 export default function StudentDashboard() {
   const [student, setStudent] = useState(null);
   const [activeTab, setActiveTab] = useState('courses');
+
+  const switchTab = (tab) => {
+    window.history.pushState({ tab }, '', '#' + tab);
+    setActiveTab(tab);
+  };
+
+  useEffect(() => {
+    const handlePopState = (e) => {
+      if (e.state && e.state.tab) {
+        setActiveTab(e.state.tab);
+      } else {
+        const hashTab = window.location.hash.replace('#', '');
+        if (hashTab) {
+          setActiveTab(hashTab);
+        } else {
+          setActiveTab('courses');
+        }
+      }
+    };
+    window.addEventListener('popstate', handlePopState);
+    
+    const hashTab = window.location.hash.replace('#', '');
+    if (hashTab) {
+      switchTab(hashTab);
+    } else {
+      window.history.replaceState({ tab: 'courses' }, '', '#' + 'courses'.replace(/['"]/g, ''));
+    }
+    
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
   const [chatMessage, setChatMessage] = useState('');
   const [chatImageFile, setChatImageFile] = useState(null);
   const [chatImagePreview, setChatImagePreview] = useState(null);
@@ -71,7 +102,7 @@ export default function StudentDashboard() {
         setShowAdminChatModal(false);
         preventExit = true;
       } else if (activeTabRef.current !== 'overview') {
-        setActiveTab('overview');
+        switchTab('overview');
         preventExit = true;
       }
 
@@ -628,12 +659,12 @@ export default function StudentDashboard() {
       </div>
       
       <div className="flex gap-4 mb-4 mobile-hide" style={{ gap: '1rem', overflowX: 'auto', paddingBottom: '0.5rem', whiteSpace: 'nowrap' }}>
-        <button className={activeTab === 'courses' ? 'btn-primary' : 'btn-outline'} onClick={() => { setActiveTab('courses'); setSelectedBatch(null); }}>My Courses</button>
-        <button className={activeTab === 'leaderboard' ? 'btn-primary' : 'btn-outline'} onClick={() => setActiveTab('leaderboard')}>🏆 Leaderboard</button>
-        <button className={activeTab === 'tests' ? 'btn-primary' : 'btn-outline'} onClick={() => setActiveTab('tests')}>Online Tests</button>
-        <button className={activeTab === 'ai' ? 'btn-primary' : 'btn-outline'} onClick={() => setActiveTab('ai')}>✨ AI Mentor</button>
-        <button className={activeTab === 'profile' ? 'btn-primary' : 'btn-outline'} onClick={() => setActiveTab('profile')}>👤 Profile</button>
-        <button className={activeTab === 'more' ? 'btn-primary' : 'btn-outline'} onClick={() => setActiveTab('more')}>🎮 More</button>
+        <button className={activeTab === 'courses' ? 'btn-primary' : 'btn-outline'} onClick={() => { switchTab('courses'); setSelectedBatch(null); }}>My Courses</button>
+        <button className={activeTab === 'leaderboard' ? 'btn-primary' : 'btn-outline'} onClick={() => switchTab('leaderboard')}>🏆 Leaderboard</button>
+        <button className={activeTab === 'tests' ? 'btn-primary' : 'btn-outline'} onClick={() => switchTab('tests')}>Online Tests</button>
+        <button className={activeTab === 'ai' ? 'btn-primary' : 'btn-outline'} onClick={() => switchTab('ai')}>✨ AI Mentor</button>
+        <button className={activeTab === 'profile' ? 'btn-primary' : 'btn-outline'} onClick={() => switchTab('profile')}>👤 Profile</button>
+        <button className={activeTab === 'more' ? 'btn-primary' : 'btn-outline'} onClick={() => switchTab('more')}>🎮 More</button>
       </div>
 
       <div className="animate-fade-in">
@@ -992,27 +1023,27 @@ export default function StudentDashboard() {
 
       {/* Mobile Bottom Navigation */}
       <div className="bottom-nav">
-        <div className={`bottom-nav-item ${activeTab === 'courses' ? 'active' : ''}`} onClick={() => { setActiveTab('courses'); setSelectedBatch(null); }}>
+        <div className={`bottom-nav-item ${activeTab === 'courses' ? 'active' : ''}`} onClick={() => { switchTab('courses'); setSelectedBatch(null); }}>
           <span className="bottom-nav-icon">📚</span>
           <span>Courses</span>
         </div>
-        <div className={`bottom-nav-item ${activeTab === 'syllabus' ? 'active' : ''}`} onClick={() => setActiveTab('syllabus')}>
+        <div className={`bottom-nav-item ${activeTab === 'syllabus' ? 'active' : ''}`} onClick={() => switchTab('syllabus')}>
           <span className="bottom-nav-icon">📄</span>
           <span>Syllabus</span>
         </div>
-        <div className={`bottom-nav-item ${activeTab === 'tests' ? 'active' : ''}`} onClick={() => setActiveTab('tests')}>
+        <div className={`bottom-nav-item ${activeTab === 'tests' ? 'active' : ''}`} onClick={() => switchTab('tests')}>
           <span className="bottom-nav-icon">📝</span>
           <span>Tests</span>
         </div>
-        <div className={`bottom-nav-item ${activeTab === 'ai' ? 'active' : ''}`} onClick={() => setActiveTab('ai')}>
+        <div className={`bottom-nav-item ${activeTab === 'ai' ? 'active' : ''}`} onClick={() => switchTab('ai')}>
           <span className="bottom-nav-icon">✨</span>
           <span>AI Mentor</span>
         </div>
-        <div className={`bottom-nav-item ${activeTab === 'profile' ? 'active' : ''}`} onClick={() => setActiveTab('profile')}>
+        <div className={`bottom-nav-item ${activeTab === 'profile' ? 'active' : ''}`} onClick={() => switchTab('profile')}>
           <span className="bottom-nav-icon">👤</span>
           <span>Profile</span>
         </div>
-        <div className={`bottom-nav-item ${activeTab === 'more' ? 'active' : ''}`} onClick={() => setActiveTab('more')}>
+        <div className={`bottom-nav-item ${activeTab === 'more' ? 'active' : ''}`} onClick={() => switchTab('more')}>
           <span className="bottom-nav-icon">🎮</span>
           <span>More</span>
         </div>
