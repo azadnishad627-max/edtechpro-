@@ -527,6 +527,23 @@ export default function AdminDashboard() {
     }
   };
 
+
+  const handleDeleteStudent = async (studentId) => {
+    if (!window.confirm("Are you sure you want to delete this student's account? This will remove them from the system.")) return;
+    
+    // Manually delete enrollments first to avoid foreign key constraints
+    await supabase.from('enrollments').delete().eq('student_id', studentId);
+    
+    const { error } = await supabase.from('profiles').delete().eq('id', studentId);
+    if (error) {
+      alert("Error deleting student: " + error.message);
+    } else {
+      alert("Student deleted successfully.");
+      setDbStudents(prev => prev.filter(s => s.id !== studentId));
+      setTotalStudents(prev => prev - 1);
+    }
+  };
+
   const handleDeleteTest = async (id) => {
     if (!window.confirm("Are you sure you want to delete this test? This will also delete all its questions!")) return;
     
@@ -1051,9 +1068,17 @@ export default function AdminDashboard() {
                         <button 
                           onClick={() => { setActiveTab('admin_chats'); setActiveChatStudentId(student.id); document.body.style.overflow = 'hidden'; }}
                           className="btn-primary" 
-                          style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem', display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}
+                          style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem', display: 'inline-flex', alignItems: 'center', gap: '0.4rem', marginRight: '0.5rem' }}
                         >
                           💬 Chat
+                        </button>
+                        <button 
+                          onClick={() => handleDeleteStudent(student.id)}
+                          className="btn-outline" 
+                          style={{ border: '1px solid #ff4444', color: '#ff4444', padding: '0.4rem 0.8rem', fontSize: '0.85rem', display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}
+                          title="Delete Student"
+                        >
+                          🗑️ Delete
                         </button>
                       </td>
                     </tr>
