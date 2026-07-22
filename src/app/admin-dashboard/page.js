@@ -1063,7 +1063,7 @@ export default function AdminDashboard() {
               <h4 className="mt-4 text-accent" style={{ color: '#2196F3' }}>Option 2: Bulk Upload (Excel / CSV)</h4>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', background: 'rgba(33, 150, 243, 0.1)', padding: '1rem', borderRadius: '8px', border: '1px solid rgba(33, 150, 243, 0.3)' }}>
                 <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-light)' }}>Upload a CSV file with columns: <b>Question, A, B, C, D, Answer</b></p>
-                <input id="csv-upload" type="file" accept=".csv, text/csv, application/vnd.ms-excel, text/plain" onChange={(e) => setCsvFile(e.target.files[0])} style={{ width: '100%', padding: '1rem', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'var(--bg-dark)', color: 'white' }} />
+                <input id="csv-upload" type="file" onChange={(e) => setCsvFile(e.target.files[0])} style={{ width: '100%', padding: '1rem', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'var(--bg-dark)', color: 'white' }} />
                 <button type="button" onClick={handlePublishCsvTest} className="btn-primary" style={{ background: '#2196F3', width: '100%' }}>
                   📊 Upload & Publish CSV Test
                 </button>
