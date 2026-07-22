@@ -1,12 +1,20 @@
 ﻿const { createClient } = require('@supabase/supabase-js');
-const supabase = createClient('https://pqqewpzolmwotfxtuzqg.supabase.co', 'sb_publishable_RoSz_DbmDZ5TVXmOpqxIOA_Ik3NfMu6');
+const fs = require('fs');
 
-async function test() {
-    const { data: tests } = await supabase.from('tests').select('*').order('created_at', { ascending: false }).limit(1);
-    if(tests.length > 0) {
-        const testId = tests[0].id;
-        const { data: qs } = await supabase.from('questions').select('*').eq('test_id', testId).limit(2);
-        console.log(JSON.stringify(qs, null, 2));
-    }
+const env = fs.readFileSync('.env.local', 'utf8');
+const lines = env.split('\n');
+let NEXT_PUBLIC_SUPABASE_URL = '';
+let NEXT_PUBLIC_SUPABASE_ANON_KEY = '';
+for (let line of lines) {
+    if (line.startsWith('NEXT_PUBLIC_SUPABASE_URL=')) NEXT_PUBLIC_SUPABASE_URL = line.split('=')[1].trim();
+    if (line.startsWith('NEXT_PUBLIC_SUPABASE_ANON_KEY=')) NEXT_PUBLIC_SUPABASE_ANON_KEY = line.split('=')[1].trim();
 }
-test();
+
+const supabase = createClient(NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY);
+
+async function check() {
+  const { data, error } = await supabase.from('test_attempts').select('*');
+  console.log("Error:", error);
+  console.log("Data:", data);
+}
+check();
