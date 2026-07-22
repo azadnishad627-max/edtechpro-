@@ -13,7 +13,8 @@ export default function TakeTest() {
   const [currentIdx, setCurrentIdx] = useState(0);
   const [answers, setAnswers] = useState({});
   const [isSubmitted, setIsSubmitted] = useState(false);
-  const [score, setScore] = useState(0);
+  const [isEvaluating, setIsEvaluating] = useState(false);
+  const [evaluationData, setEvaluationData] = useState(null);
   const [bookmarkedQs, setBookmarkedQs] = useState(new Set());
   const [studentInfo, setStudentInfo] = useState(null);
 
@@ -27,14 +28,14 @@ export default function TakeTest() {
       const { data: testData } = await supabase.from('tests').select('*').eq('id', id).single();
       if (testData) setTest(testData);
 
-      const { data: qData } = await supabase.from('questions').select('*').eq('test_id', id);
+      // Only select fields needed for taking the test, DO NOT send correct_answer or explanation to client!
+      const { data: qData } = await supabase.from('questions').select('id, test_id, question_text, option_a, option_b, option_c, option_d').eq('test_id', id);
       if (qData) setQuestions(qData);
 
       const sData = localStorage.getItem('studentInfo');
       if (sData) {
         const student = JSON.parse(sData);
         setStudentInfo(student);
-        // Fetch existing bookmarks for this student in this test (or generally)
         const { data: bData } = await supabase.from('bookmarks').select('question_id').eq('student_id', student.id);
         if (bData) {
           setBookmarkedQs(new Set(bData.map(b => b.question_id)));
@@ -50,7 +51,6 @@ export default function TakeTest() {
     const isCurrentlyBookmarked = bookmarkedQs.has(questionId);
     
     if (isCurrentlyBookmarked) {
-      // Remove bookmark
       const { error } = await supabase.from('bookmarks').delete().eq('student_id', studentInfo.id).eq('question_id', questionId);
       if (!error) {
         const newSet = new Set(bookmarkedQs);
@@ -58,7 +58,6 @@ export default function TakeTest() {
         setBookmarkedQs(newSet);
       }
     } else {
-      // Add bookmark
       const { error } = await supabase.from('bookmarks').insert([{ student_id: studentInfo.id, question_id: questionId }]);
       if (!error) {
         const newSet = new Set(bookmarkedQs);
@@ -72,13 +71,25 @@ export default function TakeTest() {
     setAnswers({ ...answers, [currentIdx]: option });
   };
 
-  const handleSubmit = () => {
-    let s = 0;
-    questions.forEach((q, i) => {
-      if (answers[i] === q.correct_answer) s++;
-    });
-    setScore(s);
-    setIsSubmitted(true);
+  const handleSubmit = async () => {
+    setIsEvaluating(true);
+    try {
+      const res = await fetch('/api/evaluate-test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ testId: id, answers })
+      });
+      const data = await res.json();
+      if (data.results) {
+        setEvaluationData(data);
+        setIsSubmitted(true);
+      } else {
+        throw new Error(data.error || 'Failed to verify test answers');
+      }
+    } catch (err) {
+      alert("Error evaluating test: " + err.message);
+    }
+    setIsEvaluating(false);
   };
 
   const handleLanguageSwitch = async (lang) => {
@@ -113,66 +124,50 @@ export default function TakeTest() {
 
   const currentQuestions = language === 'hi' && translatedQuestions ? translatedQuestions : questions;
 
-  if (isSubmitted) {
+  if (isSubmitted && evaluationData) {
     return (
       <div className="container py-4 animate-fade-in">
         <div className="flex justify-between align-center mb-4">
           <h1 className="mb-4">Test Completed!</h1>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-            <div style={{ background: 'rgba(255,255,255,0.05)', padding: '0.2rem', borderRadius: '8px', display: 'flex', gap: '0.2rem', border: '1px solid var(--glass-border)' }}>
-              <button 
-                onClick={() => handleLanguageSwitch('en')} 
-                style={{ background: language === 'en' ? 'var(--primary-color)' : 'transparent', color: language === 'en' ? '#0a0a0a' : 'white', border: 'none', padding: '0.4rem 1rem', borderRadius: '6px', cursor: 'pointer', fontWeight: language === 'en' ? 'bold' : 'normal', transition: 'all 0.3s' }}
-              >
-                English
-              </button>
-              <button 
-                onClick={() => handleLanguageSwitch('hi')} 
-                style={{ background: language === 'hi' ? 'var(--primary-color)' : 'transparent', color: language === 'hi' ? '#0a0a0a' : 'white', border: 'none', padding: '0.4rem 1rem', borderRadius: '6px', cursor: 'pointer', fontWeight: language === 'hi' ? 'bold' : 'normal', transition: 'all 0.3s' }}
-              >
-                Hindi
-              </button>
-            </div>
-          </div>
         </div>
 
         <div className="glass-card mb-4 text-center" style={{ padding: '2rem' }}>
-          <h2 className="text-accent" style={{ fontSize: '3rem' }}>{score} / {questions.length}</h2>
+          <h2 className="text-accent" style={{ fontSize: '3rem' }}>{evaluationData.score} / {evaluationData.total}</h2>
           <p className="text-muted mt-2">Your Score</p>
           <button className="btn-primary mt-4" onClick={() => router.push('/student-dashboard')}>Back to Dashboard</button>
         </div>
 
         <h3 className="mb-4">Answer Key & Explanations</h3>
         
-        {isTranslating ? (
-          <div className="glass-card text-center py-5">
-            <p className="text-accent" style={{ fontSize: '1.2rem' }}>अनुवाद किया जा रहा है... (Translating to Hindi...)</p>
-          </div>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-            {currentQuestions.map((q, idx) => {
-              const originalQ = questions[idx]; // We match by original answer keys
-              const userAnswer = answers[idx];
-              const isCorrect = userAnswer === originalQ.correct_answer;
-              
-              return (
-                <div key={idx} className="glass-card" style={{ borderLeft: `4px solid ${isCorrect ? '#00e676' : '#ff1744'}` }}>
-                  <h4 style={{ marginBottom: '1rem' }}>Q{idx + 1}. {q.question_text}</h4>
-                  
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1rem' }}>
-                    {['option_a', 'option_b', 'option_c', 'option_d'].map((optKey, optIdx) => {
-                      const optText = q[optKey];
-                      const originalOptText = originalQ[optKey];
-                      const isUserSelection = userAnswer === originalOptText;
-                      const isActualCorrect = originalQ.correct_answer === originalOptText;
-                      
-                      let bg = 'rgba(255,255,255,0.05)';
-                      let border = '1px solid var(--glass-border)';
-                      if (isActualCorrect) {
-                        bg = 'rgba(0, 230, 118, 0.1)';
-                        border = '1px solid #00e676';
-                      } else if (isUserSelection && !isCorrect) {
-                        bg = 'rgba(255, 23, 68, 0.1)';
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          {evaluationData.results.map((q, idx) => {
+            const isCorrect = q.isCorrect;
+            const userAnswer = q.userAnswer;
+            const actualCorrect = q.actualCorrect;
+            
+            // Try to match translated question if available
+            const displayQText = currentQuestions[idx]?.question_text || q.question_text;
+
+            return (
+              <div key={idx} className="glass-card" style={{ borderLeft: `4px solid ${isCorrect ? '#00e676' : '#ff1744'}` }}>
+                <h4 style={{ marginBottom: '1rem' }}>Q{idx + 1}. {displayQText}</h4>
+                
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1rem' }}>
+                  {['option_a', 'option_b', 'option_c', 'option_d'].map((optKey, optIdx) => {
+                    // Display text (might be translated) vs logic text
+                    const displayOptText = currentQuestions[idx]?.[optKey] || q[optKey];
+                    const originalOptText = q[optKey];
+                    
+                    const isUserSelection = userAnswer === originalOptText;
+                    const isActualCorrect = actualCorrect === originalOptText;
+                    
+                    let bg = 'rgba(255,255,255,0.05)';
+                    let border = '1px solid var(--glass-border)';
+                    if (isActualCorrect) {
+                      bg = 'rgba(0, 230, 118, 0.1)';
+                      border = '1px solid #00e676';
+                    } else if (isUserSelection && !isCorrect) {
+                      bg = 'rgba(255, 23, 68, 0.1)';
                         border = '1px solid #ff1744';
                       }
 
@@ -196,7 +191,6 @@ export default function TakeTest() {
               )
             })}
           </div>
-        )}
       </div>
     );
   }
