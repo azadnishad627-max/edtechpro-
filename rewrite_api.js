@@ -1,4 +1,5 @@
-import { NextResponse } from 'next/server';
+﻿const fs = require('fs');
+let content = `import { NextResponse } from 'next/server';
 import { supabase } from '../../../lib/supabaseClient';
 
 export async function POST(req) {
@@ -72,3 +73,5 @@ export async function POST(req) {
     return NextResponse.json({ error: 'Failed to evaluate test' }, { status: 500 });
   }
 }
+`;
+fs.writeFileSync('src/app/api/evaluate-test/route.js', content, 'utf8');
