@@ -173,7 +173,7 @@ export default function TakeTest() {
 
                       return (
                         <div key={optKey} style={{ padding: '0.8rem 1rem', borderRadius: '8px', background: bg, border: border, display: 'flex', justifyContent: 'space-between' }}>
-                          <span><strong style={{ color: isActualCorrect ? '#00e676' : 'var(--accent)', marginRight: '10px' }}>{String.fromCharCode(65 + optIdx)}.</strong> {optText}</span>
+                          <span><strong style={{ color: isActualCorrect ? '#00e676' : 'var(--accent)', marginRight: '10px' }}>{String.fromCharCode(65 + optIdx)}.</strong> {displayOptText}</span>
                           {isActualCorrect && <span style={{ color: '#00e676', fontWeight: 'bold', flexShrink: 0, marginLeft: '1rem' }}>✓ Correct</span>}
                           {isUserSelection && !isActualCorrect && <span style={{ color: '#ff1744', fontWeight: 'bold', flexShrink: 0, marginLeft: '1rem' }}>✗ Your Answer</span>}
                         </div>
