@@ -11,6 +11,7 @@ export default function AdminDashboard() {
   const [totalStudents, setTotalStudents] = useState(0);
   const [totalRevenue, setTotalRevenue] = useState(0);
   const [dbStudents, setDbStudents] = useState([]);
+  const [dbTestAttempts, setDbTestAttempts] = useState([]);
   
   // Batch Manager State
   const [batchTitle, setBatchTitle] = useState('');
@@ -164,6 +165,22 @@ export default function AdminDashboard() {
 
       const { data: tData } = await supabase.from('tests').select('*, batches(title)');
       if (tData) setDbTests(tData);
+
+      const { data: testAttemptsData } = await supabase
+        .from('test_attempts')
+        .select('*, profiles(name, class_name), tests(title)')
+        .order('created_at', { ascending: false });
+      
+      if (testAttemptsData) {
+        const sortedData = [...testAttemptsData].reverse();
+        const counts = {};
+        sortedData.forEach(attempt => {
+            const key = attempt.student_id + '_' + attempt.test_id;
+            counts[key] = (counts[key] || 0) + 1;
+            attempt.attempt_number = counts[key];
+        });
+        setDbTestAttempts(sortedData.reverse());
+      }
 
       const { data: studentsData, count: studentCount } = await supabase.from('profiles').select('*', { count: 'exact' }).eq('role', 'student');
       setTotalStudents(studentCount || 0);
@@ -827,6 +844,7 @@ export default function AdminDashboard() {
       <div className="flex mb-4" style={{ gap: '0.5rem', overflowX: 'auto', paddingBottom: '0.5rem', whiteSpace: 'nowrap' }}>
         <button className={activeTab === 'overview' ? 'btn-primary' : 'btn-outline'} onClick={() => setActiveTab('overview')} style={{ padding: '0.5rem 1rem' }}>Overview</button>
         <button className={activeTab === 'students' ? 'btn-primary' : 'btn-outline'} onClick={() => setActiveTab('students')} style={{ padding: '0.5rem 1rem' }}>Students List</button>
+        <button className={activeTab === 'results' ? 'btn-primary' : 'btn-outline'} onClick={() => setActiveTab('results')} style={{ padding: '0.5rem 1rem' }}>Test Results</button>
         <button className={activeTab === 'content' ? 'btn-primary' : 'btn-outline'} onClick={() => setActiveTab('content')} style={{ padding: '0.5rem 1rem' }}>Content Manager</button>
         <button className={activeTab === 'test' ? 'btn-primary' : 'btn-outline'} onClick={() => setActiveTab('test')} style={{ padding: '0.5rem 1rem' }}>Test Manager</button>
         <button className={activeTab === 'live' ? 'btn-primary' : 'btn-outline'} onClick={() => setActiveTab('live')} style={{ padding: '0.5rem 1rem' }}>Live Classes</button>
@@ -942,6 +960,42 @@ export default function AdminDashboard() {
         </div>
       )}
 
+            {activeTab === 'results' && (
+        <div className="animate-fade-in">
+          <div className="glass-card">
+            <h3 className="mb-4">Student Test Results</h3>
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', minWidth: '600px', borderCollapse: 'collapse', textAlign: 'left' }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid var(--glass-border)' }}>
+                    <th style={{ padding: '1rem', color: 'var(--text-secondary-dark)' }}>Student Name</th>
+                    <th style={{ padding: '1rem', color: 'var(--text-secondary-dark)' }}>Test Title</th>
+                    <th style={{ padding: '1rem', color: 'var(--text-secondary-dark)' }}>Attempt #</th>
+                    <th style={{ padding: '1rem', color: 'var(--text-secondary-dark)' }}>Score</th>
+                    <th style={{ padding: '1rem', color: 'var(--text-secondary-dark)' }}>Date & Time</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {dbTestAttempts.length === 0 ? (
+                    <tr><td colSpan="5" style={{ padding: '1rem', textAlign: 'center' }}>No results found.</td></tr>
+                  ) : dbTestAttempts.map(attempt => (
+                    <tr key={attempt.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                      <td style={{ padding: '1rem', fontWeight: 'bold' }}>{attempt.profiles?.name || 'N/A'} <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>({attempt.profiles?.class_name || 'N/A'})</span></td>
+                      <td style={{ padding: '1rem' }}>{attempt.tests?.title || 'Deleted Test'}</td>
+                      <td style={{ padding: '1rem' }}>
+                        <span style={{ background: 'rgba(255,255,255,0.1)', padding: '0.2rem 0.5rem', borderRadius: '4px', fontSize: '0.85rem' }}>Attempt {attempt.attempt_number}</span>
+                      </td>
+                      <td style={{ padding: '1rem', fontWeight: 'bold', color: attempt.score >= attempt.total_questions / 2 ? '#10b981' : '#ff4444' }}>{attempt.score} / {attempt.total_questions}</td>
+                      <td style={{ padding: '1rem' }}>{new Date(attempt.created_at).toLocaleString()}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+      
       {activeTab === 'test' && (
         <div className="animate-fade-in grid-cols-2" style={{ alignItems: 'flex-start' }}>
           <div className="glass-card mb-4">

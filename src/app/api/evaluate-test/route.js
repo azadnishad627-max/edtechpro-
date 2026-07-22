@@ -3,10 +3,23 @@ import { supabase } from '../../../lib/supabaseClient';
 
 export async function POST(req) {
   try {
-    const { testId, answers } = await req.json();
+    const { testId, answers, student_id } = await req.json();
 
     if (!testId || !answers) {
-      return NextResponse.json({ error: 'Missing testId or answers' }, { status: 400 });
+  
+    if (student_id) {
+      const { error: insertError } = await supabase.from('test_attempts').insert([{
+        student_id,
+        test_id: testId,
+        score,
+        total_questions: questions.length
+      }]);
+      if (insertError) {
+        console.error('Error saving test attempt:', insertError);
+      }
+    }
+
+    return NextResponse.json({ error: 'Missing testId or answers' }, { status: 400 });
     }
 
     // Fetch full questions from the database including correct_answer and explanation

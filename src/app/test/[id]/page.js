@@ -78,7 +78,7 @@ export default function TakeTest() {
       const res = await fetch('/api/evaluate-test', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ testId: id, answers })
+        body: JSON.stringify({ testId: id, answers, student_id: studentInfo.id })
       });
       const data = await res.json();
       if (data.results) {
