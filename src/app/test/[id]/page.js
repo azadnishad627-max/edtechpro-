@@ -26,6 +26,7 @@ export default function TakeTest() {
   const [translatedQuestions, setTranslatedQuestions] = useState(null);
   const [isTranslating, setIsTranslating] = useState(false);
   const [timeLeft, setTimeLeft] = useState(null);
+  const [lockedUntil, setLockedUntil] = useState(null);
 
   useEffect(() => {
     async function fetchTest() {
@@ -49,6 +50,24 @@ export default function TakeTest() {
         const { data: bData } = await supabase.from('bookmarks').select('question_id').eq('student_id', student.id);
         if (bData) {
           setBookmarkedQs(new Set(bData.map(b => b.question_id)));
+        }
+
+        const { data: attemptData } = await supabase
+          .from('test_attempts')
+          .select('created_at')
+          .eq('student_id', student.id)
+          .eq('test_id', id)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .single();
+
+        if (attemptData) {
+          const lastAttemptTime = new Date(attemptData.created_at).getTime();
+          const now = Date.now();
+          const diffMinutes = (now - lastAttemptTime) / (1000 * 60);
+          if (diffMinutes < 20) {
+            setLockedUntil(new Date(lastAttemptTime + 20 * 60 * 1000));
+          }
         }
       }
     }
@@ -147,6 +166,26 @@ export default function TakeTest() {
 
   if (!test) return <div className="container py-4 text-center">Loading Test...</div>;
   if (questions.length === 0) return <div className="container py-4 text-center">No questions found for this test. Maybe they are still being generated!</div>;
+
+  if (lockedUntil) {
+    return (
+      <div className="container py-4 text-center animate-fade-in" style={{ marginTop: '10vh' }}>
+        <div className="glass-card" style={{ maxWidth: '500px', margin: '0 auto', padding: '3rem' }}>
+          <h2 style={{ fontSize: '3rem', margin: '0 0 1rem 0' }}>🔒</h2>
+          <h2 className="text-accent mb-4">Test Locked</h2>
+          <p className="text-muted" style={{ lineHeight: '1.6', fontSize: '1.1rem' }}>
+            You have recently submitted this test. To prevent spamming, you must wait 20 minutes before re-attempting the same test.
+          </p>
+          <div style={{ margin: '2rem 0', padding: '1rem', background: 'rgba(255, 23, 68, 0.1)', border: '1px solid #ff1744', borderRadius: '12px' }}>
+            <strong style={{ color: '#ff1744' }}>Unlocks at: {lockedUntil.toLocaleTimeString()}</strong>
+          </div>
+          <button className="btn-primary" onClick={() => router.push('/student-dashboard')} style={{ width: '100%' }}>
+            Go Back to Dashboard
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const currentQuestions = language === 'hi' && translatedQuestions ? translatedQuestions : questions;
 
