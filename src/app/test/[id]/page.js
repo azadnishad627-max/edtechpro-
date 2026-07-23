@@ -235,20 +235,33 @@ export default function TakeTest() {
 
   return (
     <div className="container py-4">
-        <div className="flex justify-between align-center mb-4">
-        <h2>{test.title}</h2>
+        <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
+        <h2 style={{ margin: 0, flex: '1 1 100%', '@media (min-width: 768px)': { flex: '1' } }}>{test.title}</h2>
         
         {timeLeft !== null && !isSubmitted && (
           <div style={{ 
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
             fontSize: '1.2rem', 
             fontWeight: 'bold', 
             color: timeLeft <= 60 ? '#ff1744' : 'var(--text-primary)',
-            padding: '0.5rem 1rem',
+            padding: '0.6rem 1.2rem',
             background: timeLeft <= 60 ? 'rgba(255, 23, 68, 0.1)' : 'rgba(255,255,255,0.05)',
             border: timeLeft <= 60 ? '1px solid #ff1744' : '1px solid var(--glass-border)',
-            borderRadius: '8px'
+            borderRadius: '50px',
+            boxShadow: '0 4px 10px rgba(0,0,0,0.1)',
+            backdropFilter: 'blur(10px)',
+            order: width < 768 ? -1 : 0 // on mobile, timer moves to top
           }}>
-            ⏱ {formatTime(timeLeft)}
+            <motion.div
+              animate={{ rotate: timeLeft <= 60 ? [0, -10, 10, -10, 10, 0] : [0, 180, 180] }}
+              transition={{ repeat: Infinity, duration: timeLeft <= 60 ? 0.5 : 3, repeatDelay: timeLeft <= 60 ? 0 : 1 }}
+              style={{ display: 'inline-block', transformOrigin: 'center' }}
+            >
+              ⏳
+            </motion.div>
+            <span style={{ fontVariantNumeric: 'tabular-nums' }}>{formatTime(timeLeft)}</span>
           </div>
         )}
 
