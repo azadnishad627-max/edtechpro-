@@ -235,7 +235,11 @@ export default function TakeTest() {
 
   return (
     <div className="container py-4">
-        <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
+        <div style={{ 
+          display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem',
+          position: 'sticky', top: '10px', zIndex: 50, padding: '1rem', background: 'rgba(15, 15, 15, 0.75)', backdropFilter: 'blur(16px)',
+          borderRadius: '16px', border: '1px solid rgba(255,255,255,0.1)', boxShadow: '0 10px 30px rgba(0,0,0,0.5)'
+        }}>
         <h2 style={{ margin: 0, flex: '1 1 100%', '@media (min-width: 768px)': { flex: '1' } }}>{test.title}</h2>
         
         {timeLeft !== null && !isSubmitted && (
@@ -339,7 +343,11 @@ export default function TakeTest() {
       </div>
       )}
 
-      <div className="flex justify-between">
+      <div style={{
+        display: 'flex', justifyContent: 'space-between', position: 'sticky', bottom: '10px', zIndex: 50,
+        padding: '1rem', background: 'rgba(15, 15, 15, 0.75)', backdropFilter: 'blur(16px)',
+        borderRadius: '16px', border: '1px solid rgba(255,255,255,0.1)', boxShadow: '0 -10px 30px rgba(0,0,0,0.5)', marginTop: '2rem'
+      }}>
         <button 
           className="btn-outline" 
           disabled={currentIdx === 0} 
