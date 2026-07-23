@@ -352,3 +352,25 @@ button {
 .animate-delay-1 { animation-delay: 0.15s; }
 .animate-delay-2 { animation-delay: 0.3s; }
 .animate-delay-3 { animation-delay: 0.45s; }
+
+
+@keyframes gradientAnimation {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.animated-gradient-bg {
+  background: linear-gradient(-45deg, #0a0f1c, #1a2333, #0d1424, #121c2d);
+  background-size: 400% 400%;
+  animation: gradientAnimation 15s ease infinite;
+}
+
+.animate-tab-enter {
+  animation: tabEnter 0.4s ease-out forwards;
+}
+
+@keyframes tabEnter {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}

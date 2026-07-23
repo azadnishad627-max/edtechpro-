@@ -642,7 +642,7 @@ export default function StudentDashboard() {
           </div>
           <div>
             <p className="text-muted" style={{ margin: '0 0 0.2rem 0', fontSize: '0.85rem' }}>Welcome back,</p>
-            <h1 className="animate-fade-in" style={{ margin: 0, fontSize: 'clamp(1.4rem, 5vw, 1.8rem)', lineHeight: '1.2', fontWeight: '700' }}>{student.name} 👋</h1>
+            <h1 className="animate-tab-enter" style={{ margin: 0, fontSize: 'clamp(1.4rem, 5vw, 1.8rem)', lineHeight: '1.2', fontWeight: '700' }}>{student.name} 👋</h1>
             <div style={{ display: 'flex', gap: '0.8rem', marginTop: '0.3rem' }}>
               <span style={{ fontSize: '0.85rem', background: 'rgba(255, 215, 0, 0.1)', color: '#ffd700', padding: '0.2rem 0.6rem', borderRadius: '20px', border: '1px solid rgba(255, 215, 0, 0.3)' }}>🏆 {student.points || 0} Pts</span>
               <span style={{ fontSize: '0.85rem', background: 'rgba(255, 68, 68, 0.1)', color: '#ff4444', padding: '0.2rem 0.6rem', borderRadius: '20px', border: '1px solid rgba(255, 68, 68, 0.3)' }}>🔥 {student.streak || 0} Day Streak</span>
@@ -667,7 +667,7 @@ export default function StudentDashboard() {
         <button className={activeTab === 'more' ? 'btn-primary' : 'btn-outline'} onClick={() => switchTab('more')}>🎮 More</button>
       </div>
 
-      <div className="animate-fade-in">
+      <div className="animate-tab-enter">
         {activeTab === 'courses' && !selectedBatch && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
             
@@ -870,7 +870,7 @@ export default function StudentDashboard() {
         )}
 
         {activeTab === 'leaderboard' && (
-          <div className="animate-fade-in">
+          <div className="animate-tab-enter">
             <h2 className="mb-4 text-accent text-center" style={{ fontSize: '2rem' }}>🏆 Global Leaderboard</h2>
             <div className="glass-card" style={{ padding: '0', overflow: 'hidden' }}>
               {leaderboard.length === 0 ? <p className="text-muted text-center" style={{ padding: '2rem' }}>No data available yet.</p> : leaderboard.map((lbStudent, idx) => (

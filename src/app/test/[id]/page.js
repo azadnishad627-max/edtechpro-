@@ -7,6 +7,7 @@ export default function TakeTest() {
   const params = useParams();
   const id = params?.id;
   const router = useRouter();
+  const { width, height } = useWindowSize();
   
   const [test, setTest] = useState(null);
   const [questions, setQuestions] = useState([]);

@@ -1,4 +1,6 @@
 "use client";
+import { motion } from 'framer-motion';
+import { Tilt } from 'react-tilt';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 

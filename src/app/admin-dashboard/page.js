@@ -858,7 +858,7 @@ export default function AdminDashboard() {
 
   return (
     <div className="container pt-navbar mobile-pb">
-      <div className="flex justify-between align-center mb-4 animate-fade-in" style={{ flexWrap: 'wrap', gap: '1rem' }}>
+      <div className="flex justify-between align-center mb-4 animate-tab-enter" style={{ flexWrap: 'wrap', gap: '1rem' }}>
         <h1 style={{ margin: 0 }}>Admin Dashboard</h1>
         <button 
           className="btn-outline" 
@@ -885,7 +885,7 @@ export default function AdminDashboard() {
       </div>
 
       {activeTab === 'overview' && (
-        <div className="animate-fade-in grid-cols-2" style={{ alignItems: 'flex-start' }}>
+        <div className="animate-tab-enter grid-cols-2" style={{ alignItems: 'flex-start' }}>
           <div>
             <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
               <div className="glass-card text-center" style={{ flex: 1, minWidth: '150px' }}>
@@ -945,7 +945,7 @@ export default function AdminDashboard() {
       )}
 
       {activeTab === 'content' && (
-        <div className="animate-fade-in grid-cols-2" style={{ alignItems: 'flex-start' }}>
+        <div className="animate-tab-enter grid-cols-2" style={{ alignItems: 'flex-start' }}>
           <div className="glass-card">
             <h3 className="mb-4">Add Course Material</h3>
             <form onSubmit={handleUploadContent} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -992,7 +992,7 @@ export default function AdminDashboard() {
       )}
 
             {activeTab === 'results' && (
-          <div className="animate-fade-in">
+          <div className="animate-tab-enter">
             <div className="glass-card">
               <h3 className="mb-4">Student Test Results</h3>
               <div style={{ overflowX: 'auto' }}>
@@ -1071,7 +1071,7 @@ export default function AdminDashboard() {
         )}
         
         {activeTab === 'test' && (
-        <div className="animate-fade-in grid-cols-2" style={{ alignItems: 'flex-start' }}>
+        <div className="animate-tab-enter grid-cols-2" style={{ alignItems: 'flex-start' }}>
           <div className="glass-card mb-4">
             <h3 className="mb-4">Create New Online Test</h3>
             <form onSubmit={handlePublishTest} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -1167,7 +1167,7 @@ export default function AdminDashboard() {
         </div>
       )}
       {activeTab === 'students' && (
-        <div className="animate-fade-in">
+        <div className="animate-tab-enter">
           <div className="glass-card">
             <h3 className="mb-4">Registered Students ({dbStudents.length})</h3>
             <div style={{ overflowX: 'auto' }}>
@@ -1220,7 +1220,7 @@ export default function AdminDashboard() {
       )}
 
       {activeTab === 'live' && (
-        <div className="animate-fade-in grid-cols-2" style={{ alignItems: 'flex-start' }}>
+        <div className="animate-tab-enter grid-cols-2" style={{ alignItems: 'flex-start' }}>
           <div className="glass-card">
             <h3 className="mb-4">Schedule Live Class</h3>
             <form onSubmit={handleCreateLiveClass} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -1257,7 +1257,7 @@ export default function AdminDashboard() {
       )}
 
       {activeTab === 'announcements' && (
-        <div className="animate-fade-in grid-cols-2" style={{ alignItems: 'flex-start' }}>
+        <div className="animate-tab-enter grid-cols-2" style={{ alignItems: 'flex-start' }}>
           <div className="glass-card">
             <h3 className="mb-4">Post New Announcement</h3>
             <form onSubmit={handleCreateAnnouncement} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -1286,7 +1286,7 @@ export default function AdminDashboard() {
       )}
 
       {activeTab === 'feedback' && (
-        <div className="animate-fade-in">
+        <div className="animate-tab-enter">
           <div className="glass-card">
             <h3 className="mb-4">Student Feedback & Reports</h3>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1rem' }}>
@@ -1304,7 +1304,7 @@ export default function AdminDashboard() {
         </div>
       )}
       {activeTab === 'admin_chats' && (
-        <div className="animate-fade-in" style={{ height: 'calc(100vh - 200px)' }}>
+        <div className="animate-tab-enter" style={{ height: 'calc(100vh - 200px)' }}>
           <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
             <h3 className="mb-4">Student Messages</h3>
             <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
