@@ -25,12 +25,18 @@ export default function TakeTest() {
   const [language, setLanguage] = useState('en');
   const [translatedQuestions, setTranslatedQuestions] = useState(null);
   const [isTranslating, setIsTranslating] = useState(false);
+  const [timeLeft, setTimeLeft] = useState(null);
 
   useEffect(() => {
     async function fetchTest() {
       if (!id) return;
       const { data: testData } = await supabase.from('tests').select('*').eq('id', id).single();
-      if (testData) setTest(testData);
+      if (testData) {
+        setTest(testData);
+        if (testData.duration_mins) {
+          setTimeLeft(testData.duration_mins * 60);
+        }
+      }
 
       // Only select fields needed for taking the test, DO NOT send correct_answer or explanation to client!
       const { data: qData } = await supabase.from('questions').select('id, test_id, question_text, option_a, option_b, option_c, option_d').eq('test_id', id);
@@ -48,6 +54,21 @@ export default function TakeTest() {
     }
     fetchTest();
   }, [id]);
+
+  useEffect(() => {
+    if (timeLeft === null || isSubmitted || isEvaluating) return;
+    
+    if (timeLeft <= 0) {
+      handleSubmit();
+      return;
+    }
+    
+    const timer = setTimeout(() => {
+      setTimeLeft(prev => prev - 1);
+    }, 1000);
+    
+    return () => clearTimeout(timer);
+  }, [timeLeft, isSubmitted, isEvaluating]);
 
   const handleBookmark = async (questionId) => {
     if (!studentInfo) return;
@@ -205,10 +226,32 @@ export default function TakeTest() {
   const q = currentQuestions[currentIdx];
   const originalQ = questions[currentIdx];
 
+  const formatTime = (seconds) => {
+    if (seconds === null) return '';
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m}:${s < 10 ? '0' : ''}${s}`;
+  };
+
   return (
     <div className="container py-4">
         <div className="flex justify-between align-center mb-4">
         <h2>{test.title}</h2>
+        
+        {timeLeft !== null && !isSubmitted && (
+          <div style={{ 
+            fontSize: '1.2rem', 
+            fontWeight: 'bold', 
+            color: timeLeft <= 60 ? '#ff1744' : 'var(--text-primary)',
+            padding: '0.5rem 1rem',
+            background: timeLeft <= 60 ? 'rgba(255, 23, 68, 0.1)' : 'rgba(255,255,255,0.05)',
+            border: timeLeft <= 60 ? '1px solid #ff1744' : '1px solid var(--glass-border)',
+            borderRadius: '8px'
+          }}>
+            ⏱ {formatTime(timeLeft)}
+          </div>
+        )}
+
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
           <div style={{ background: 'rgba(255,255,255,0.05)', padding: '0.2rem', borderRadius: '8px', display: 'flex', gap: '0.2rem', border: '1px solid var(--glass-border)' }}>
             <button 
