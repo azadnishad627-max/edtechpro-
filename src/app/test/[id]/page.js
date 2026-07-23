@@ -1,5 +1,8 @@
 "use client";
 import { useEffect, useState } from 'react';
+import Confetti from 'react-confetti';
+import { useWindowSize } from 'react-use';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useParams, useRouter } from 'next/navigation';
 import { supabase } from '../../../lib/supabaseClient';
 
