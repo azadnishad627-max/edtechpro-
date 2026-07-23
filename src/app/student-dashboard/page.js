@@ -3,11 +3,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../../lib/supabaseClient';
 import Game2048 from '../../components/Game2048';
-import ReactMarkdown from 'react-markdown';
-import remarkMath from 'remark-math';
-import remarkGfm from 'remark-gfm';
-import rehypeKatex from 'rehype-katex';
-import 'katex/dist/katex.min.css';
+
 
 export default function StudentDashboard() {
   const [student, setStudent] = useState(null);
@@ -43,9 +39,7 @@ export default function StudentDashboard() {
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
-  const [chatMessage, setChatMessage] = useState('');
-  const [chatImageFile, setChatImageFile] = useState(null);
-  const [chatImagePreview, setChatImagePreview] = useState(null);
+
 
   // New Features State
   const [announcements, setAnnouncements] = useState([]);
@@ -141,10 +135,7 @@ export default function StudentDashboard() {
   };
 
   const photoInputRef = useRef(null);
-  const chatFileInputRef = useRef(null);
-  const [chatHistory, setChatHistory] = useState([
-    { role: 'ai', text: 'Hello! I am your AI Mentor. Upload a photo of a question or ask me anything!' }
-  ]);
+
   const router = useRouter();
 
   
@@ -157,11 +148,7 @@ export default function StudentDashboard() {
     }
   }, []);
 
-  useEffect(() => {
-    if (chatHistory.length > 1) {
-      localStorage.setItem('aiChatHistory', JSON.stringify(chatHistory));
-    }
-  }, [chatHistory]);
+
 
   const [dbBatches, setDbBatches] = useState([]);
   const [dbTests, setDbTests] = useState([]);
@@ -200,14 +187,7 @@ export default function StudentDashboard() {
       router.push('/student-setup');
     }
 
-    const savedChat = localStorage.getItem('aiChatHistory');
-    if (savedChat) {
-      try {
-        setChatHistory(JSON.parse(savedChat));
-      } catch(e) {
-        console.error("Failed to load chat history", e);
-      }
-    }
+
 
     async function fetchData() {
       fetchBatches();
@@ -507,49 +487,7 @@ export default function StudentDashboard() {
     }
   }
 
-  const handleChatImageChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      setChatImageFile(file);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setChatImagePreview(reader.result);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
 
-  const handleChatSubmit = async (e) => {
-    e.preventDefault();
-    if (!chatMessage.trim() && !chatImagePreview) return;
-    
-    const userMsg = chatMessage;
-    const userImg = chatImagePreview;
-    const mime = chatImageFile?.type;
-    
-    // Add user message
-    setChatHistory(prev => [...prev, { role: 'user', text: userMsg, image: userImg }]);
-    setChatMessage('');
-    setChatImageFile(null);
-    setChatImagePreview(null);
-    if (chatFileInputRef.current) chatFileInputRef.current.value = '';
-    
-    try {
-      const res = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          message: userMsg,
-          imageBase64: userImg,
-          mimeType: mime
-        })
-      });
-      const data = await res.json();
-      setChatHistory(prev => [...prev, { role: 'ai', text: data.reply || "Error connecting to AI." }]);
-    } catch (err) {
-      setChatHistory(prev => [...prev, { role: 'ai', text: "Error connecting to AI." }]);
-    }
-  };
 
   const handleLogout = () => {
     localStorage.removeItem('studentInfo');
@@ -662,7 +600,7 @@ export default function StudentDashboard() {
         <button className={activeTab === 'courses' ? 'btn-primary' : 'btn-outline'} onClick={() => { switchTab('courses'); setSelectedBatch(null); }}>My Courses</button>
         <button className={activeTab === 'leaderboard' ? 'btn-primary' : 'btn-outline'} onClick={() => switchTab('leaderboard')}>🏆 Leaderboard</button>
         <button className={activeTab === 'tests' ? 'btn-primary' : 'btn-outline'} onClick={() => switchTab('tests')}>Online Tests</button>
-        <button className={activeTab === 'ai' ? 'btn-primary' : 'btn-outline'} onClick={() => switchTab('ai')}>✨ AI Mentor</button>
+
         <button className={activeTab === 'profile' ? 'btn-primary' : 'btn-outline'} onClick={() => switchTab('profile')}>👤 Profile</button>
         <button className={activeTab === 'more' ? 'btn-primary' : 'btn-outline'} onClick={() => switchTab('more')}>🎮 More</button>
       </div>
@@ -803,71 +741,7 @@ export default function StudentDashboard() {
           </div>
         )}
 
-        {activeTab === 'ai' && (
-          <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 220px)' }}>
-            <h2 className="mb-4 text-accent" style={{ flexShrink: 0, fontSize: '1.5rem' }}>AI Mentor</h2>
-            <div className="glass-card" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', padding: 0, borderRadius: '16px' }}>
-              <div style={{ flex: 1, overflowY: 'auto', padding: '1rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                {chatHistory.map((msg, i) => (
-                  <div key={i} style={{ 
-                    alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start',
-                    background: msg.role === 'user' ? 'var(--primary-color)' : 'rgba(255,255,255,0.05)',
-                    border: msg.role === 'user' ? 'none' : '1px solid var(--glass-border)',
-                    padding: '1rem',
-                    borderRadius: msg.role === 'user' ? '20px 20px 0 20px' : '20px 20px 20px 0',
-                    maxWidth: '85%',
-                    wordBreak: 'break-word',
-                    boxShadow: '0 4px 15px rgba(0,0,0,0.1)'
-                  }}>
-                    {msg.image && <img src={msg.image} alt="Upload" style={{ maxWidth: '100%', borderRadius: '8px', marginBottom: '0.5rem' }} />}
-                    <div style={{ color: msg.role === 'user' ? 'white' : 'var(--text-light)', lineHeight: '1.6' }} className="markdown-body">
-                      <ReactMarkdown
-                        remarkPlugins={[remarkMath, remarkGfm]}
-                        rehypePlugins={[rehypeKatex]}
-                      >
-                        {msg.text}
-                      </ReactMarkdown>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              
-              {chatImagePreview && (
-                <div style={{ padding: '0.5rem 1rem', background: 'var(--bg-dark)', display: 'flex', alignItems: 'center', gap: '1rem', borderTop: '1px solid var(--glass-border)' }}>
-                  <img src={chatImagePreview} alt="Preview" style={{ height: '40px', borderRadius: '4px' }} />
-                  <button type="button" onClick={() => { setChatImageFile(null); setChatImagePreview(null); if (chatFileInputRef.current) chatFileInputRef.current.value = ''; }} style={{ background: 'transparent', border: 'none', color: '#ff4444', cursor: 'pointer', fontSize: '0.9rem' }}>✖ Remove Photo</button>
-                </div>
-              )}
 
-              <div style={{ padding: '1rem', background: 'transparent' }}>
-                <form onSubmit={handleChatSubmit} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', background: 'rgba(30, 41, 59, 0.8)', backdropFilter: 'blur(10px)', border: '1px solid var(--glass-border)', borderRadius: '50px', padding: '0.3rem', boxShadow: '0 10px 25px rgba(0,0,0,0.2)' }}>
-                  <input 
-                    type="file" 
-                    accept="image/*" 
-                    capture="environment"
-                    ref={chatFileInputRef} 
-                    onChange={handleChatImageChange} 
-                    style={{ display: 'none' }} 
-                    id="chat-file-upload"
-                  />
-                  <label htmlFor="chat-file-upload" style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-light)', fontSize: '1.3rem', width: '40px', height: '40px', borderRadius: '50%', background: 'rgba(255,255,255,0.05)', marginLeft: '0.2rem', transition: 'all 0.3s' }}>
-                    📸
-                  </label>
-                  <input 
-                    type="text" 
-                    value={chatMessage}
-                    onChange={(e) => setChatMessage(e.target.value)}
-                    placeholder="Ask a question..." 
-                    style={{ flex: 1, minWidth: 0, padding: '0.8rem 0.5rem', border: 'none', background: 'transparent', color: 'white', outline: 'none', fontSize: '0.95rem' }} 
-                  />
-                  <button type="submit" style={{ background: 'var(--gradient-brand)', color: 'white', border: 'none', width: '42px', height: '42px', borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', marginRight: '0.2rem', boxShadow: '0 4px 10px rgba(6, 182, 212, 0.3)', transition: 'transform 0.2s' }} onMouseOver={e => e.currentTarget.style.transform='scale(1.05)'} onMouseOut={e => e.currentTarget.style.transform='scale(1)'}>
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
-                  </button>
-                </form>
-              </div>
-            </div>
-          </div>
-        )}
 
         {activeTab === 'leaderboard' && (
           <div className="animate-tab-enter">
@@ -1002,20 +876,22 @@ export default function StudentDashboard() {
         {activeTab === 'syllabus' && (
           <div className="glass-card">
             <h2 className="mb-4 text-accent text-center">NMMS Syllabus (2026-2027)</h2>
-            <div className="markdown-body" style={{ color: 'var(--text-light)', lineHeight: '1.8' }}>
-              <ReactMarkdown remarkPlugins={[remarkMath, remarkGfm]} rehypePlugins={[rehypeKatex]}>
-                {`**Paper 1: MAT (Mental Ability Test)** - 90 MCQs
-- Analogy & Classification
-- Numerical & Alphabet Series
-- Pattern Perception & Hidden Figures
-- Blood Relations & Coding-Decoding
-- Venn Diagrams
+            <div style={{ color: 'var(--text-light)', lineHeight: '1.8' }}>
+              <p><strong>Paper 1: MAT (Mental Ability Test)</strong> - 90 MCQs</p>
+              <ul style={{ marginLeft: '1.5rem', marginBottom: '1rem', listStyleType: 'disc' }}>
+                <li>Analogy &amp; Classification</li>
+                <li>Numerical &amp; Alphabet Series</li>
+                <li>Pattern Perception &amp; Hidden Figures</li>
+                <li>Blood Relations &amp; Coding-Decoding</li>
+                <li>Venn Diagrams</li>
+              </ul>
 
-**Paper 2: SAT (Scholastic Aptitude Test)** - 90 MCQs (Class 7 & 8 NCERT)
-- **Maths (20 Marks):** Algebra, Geometry, Mensuration, Data Handling, Fractions, Roots, Exponents.
-- **Science (35 Marks):** Motion, Force, Light, Sound, Electricity, Metals/Non-metals, Acids/Bases, Pollution, Cells, Microorganisms, Reproduction, Environment.
-- **Social Science (35 Marks):** History (Mughal, British, Freedom), Geography (Earth, Climate, Agriculture), Civics (Constitution, Parliament, Fundamental Rights).`}
-              </ReactMarkdown>
+              <p><strong>Paper 2: SAT (Scholastic Aptitude Test)</strong> - 90 MCQs (Class 7 &amp; 8 NCERT)</p>
+              <ul style={{ marginLeft: '1.5rem', marginBottom: '1rem', listStyleType: 'disc' }}>
+                <li><strong>Maths (20 Marks):</strong> Algebra, Geometry, Mensuration, Data Handling, Fractions, Roots, Exponents.</li>
+                <li><strong>Science (35 Marks):</strong> Motion, Force, Light, Sound, Electricity, Metals/Non-metals, Acids/Bases, Pollution, Cells, Microorganisms, Reproduction, Environment.</li>
+                <li><strong>Social Science (35 Marks):</strong> History (Mughal, British, Freedom), Geography (Earth, Climate, Agriculture), Civics (Constitution, Parliament, Fundamental Rights).</li>
+              </ul>
             </div>
           </div>
         )}
@@ -1035,10 +911,7 @@ export default function StudentDashboard() {
           <span className="bottom-nav-icon">📝</span>
           <span>Tests</span>
         </div>
-        <div className={`bottom-nav-item ${activeTab === 'ai' ? 'active' : ''}`} onClick={() => switchTab('ai')}>
-          <span className="bottom-nav-icon">✨</span>
-          <span>AI Mentor</span>
-        </div>
+
         <div className={`bottom-nav-item ${activeTab === 'profile' ? 'active' : ''}`} onClick={() => switchTab('profile')}>
           <span className="bottom-nav-icon">👤</span>
           <span>Profile</span>
