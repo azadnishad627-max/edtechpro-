@@ -113,7 +113,7 @@ export default function TakeTest() {
     } else {
       setFaceMissingTimer(prev => {
         const newVal = prev + 1;
-        if (newVal >= 20) {
+        if (newVal >= 10) {
           setProctorLockTimer(120); // 2 minute lock
           return 0;
         }
@@ -308,13 +308,15 @@ export default function TakeTest() {
   if (proctorLockTimer > 0) {
     return (
       <div className="container py-4 text-center animate-fade-in" style={{ marginTop: '10vh' }}>
-        <ProctoringCamera onFaceStatus={handleFaceStatus} />
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1.5rem' }}>
+          <ProctoringCamera onFaceStatus={handleFaceStatus} />
+        </div>
         <div className="glass-card" style={{ maxWidth: '500px', margin: '0 auto', padding: '3rem', border: '2px solid #ff1744' }}>
           <h2 style={{ fontSize: '3rem', margin: '0 0 1rem 0' }}>🚨</h2>
           <h2 className="text-accent mb-4" style={{ color: '#ff1744' }}>Suspicious Activity Detected</h2>
           <p className="text-muted" style={{ lineHeight: '1.6', fontSize: '1.1rem' }}>
-            Your face was not detected in the camera frame for over 20 seconds. 
-            As a penalty, your test has been temporarily locked. Please ensure you remain visible.
+            Your face was not detected or you were looking away for over 10 seconds. 
+            As a penalty, your test has been temporarily locked. Please look straight at the screen.
           </p>
           <div style={{ margin: '2rem 0', padding: '1rem', background: 'rgba(255, 23, 68, 0.1)', border: '1px solid #ff1744', borderRadius: '12px' }}>
             <strong style={{ color: '#ff1744', fontSize: '1.5rem' }}>Time until unlock: {Math.floor(proctorLockTimer/60)}:{(proctorLockTimer%60).toString().padStart(2, '0')}</strong>
@@ -326,15 +328,14 @@ export default function TakeTest() {
 
   return (
     <div className="container py-4">
-        <ProctoringCamera onFaceStatus={handleFaceStatus} />
         
-        {faceMissingTimer > 0 && faceMissingTimer < 20 && (
+        {faceMissingTimer > 0 && faceMissingTimer < 10 && (
           <motion.div 
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             style={{ position: 'fixed', top: '20px', left: '50%', transform: 'translateX(-50%)', background: '#ff1744', color: 'white', padding: '0.8rem 1.5rem', borderRadius: '50px', zIndex: 9999, fontWeight: 'bold', boxShadow: '0 4px 15px rgba(255, 23, 68, 0.4)' }}
           >
-            ⚠️ Please look at the camera! Locking in {20 - faceMissingTimer}s
+            ⚠️ Look straight at screen! Locking in {10 - faceMissingTimer}s
           </motion.div>
         )}
         <div style={{ 
@@ -342,36 +343,42 @@ export default function TakeTest() {
           position: 'sticky', top: '10px', zIndex: 50, padding: '1rem', background: 'rgba(15, 15, 15, 0.75)', backdropFilter: 'blur(16px)',
           borderRadius: '16px', border: '1px solid rgba(255,255,255,0.1)', boxShadow: '0 10px 30px rgba(0,0,0,0.5)'
         }}>
-        <h2 style={{ margin: 0, flex: '1 1 100%', '@media (min-width: 768px)': { flex: '1' } }}>{test.title}</h2>
         
-        {timeLeft !== null && !isSubmitted && (
-          <div style={{ 
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem',
-            fontSize: '1.2rem', 
-            fontWeight: 'bold', 
-            color: timeLeft <= 60 ? '#ff1744' : 'var(--text-primary)',
-            padding: '0.6rem 1.2rem',
-            background: timeLeft <= 60 ? 'rgba(255, 23, 68, 0.1)' : 'rgba(255,255,255,0.05)',
-            border: timeLeft <= 60 ? '1px solid #ff1744' : '1px solid var(--glass-border)',
-            borderRadius: '50px',
-            boxShadow: '0 4px 10px rgba(0,0,0,0.1)',
-            backdropFilter: 'blur(10px)',
-            order: width < 768 ? -1 : 0 // on mobile, timer moves to top
-          }}>
-            <motion.div
-              animate={{ rotate: timeLeft <= 60 ? [0, -10, 10, -10, 10, 0] : [0, 180, 180] }}
-              transition={{ repeat: Infinity, duration: timeLeft <= 60 ? 0.5 : 3, repeatDelay: timeLeft <= 60 ? 0 : 1 }}
-              style={{ display: 'inline-block', transformOrigin: 'center' }}
-            >
-              ⏳
-            </motion.div>
-            <span style={{ fontVariantNumeric: 'tabular-nums' }}>{formatTime(timeLeft)}</span>
-          </div>
-        )}
+        {/* Row 1: Timer + Camera */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', gap: '1rem' }}>
+          {timeLeft !== null && !isSubmitted && (
+            <div style={{ 
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              fontSize: '1.2rem', 
+              fontWeight: 'bold', 
+              color: timeLeft <= 60 ? '#ff1744' : 'var(--text-primary)',
+              padding: '0.6rem 1.2rem',
+              background: timeLeft <= 60 ? 'rgba(255, 23, 68, 0.1)' : 'rgba(255,255,255,0.05)',
+              border: timeLeft <= 60 ? '1px solid #ff1744' : '1px solid var(--glass-border)',
+              borderRadius: '50px',
+              boxShadow: '0 4px 10px rgba(0,0,0,0.1)',
+              backdropFilter: 'blur(10px)',
+            }}>
+              <motion.div
+                animate={{ rotate: timeLeft <= 60 ? [0, -10, 10, -10, 10, 0] : [0, 180, 180] }}
+                transition={{ repeat: Infinity, duration: timeLeft <= 60 ? 0.5 : 3, repeatDelay: timeLeft <= 60 ? 0 : 1 }}
+                style={{ display: 'inline-block', transformOrigin: 'center' }}
+              >
+                ⏳
+              </motion.div>
+              <span style={{ fontVariantNumeric: 'tabular-nums' }}>{formatTime(timeLeft)}</span>
+            </div>
+          )}
+          <ProctoringCamera onFaceStatus={handleFaceStatus} />
+        </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+        {/* Row 2: Title */}
+        <h2 style={{ margin: 0, width: '100%' }}>{test.title}</h2>
+        
+        {/* Row 3: Language + Question count */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', width: '100%', justifyContent: 'space-between' }}>
           <div style={{ background: 'rgba(255,255,255,0.05)', padding: '0.2rem', borderRadius: '8px', display: 'flex', gap: '0.2rem', border: '1px solid var(--glass-border)' }}>
             <button 
               onClick={() => handleLanguageSwitch('en')} 
@@ -386,7 +393,7 @@ export default function TakeTest() {
               Hindi
             </button>
           </div>
-          <span className="text-muted mobile-hide">Question {currentIdx + 1} of {questions.length}</span>
+          <span className="text-muted">Question {currentIdx + 1} of {questions.length}</span>
         </div>
       </div>
 

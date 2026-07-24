@@ -1,18 +1,19 @@
 "use client";
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import * as tf from '@tensorflow/tfjs';
 import * as blazeface from '@tensorflow-models/blazeface';
 
 export default function ProctoringCamera({ onFaceStatus }) {
   const videoRef = useRef(null);
+  const canvasRef = useRef(null);
   const [model, setModel] = useState(null);
   const [isReady, setIsReady] = useState(false);
   const [hasPermission, setHasPermission] = useState(false);
   const [permissionError, setPermissionError] = useState(false);
+  const [status, setStatus] = useState('loading'); // loading | ok | warning | alert
 
   useEffect(() => {
     async function initModel() {
-      // Load the blazeface model
       await tf.ready();
       const loadedModel = await blazeface.load();
       setModel(loadedModel);
@@ -47,6 +48,7 @@ export default function ProctoringCamera({ onFaceStatus }) {
     requestCamera(false);
   }, []);
 
+  // Enhanced face + eye direction detection
   useEffect(() => {
     if (!model || !isReady || !hasPermission) return;
 
@@ -54,14 +56,61 @@ export default function ProctoringCamera({ onFaceStatus }) {
       if (videoRef.current && videoRef.current.readyState === 4) {
         try {
           const predictions = await model.estimateFaces(videoRef.current, false);
-          // If predictions array has elements, a face is detected
-          const faceDetected = predictions.length > 0;
-          onFaceStatus(faceDetected);
+          
+          if (predictions.length === 0) {
+            // No face detected at all
+            setStatus('alert');
+            onFaceStatus(false);
+            return;
+          }
+
+          const face = predictions[0];
+          // Blazeface landmarks: [rightEye, leftEye, nose, mouth, rightEar, leftEar]
+          const landmarks = face.landmarks;
+          
+          if (landmarks && landmarks.length >= 6) {
+            const rightEye = landmarks[0];
+            const leftEye = landmarks[1];
+            const nose = landmarks[2];
+            const rightEar = landmarks[4];
+            const leftEar = landmarks[5];
+            
+            // Calculate face width using ears
+            const faceWidth = Math.abs(leftEar[0] - rightEar[0]);
+            
+            // Calculate eye midpoint
+            const eyeMidX = (rightEye[0] + leftEye[0]) / 2;
+            
+            // Calculate nose offset from eye center (determines if looking left/right)
+            const noseOffset = Math.abs(nose[0] - eyeMidX);
+            const noseRatio = faceWidth > 0 ? noseOffset / faceWidth : 0;
+            
+            // Calculate eye distance ratio (if one eye is much closer than the other, face is turned)
+            const eyeDistance = Math.abs(leftEye[0] - rightEye[0]);
+            const eyeToFaceRatio = faceWidth > 0 ? eyeDistance / faceWidth : 0;
+            
+            // Face is looking away if:
+            // 1. Nose is significantly off-center from eyes (looking left/right)
+            // 2. Eye distance is too small compared to face width (face turned sideways)
+            const isLookingAway = noseRatio > 0.15 || eyeToFaceRatio < 0.25;
+            
+            if (isLookingAway) {
+              setStatus('warning');
+              onFaceStatus(false); // Treat looking away same as no face
+            } else {
+              setStatus('ok');
+              onFaceStatus(true);
+            }
+          } else {
+            // Face detected but no reliable landmarks
+            setStatus('ok');
+            onFaceStatus(true);
+          }
         } catch (e) {
           // Ignore tensor errors if camera drops
         }
       }
-    }, 1000); // Check every 1 second to save performance
+    }, 800); // Check every 800ms for better responsiveness
 
     return () => clearInterval(intervalId);
   }, [model, isReady, hasPermission, onFaceStatus]);
@@ -70,71 +119,118 @@ export default function ProctoringCamera({ onFaceStatus }) {
     setIsReady(true);
   };
 
+  const getBorderColor = () => {
+    switch(status) {
+      case 'ok': return '#00e676';
+      case 'warning': return '#ff9100';
+      case 'alert': return '#ff1744';
+      default: return '#666';
+    }
+  };
+
+  const getStatusIcon = () => {
+    switch(status) {
+      case 'ok': return '✓';
+      case 'warning': return '⚠';
+      case 'alert': return '✗';
+      default: return '...';
+    }
+  };
+
   return (
     <div style={{
-      position: 'fixed',
-      top: '80px',    // Changed to top right corner
-      right: '20px',
-
-      width: '120px',
-      height: '120px',
+      position: 'relative',
+      width: '90px',
+      height: '90px',
       borderRadius: '50%',
-      overflow: 'hidden',
-      border: '4px solid ' + (isReady ? '#00e676' : '#ff1744'),
-      boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
-      zIndex: 9999,
-      background: '#000',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center'
+      overflow: 'visible',
+      flexShrink: 0,
     }}>
-      <video
-        ref={videoRef}
-        autoPlay
-        playsInline
-        muted
-        onPlaying={handleVideoPlaying}
-        style={{
-          width: '100%',
-          height: '100%',
-          objectFit: 'cover',
-          transform: 'scaleX(-1)', // Mirror effect
-          display: hasPermission && !permissionError ? 'block' : 'none'
-        }}
-      />
-      {permissionError && (
-        <button 
-          onClick={() => requestCamera(true)}
+      {/* Main camera circle */}
+      <div style={{
+        width: '90px',
+        height: '90px',
+        borderRadius: '50%',
+        overflow: 'hidden',
+        border: `3px solid ${getBorderColor()}`,
+        boxShadow: `0 0 15px ${getBorderColor()}40, 0 4px 15px rgba(0,0,0,0.3)`,
+        background: '#000',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        transition: 'border-color 0.3s, box-shadow 0.3s'
+      }}>
+        <video
+          ref={videoRef}
+          autoPlay
+          playsInline
+          muted
+          onPlaying={handleVideoPlaying}
           style={{
-            position: 'absolute',
-            background: '#ff1744',
-            color: 'white',
-            border: 'none',
-            borderRadius: '8px',
-            padding: '0.5rem',
-            fontSize: '0.8rem',
-            cursor: 'pointer',
-            textAlign: 'center',
-            width: '80%',
-            zIndex: 10
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover',
+            transform: 'scaleX(-1)',
+            display: hasPermission && !permissionError ? 'block' : 'none'
           }}
-        >
-          Allow Camera
-        </button>
-      )}
-      {!isReady && !permissionError && (
+        />
+        {permissionError && (
+          <button 
+            onClick={() => requestCamera(true)}
+            style={{
+              position: 'absolute',
+              background: '#ff1744',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              padding: '0.3rem',
+              fontSize: '0.6rem',
+              cursor: 'pointer',
+              textAlign: 'center',
+              width: '70%',
+              zIndex: 10
+            }}
+          >
+            Allow Camera
+          </button>
+        )}
+        {!isReady && !permissionError && (
+          <div style={{
+            position: 'absolute',
+            top: 0, left: 0, right: 0, bottom: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            background: 'rgba(0,0,0,0.6)',
+            color: 'white',
+            fontSize: '0.6rem',
+            textAlign: 'center'
+          }}>
+            Loading...
+          </div>
+        )}
+      </div>
+      
+      {/* Status badge */}
+      {isReady && (
         <div style={{
           position: 'absolute',
-          top: 0, left: 0, right: 0, bottom: 0,
+          bottom: '-2px',
+          right: '-2px',
+          width: '24px',
+          height: '24px',
+          borderRadius: '50%',
+          background: getBorderColor(),
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          background: 'rgba(0,0,0,0.6)',
-          color: 'white',
-          fontSize: '0.8rem',
-          textAlign: 'center'
+          fontSize: '12px',
+          fontWeight: 'bold',
+          color: '#000',
+          border: '2px solid #0a0a0a',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.3)'
         }}>
-          Starting...
+          {getStatusIcon()}
         </div>
       )}
     </div>
