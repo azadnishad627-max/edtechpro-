@@ -13,6 +13,8 @@
     "@capacitor/core": "^6.2.1",
     "@google/genai": "^2.13.0",
     "@supabase/supabase-js": "^2.110.2",
+    "@tensorflow-models/blazeface": "^0.1.0",
+    "@tensorflow/tfjs": "^4.22.0",
     "framer-motion": "^12.42.2",
     "next": "16.2.10",
     "next-pwa": "^5.6.0",
