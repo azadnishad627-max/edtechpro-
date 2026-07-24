@@ -197,24 +197,39 @@ export default function ProctoringCamera({ onFaceStatus }) {
           }}
         />
         {permissionError && (
-          <button 
-            onClick={() => requestCamera(true)}
-            style={{
-              position: 'absolute',
-              background: '#ff1744',
-              color: 'white',
-              border: 'none',
-              borderRadius: '8px',
-              padding: '0.3rem',
-              fontSize: '0.6rem',
-              cursor: 'pointer',
-              textAlign: 'center',
-              width: '70%',
-              zIndex: 10
-            }}
-          >
-            Allow Camera
-          </button>
+          <div style={{
+            position: 'fixed',
+            top: 0, left: 0, right: 0, bottom: 0,
+            background: 'rgba(10, 10, 10, 0.95)',
+            zIndex: 9999,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '2rem',
+            backdropFilter: 'blur(10px)'
+          }}>
+            <h2 style={{ color: '#ff1744', marginBottom: '1rem', textAlign: 'center', fontSize: '2rem' }}>📷 Camera Required</h2>
+            <p style={{ color: 'var(--text-muted)', marginBottom: '2rem', textAlign: 'center', maxWidth: '500px', fontSize: '1.2rem', lineHeight: '1.6' }}>
+              You cannot start or continue the test without camera access. This is required for live proctoring. Please allow camera permissions to proceed.
+            </p>
+            <button 
+              onClick={() => requestCamera(true)}
+              style={{
+                background: '#ff1744',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                padding: '1rem 2rem',
+                fontSize: '1.1rem',
+                fontWeight: 'bold',
+                cursor: 'pointer',
+                boxShadow: '0 4px 15px rgba(255, 23, 68, 0.4)'
+              }}
+            >
+              Allow Camera
+            </button>
+          </div>
         )}
         {!isReady && !permissionError && (
           <div style={{
