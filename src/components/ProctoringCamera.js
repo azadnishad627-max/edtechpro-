@@ -20,9 +20,10 @@ export default function ProctoringCamera({ onFaceStatus }) {
     initModel();
   }, []);
 
-  const requestCamera = async () => {
+  const requestCamera = async (isManual = false) => {
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
       console.warn("Browser API navigator.mediaDevices.getUserMedia not available");
+      if (isManual) alert("Your browser doesn't support camera features. Please use Chrome or Safari.");
       setPermissionError(true);
       return;
     }
@@ -37,12 +38,13 @@ export default function ProctoringCamera({ onFaceStatus }) {
       }
     } catch (err) {
       console.error("Camera access denied or error:", err);
+      if (isManual) alert("Camera Blocked! Please click the 'Lock' icon next to the URL bar and allow Camera access.\nError: " + err.message);
       setPermissionError(true);
     }
   };
 
   useEffect(() => {
-    requestCamera();
+    requestCamera(false);
   }, []);
 
   useEffect(() => {
@@ -71,8 +73,9 @@ export default function ProctoringCamera({ onFaceStatus }) {
   return (
     <div style={{
       position: 'fixed',
-      bottom: '100px', // Adjusted to avoid footer
-      right: '20px',   // Moved to right corner
+      top: '80px',    // Changed to top right corner
+      right: '20px',
+
       width: '120px',
       height: '120px',
       borderRadius: '50%',
@@ -101,7 +104,7 @@ export default function ProctoringCamera({ onFaceStatus }) {
       />
       {permissionError && (
         <button 
-          onClick={requestCamera}
+          onClick={() => requestCamera(true)}
           style={{
             position: 'absolute',
             background: '#ff1744',
