@@ -8,6 +8,7 @@ export default function ProctoringCamera({ onFaceStatus }) {
   const [model, setModel] = useState(null);
   const [isReady, setIsReady] = useState(false);
   const [hasPermission, setHasPermission] = useState(false);
+  const [permissionError, setPermissionError] = useState(false);
 
   useEffect(() => {
     async function initModel() {
@@ -19,25 +20,29 @@ export default function ProctoringCamera({ onFaceStatus }) {
     initModel();
   }, []);
 
-  useEffect(() => {
-    async function setupCamera() {
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        console.warn("Browser API navigator.mediaDevices.getUserMedia not available");
-        return;
-      }
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { width: 320, height: 240, facingMode: "user" }
-        });
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          setHasPermission(true);
-        }
-      } catch (err) {
-        console.error("Camera access denied or error:", err);
-      }
+  const requestCamera = async () => {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      console.warn("Browser API navigator.mediaDevices.getUserMedia not available");
+      setPermissionError(true);
+      return;
     }
-    setupCamera();
+    try {
+      setPermissionError(false);
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { width: 320, height: 240, facingMode: "user" }
+      });
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        setHasPermission(true);
+      }
+    } catch (err) {
+      console.error("Camera access denied or error:", err);
+      setPermissionError(true);
+    }
+  };
+
+  useEffect(() => {
+    requestCamera();
   }, []);
 
   useEffect(() => {
@@ -66,8 +71,8 @@ export default function ProctoringCamera({ onFaceStatus }) {
   return (
     <div style={{
       position: 'fixed',
-      bottom: '20px',
-      left: '20px',
+      bottom: '100px', // Adjusted to avoid footer
+      right: '20px',   // Moved to right corner
       width: '120px',
       height: '120px',
       borderRadius: '50%',
@@ -75,7 +80,10 @@ export default function ProctoringCamera({ onFaceStatus }) {
       border: '4px solid ' + (isReady ? '#00e676' : '#ff1744'),
       boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
       zIndex: 9999,
-      background: '#000'
+      background: '#000',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center'
     }}>
       <video
         ref={videoRef}
@@ -87,10 +95,31 @@ export default function ProctoringCamera({ onFaceStatus }) {
           width: '100%',
           height: '100%',
           objectFit: 'cover',
-          transform: 'scaleX(-1)' // Mirror effect
+          transform: 'scaleX(-1)', // Mirror effect
+          display: hasPermission && !permissionError ? 'block' : 'none'
         }}
       />
-      {!isReady && (
+      {permissionError && (
+        <button 
+          onClick={requestCamera}
+          style={{
+            position: 'absolute',
+            background: '#ff1744',
+            color: 'white',
+            border: 'none',
+            borderRadius: '8px',
+            padding: '0.5rem',
+            fontSize: '0.8rem',
+            cursor: 'pointer',
+            textAlign: 'center',
+            width: '80%',
+            zIndex: 10
+          }}
+        >
+          Allow Camera
+        </button>
+      )}
+      {!isReady && !permissionError && (
         <div style={{
           position: 'absolute',
           top: 0, left: 0, right: 0, bottom: 0,
@@ -102,7 +131,7 @@ export default function ProctoringCamera({ onFaceStatus }) {
           fontSize: '0.8rem',
           textAlign: 'center'
         }}>
-          Starting Camera...
+          Starting...
         </div>
       )}
     </div>
