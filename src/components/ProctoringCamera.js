@@ -106,7 +106,7 @@ export default function ProctoringCamera({ onFaceStatus }) {
               const mean = historyRef.current.reduce((a,b) => a+b, 0) / 5;
               const variance = historyRef.current.reduce((a,b) => a + Math.pow(b - mean, 2), 0) / 5;
               // If variance is extremely low over 4 seconds, it's a static printed photo
-              if (variance < 0.00005) {
+              if (variance < 0.0000001) {
                 isSpoof = true;
               }
             }
