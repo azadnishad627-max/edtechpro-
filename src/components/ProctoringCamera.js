@@ -10,7 +10,8 @@ export default function ProctoringCamera({ onFaceStatus }) {
   const [isReady, setIsReady] = useState(false);
   const [hasPermission, setHasPermission] = useState(false);
   const [permissionError, setPermissionError] = useState(false);
-  const [status, setStatus] = useState('loading'); // loading | ok | warning | alert
+  const [status, setStatus] = useState('loading'); // loading | ok | warning | alert | spoof
+  const historyRef = useRef([]);
 
   useEffect(() => {
     async function initModel() {
@@ -94,7 +95,26 @@ export default function ProctoringCamera({ onFaceStatus }) {
             // 2. Eye distance is too small compared to face width (face turned sideways)
             const isLookingAway = noseRatio > 0.15 || eyeToFaceRatio < 0.25;
             
-            if (isLookingAway) {
+            // Liveness detection (Spoof check) using variance of micro-movements
+            historyRef.current.push(eyeToFaceRatio);
+            if (historyRef.current.length > 5) {
+              historyRef.current.shift();
+            }
+            
+            let isSpoof = false;
+            if (historyRef.current.length === 5) {
+              const mean = historyRef.current.reduce((a,b) => a+b, 0) / 5;
+              const variance = historyRef.current.reduce((a,b) => a + Math.pow(b - mean, 2), 0) / 5;
+              // If variance is extremely low over 4 seconds, it's a static printed photo
+              if (variance < 0.00005) {
+                isSpoof = true;
+              }
+            }
+            
+            if (isSpoof) {
+              setStatus('spoof');
+              onFaceStatus(false);
+            } else if (isLookingAway) {
               setStatus('warning');
               onFaceStatus(false); // Treat looking away same as no face
             } else {
@@ -124,6 +144,7 @@ export default function ProctoringCamera({ onFaceStatus }) {
       case 'ok': return '#00e676';
       case 'warning': return '#ff9100';
       case 'alert': return '#ff1744';
+      case 'spoof': return '#d50000'; // Dark red for spoof
       default: return '#666';
     }
   };
@@ -133,6 +154,7 @@ export default function ProctoringCamera({ onFaceStatus }) {
       case 'ok': return '✓';
       case 'warning': return '⚠';
       case 'alert': return '✗';
+      case 'spoof': return '🤖'; // Robot icon for fake photo
       default: return '...';
     }
   };
