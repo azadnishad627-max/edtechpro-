@@ -74,6 +74,19 @@ export default function TakeTest() {
           }
         }
       }
+      
+      // Restore progress if exists
+      const savedProgress = localStorage.getItem(`testProgress_${id}`);
+      if (savedProgress) {
+        try {
+          const parsed = JSON.parse(savedProgress);
+          if (parsed.answers) setAnswers(parsed.answers);
+          if (parsed.currentIdx !== undefined) setCurrentIdx(parsed.currentIdx);
+          if (parsed.timeLeft !== undefined && parsed.timeLeft > 0) {
+            setTimeout(() => setTimeLeft(parsed.timeLeft), 50); // slight delay to override initial setTimeLeft
+          }
+        } catch(e) { console.error("Error restoring progress", e); }
+      }
     }
     fetchTest();
   }, [id]);
@@ -93,6 +106,14 @@ export default function TakeTest() {
     
     return () => clearTimeout(timer);
   }, [timeLeft, isSubmitted, isEvaluating, proctorLockTimer]);
+
+  // Save progress to local storage continuously
+  useEffect(() => {
+    if (id && timeLeft !== null && !isSubmitted && !isEvaluating) {
+      const progress = { answers, currentIdx, timeLeft };
+      localStorage.setItem(`testProgress_${id}`, JSON.stringify(progress));
+    }
+  }, [answers, currentIdx, timeLeft, id, isSubmitted, isEvaluating]);
 
   // Proctor Penalty Timer logic
   useEffect(() => {
@@ -161,6 +182,7 @@ export default function TakeTest() {
       if (data.results) {
         setEvaluationData(data);
         setIsSubmitted(true);
+        localStorage.removeItem(`testProgress_${id}`); // Clear saved progress on submit
       } else {
         throw new Error(data.error || 'Failed to verify test answers');
       }
