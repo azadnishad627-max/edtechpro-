@@ -66,6 +66,7 @@ export default function AdminDashboard() {
   const [testTitle, setTestTitle] = useState('');
   const [duration, setDuration] = useState('');
   const [totalQuestions, setTotalQuestions] = useState('');
+  const [scheduledTime, setScheduledTime] = useState('');
   const [testTopic, setTestTopic] = useState('');
   const [testPdf, setTestPdf] = useState(null);
   const [rawText, setRawText] = useState('');
@@ -624,7 +625,7 @@ export default function AdminDashboard() {
     }
     try {
       const { data, error } = await supabase.from('tests').insert([
-        { batch_id: testBatch, title: testTitle, duration_mins: parseInt(duration), total_questions: parseInt(totalQuestions), test_url: testUrl }
+        { batch_id: testBatch, title: testTitle, duration_mins: parseInt(duration), total_questions: parseInt(totalQuestions), test_url: testUrl, scheduled_time: scheduledTime ? new Date(scheduledTime).toISOString() : null }
       ]);
       if (error) throw error;
       alert("Test Link Published Successfully!");
@@ -652,7 +653,7 @@ export default function AdminDashboard() {
           
           // 1. Insert Test
           const { data: testData, error: testError } = await supabase.from('tests').insert([
-            { batch_id: testBatch, title: testTitle, duration_mins: parseInt(duration), total_questions: parseInt(totalQuestions) }
+            { batch_id: testBatch, title: testTitle, duration_mins: parseInt(duration), total_questions: parseInt(totalQuestions), scheduled_time: scheduledTime ? new Date(scheduledTime).toISOString() : null }
           ]).select();
           if (testError) throw testError;
           const testId = testData[0].id;
@@ -720,7 +721,7 @@ export default function AdminDashboard() {
 
       // 1. Insert Test
       const { data: testData, error: testError } = await supabase.from('tests').insert([
-        { batch_id: testBatch, title: testTitle, duration_mins: parseInt(duration), total_questions: parseInt(totalQuestions) }
+        { batch_id: testBatch, title: testTitle, duration_mins: parseInt(duration), total_questions: parseInt(totalQuestions), scheduled_time: scheduledTime ? new Date(scheduledTime).toISOString() : null }
       ]).select();
 
       if (testError) throw testError;
@@ -773,7 +774,7 @@ export default function AdminDashboard() {
 
       // 1. Insert Test
       const { data: testData, error: testError } = await supabase.from('tests').insert([
-        { batch_id: testBatch, title: testTitle, duration_mins: parseInt(duration), total_questions: parseInt(totalQuestions) }
+        { batch_id: testBatch, title: testTitle, duration_mins: parseInt(duration), total_questions: parseInt(totalQuestions), scheduled_time: scheduledTime ? new Date(scheduledTime).toISOString() : null }
       ]).select();
 
       if (testError) throw testError;
@@ -825,7 +826,7 @@ export default function AdminDashboard() {
 
       // 1. Insert Test
       const { data: testData, error: testError } = await supabase.from('tests').insert([
-        { batch_id: testBatch, title: testTitle, duration_mins: parseInt(duration), total_questions: parseInt(totalQuestions) }
+        { batch_id: testBatch, title: testTitle, duration_mins: parseInt(duration), total_questions: parseInt(totalQuestions), scheduled_time: scheduledTime ? new Date(scheduledTime).toISOString() : null }
       ]).select();
 
       if (testError) throw testError;
@@ -1084,6 +1085,7 @@ export default function AdminDashboard() {
                 <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
                   <input type="number" placeholder="Duration (Mins)" value={duration} onChange={(e) => setDuration(e.target.value)} style={{ flex: 1, minWidth: '120px', padding: '1rem', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'var(--bg-dark)', color: 'white' }} required />
                   <input type="number" placeholder="Total Questions" value={totalQuestions} onChange={(e) => setTotalQuestions(e.target.value)} style={{ flex: 1, minWidth: '120px', padding: '1rem', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'var(--bg-dark)', color: 'white' }} required />
+                  <input type="datetime-local" placeholder="Scheduled Time (Optional)" value={scheduledTime} onChange={(e) => setScheduledTime(e.target.value)} title="Scheduled Time (Optional)" style={{ flex: 1, minWidth: '150px', padding: '1rem', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'var(--bg-dark)', color: 'white' }} />
                 </div>
               </div>
               

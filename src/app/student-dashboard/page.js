@@ -702,22 +702,52 @@ export default function StudentDashboard() {
 
         {activeTab === 'tests' && (
           <div>
-            <h2 className="mb-4 text-muted">Available Tests</h2>
-            {dbTests.length === 0 ? <p className="text-muted">No tests available right now.</p> : dbTests.map(test => (
-              <div key={test.id} className="glass-card mb-4" style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div>
-                  <h3 className="mb-2">{test.title}</h3>
-                  <p className="text-muted">Batch: {test.batches?.title} | Duration: {test.duration_mins} Mins | {test.total_questions} Questions</p>
-                </div>
-                <button onClick={() => {
-                  if(test.test_url) {
-                    setActiveTestUrl(test.test_url);
-                  } else {
-                    router.push(`/test/${test.id}`);
-                  }
-                }} className="btn-primary" style={{ padding: '0.5rem 1rem' }}>Start Test</button>
-              </div>
-            ))}
+            {(() => {
+              const now = new Date();
+              const activeTests = dbTests.filter(t => !t.scheduled_time || new Date(t.scheduled_time) <= now);
+              // Sort upcoming tests by time ascending so soonest is first
+              const upcomingTests = dbTests.filter(t => t.scheduled_time && new Date(t.scheduled_time) > now)
+                                           .sort((a, b) => new Date(a.scheduled_time) - new Date(b.scheduled_time));
+
+              return (
+                <>
+                  {upcomingTests.length > 0 && (
+                    <>
+                      <h2 className="mb-4" style={{ color: '#ff9100' }}>⏰ Upcoming Scheduled Tests</h2>
+                      {upcomingTests.map(test => (
+                        <div key={test.id} className="glass-card mb-4" style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', justifyContent: 'space-between', alignItems: 'center', opacity: 0.8, borderLeft: '4px solid #ff9100' }}>
+                          <div>
+                            <h3 className="mb-2">{test.title}</h3>
+                            <p className="text-muted">Batch: {test.batches?.title} | Duration: {test.duration_mins} Mins | {test.total_questions} Questions</p>
+                          </div>
+                          <div style={{ textAlign: 'right' }}>
+                            <p style={{ margin: '0 0 0.5rem 0', color: '#ff9100', fontWeight: 'bold' }}>Unlocks: {new Date(test.scheduled_time).toLocaleString()}</p>
+                            <button disabled className="btn-outline" style={{ padding: '0.5rem 1rem', cursor: 'not-allowed', opacity: 0.5 }}>Scheduled</button>
+                          </div>
+                        </div>
+                      ))}
+                    </>
+                  )}
+
+                  <h2 className="mb-4 text-accent mt-5">▶ Active Tests</h2>
+                  {activeTests.length === 0 ? <p className="text-muted">No active tests available right now.</p> : activeTests.map(test => (
+                    <div key={test.id} className="glass-card mb-4" style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div>
+                        <h3 className="mb-2">{test.title}</h3>
+                        <p className="text-muted">Batch: {test.batches?.title} | Duration: {test.duration_mins} Mins | {test.total_questions} Questions</p>
+                      </div>
+                      <button onClick={() => {
+                        if(test.test_url) {
+                          setActiveTestUrl(test.test_url);
+                        } else {
+                          router.push(`/test/${test.id}`);
+                        }
+                      }} className="btn-primary" style={{ padding: '0.5rem 1rem' }}>Start Test</button>
+                    </div>
+                  ))}
+                </>
+              );
+            })()}
 
             <h2 className="mb-4 text-accent mt-5" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>⭐ Saved Questions (For Revision)</h2>
             {bookmarkedQuestions.length === 0 ? <p className="text-muted">You haven't bookmarked any questions yet. Start a test and click the ⭐ icon on difficult questions to save them here!</p> : (
