@@ -113,7 +113,7 @@ export default function TakeTest() {
     } else {
       setFaceMissingTimer(prev => {
         const newVal = prev + 1;
-        if (newVal >= 10) {
+        if (newVal >= 5) {
           setProctorLockTimer(120); // 2 minute lock
           return 0;
         }
@@ -315,7 +315,7 @@ export default function TakeTest() {
           <h2 style={{ fontSize: '3rem', margin: '0 0 1rem 0' }}>🚨</h2>
           <h2 className="text-accent mb-4" style={{ color: '#ff1744' }}>Suspicious Activity Detected</h2>
           <p className="text-muted" style={{ lineHeight: '1.6', fontSize: '1.1rem' }}>
-            Your face was not detected or you were looking away for over 10 seconds. 
+            Your face was not detected or you were looking away for over 5 seconds. 
             As a penalty, your test has been temporarily locked. Please look straight at the screen.
           </p>
           <div style={{ margin: '2rem 0', padding: '1rem', background: 'rgba(255, 23, 68, 0.1)', border: '1px solid #ff1744', borderRadius: '12px' }}>
