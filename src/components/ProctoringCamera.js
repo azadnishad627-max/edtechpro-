@@ -11,6 +11,7 @@ export default function ProctoringCamera({ onFaceStatus }) {
   const [hasPermission, setHasPermission] = useState(false);
   const [permissionError, setPermissionError] = useState(false);
   const [status, setStatus] = useState('loading'); // loading | ok | warning | alert | spoof
+  const [blockedMessage, setBlockedMessage] = useState('');
   const historyRef = useRef([]);
 
   useEffect(() => {
@@ -25,7 +26,7 @@ export default function ProctoringCamera({ onFaceStatus }) {
   const requestCamera = async (isManual = false) => {
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
       console.warn("Browser API navigator.mediaDevices.getUserMedia not available");
-      if (isManual) alert("Your browser doesn't support camera features. Please use Chrome or Safari.");
+      if (isManual) setBlockedMessage("Your browser doesn't support camera features. Please use Chrome or Safari.");
       setPermissionError(true);
       return;
     }
@@ -40,7 +41,9 @@ export default function ProctoringCamera({ onFaceStatus }) {
       }
     } catch (err) {
       console.error("Camera access denied or error:", err);
-      if (isManual) alert("Camera Blocked! Please click the 'Lock' icon next to the URL bar and allow Camera access.\nError: " + err.message);
+      if (isManual) {
+        setBlockedMessage("Camera is permanently blocked by your browser! Please click the 'Lock' icon next to the URL bar, allow Camera access, and then refresh the page.");
+      }
       setPermissionError(true);
     }
   };
@@ -210,9 +213,14 @@ export default function ProctoringCamera({ onFaceStatus }) {
             backdropFilter: 'blur(10px)'
           }}>
             <h2 style={{ color: '#ff1744', marginBottom: '1rem', textAlign: 'center', fontSize: '2rem' }}>📷 Camera Required</h2>
-            <p style={{ color: 'var(--text-muted)', marginBottom: '2rem', textAlign: 'center', maxWidth: '500px', fontSize: '1.2rem', lineHeight: '1.6' }}>
+            <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem', textAlign: 'center', maxWidth: '500px', fontSize: '1.2rem', lineHeight: '1.6' }}>
               You cannot start or continue the test without camera access. This is required for live proctoring. Please allow camera permissions to proceed.
             </p>
+            {blockedMessage && (
+              <div style={{ background: 'rgba(255, 23, 68, 0.1)', border: '1px solid #ff1744', padding: '1rem', borderRadius: '8px', marginBottom: '1.5rem', maxWidth: '500px', textAlign: 'center' }}>
+                <strong style={{ color: '#ff1744' }}>{blockedMessage}</strong>
+              </div>
+            )}
             <button 
               onClick={() => requestCamera(true)}
               style={{
