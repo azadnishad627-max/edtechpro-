@@ -852,13 +852,39 @@ export default function StudentDashboard() {
 
                       {/* Name & Batch */}
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.1rem', flex: 1, minWidth: 0, paddingLeft: '0.3rem' }}>
-                        <h3 style={{ 
-                          margin: 0, color: isMe ? 'var(--primary-color)' : 'white', 
-                          fontSize: isTop3 ? '1.1rem' : '1rem',
-                          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'
-                        }}>
-                          {lbStudent.name} {isMe && '(You)'}
-                        </h3>
+                        <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', width: 'fit-content' }}>
+                          {idx === 0 && (
+                            <img 
+                              src="https://media.giphy.com/media/26FPCXdkvDbKBbgOI/giphy.gif" 
+                              alt="Fire" 
+                              style={{ 
+                                position: 'absolute', 
+                                top: '50%', 
+                                left: '50%', 
+                                transform: 'translate(-50%, -50%)', 
+                                width: '200%', 
+                                height: '280%', 
+                                objectFit: 'cover', 
+                                mixBlendMode: 'color-dodge', 
+                                opacity: 0.9,
+                                zIndex: 0,
+                                pointerEvents: 'none',
+                                borderRadius: '10px'
+                              }} 
+                            />
+                          )}
+                          <h3 style={{ 
+                            position: 'relative',
+                            zIndex: 1,
+                            margin: 0, color: isMe ? 'var(--primary-color)' : 'white', 
+                            fontSize: isTop3 ? '1.1rem' : '1rem',
+                            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                            textShadow: idx === 0 ? '0 2px 4px rgba(0,0,0,1), 0 0 10px rgba(255,0,0,0.8)' : 'none'
+                          }}>
+                            {idx === 0 && <span style={{ marginRight: '6px', fontSize: '1.2rem' }}>🔫</span>}
+                            {lbStudent.name} {isMe && '(You)'}
+                          </h3>
+                        </div>
                         <p className="text-muted" style={{ margin: 0, fontSize: '0.8rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                           Batch: <span style={{ color: 'var(--text-light)' }}>{lbStudent.class_name || 'N/A'}</span>
                         </p>
