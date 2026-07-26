@@ -5,7 +5,9 @@ import { useWindowSize } from 'react-use';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useParams, useRouter } from 'next/navigation';
 import { supabase } from '../../../lib/supabaseClient';
-import ProctoringCamera from '../../../components/ProctoringCamera';
+import dynamic from 'next/dynamic';
+
+const ProctoringCamera = dynamic(() => import('../../../components/ProctoringCamera'), { ssr: false });
 
 export default function TakeTest() {
   const params = useParams();
@@ -147,7 +149,19 @@ export default function TakeTest() {
         const end = new Date(test.end_time);
         if (now >= end && !isSubmitted && !isEvaluating) {
           setIsTooLate(true);
-          handleSubmit();
+          // Only submit if answers were started, else just force submit
+          setIsEvaluating(true);
+          fetch('/api/evaluate-test', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ testId: id, answers, student_id: studentInfo?.id })
+          }).then(res => res.json()).then(data => {
+            if (data.results) {
+              setEvaluationData(data);
+              setIsSubmitted(true);
+              localStorage.removeItem(`testProgress_${id}`);
+            }
+          }).catch(err => console.error("Auto submit error", err)).finally(() => setIsEvaluating(false));
         }
       }
     };
@@ -155,7 +169,7 @@ export default function TakeTest() {
     checkTime();
     const interval = setInterval(checkTime, 10000);
     return () => clearInterval(interval);
-  }, [test, isSubmitted, isEvaluating]);
+  }, [test, isSubmitted, isEvaluating, answers, studentInfo?.id, id]);
 
   const handleFaceStatus = (isFacePresent) => {
     if (isSubmitted || isEvaluating || proctorLockTimer > 0) return; // Don't track if locked or submitted
@@ -233,7 +247,7 @@ export default function TakeTest() {
         const res = await fetch('/api/translate-test', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ questions, targetLanguage: 'Hindi' })
+          body: JSON.stringify({ questions })
         });
         const data = await res.json();
         if (data.translatedQuestions) {
@@ -252,6 +266,18 @@ export default function TakeTest() {
 
   if (!test) return <div className="container py-4 text-center">Loading Test...</div>;
   if (questions.length === 0) return <div className="container py-4 text-center">No questions found for this test. Maybe they are still being generated!</div>;
+
+  if (isTooEarly) {
+    return (
+      <div className="min-h-screen bg-gray-900 text-white p-6 pt-20 flex flex-col items-center justify-center animated-gradient-bg">
+        <div className="glass-card text-center p-8 max-w-md">
+          <h2 className="text-2xl font-bold text-yellow-400 mb-4">Test Not Started Yet</h2>
+          <p className="mb-4">This test is scheduled to start at: <br/><strong>{new Date(test.start_time).toLocaleString()}</strong></p>
+          <button className="btn-secondary" onClick={() => router.push('/student-dashboard')}>Go Back</button>
+        </div>
+      </div>
+    );
+  }
 
   if (lockedUntil) {
     return (
@@ -274,6 +300,7 @@ export default function TakeTest() {
   }
 
   const currentQuestions = language === 'hi' && translatedQuestions ? translatedQuestions : questions;
+dQuestions : questions;
 
   if (isSubmitted && evaluationData) {
     return (
