@@ -1086,7 +1086,8 @@ export default function AdminDashboard() {
                 <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
                   <input type="number" placeholder="Duration (Mins)" value={duration} onChange={(e) => setDuration(e.target.value)} style={{ flex: 1, minWidth: '120px', padding: '1rem', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'var(--bg-dark)', color: 'white' }} required />
                   <input type="number" placeholder="Total Questions" value={totalQuestions} onChange={(e) => setTotalQuestions(e.target.value)} style={{ flex: 1, minWidth: '120px', padding: '1rem', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'var(--bg-dark)', color: 'white' }} required />
-                  <input type="datetime-local" placeholder="Scheduled Time (Optional)" value={scheduledTime} onChange={(e) => setScheduledTime(e.target.value)} title="Scheduled Time (Optional)" style={{ flex: 1, minWidth: '150px', padding: '1rem', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'var(--bg-dark)', color: 'white' }} />
+                  <input type="datetime-local" placeholder="Start Time (Optional)" value={testStartTime} onChange={(e) => setTestStartTime(e.target.value)} title="Start Time (Optional)" style={{ flex: 1, minWidth: '150px', padding: '1rem', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'var(--bg-dark)', color: 'white' }} />
+                  <input type="datetime-local" placeholder="End Time (Optional)" value={testEndTime} onChange={(e) => setTestEndTime(e.target.value)} title="End Time (Optional)" style={{ flex: 1, minWidth: '150px', padding: '1rem', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'var(--bg-dark)', color: 'white' }} />
                 </div>
               </div>
               
