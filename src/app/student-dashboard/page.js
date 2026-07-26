@@ -816,7 +816,7 @@ export default function StudentDashboard() {
                 const isMe = student.id === lbStudent.id;
 
                 return (
-                  <div key={lbStudent.id} className={idx === 0 ? "video-bg-card" : ""} style={{ 
+                  <div key={lbStudent.id} className={idx <= 2 ? "video-bg-card" : ""} style={{ 
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between', 
                     padding: '1.2rem', 
                     borderBottom: idx === leaderboard.length - 1 ? 'none' : '1px solid rgba(255,255,255,0.05)',
@@ -824,7 +824,7 @@ export default function StudentDashboard() {
                     position: 'relative',
                     ...cardStyle
                   }}>
-                    {idx === 0 && (
+                    {idx <= 2 && (
                       <>
                         <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%', zIndex: 0, borderRadius: '15px', overflow: 'hidden' }}>
                           <video 
@@ -832,7 +832,7 @@ export default function StudentDashboard() {
                             loop 
                             muted 
                             playsInline 
-                            src="/gold.mp4"
+                            src={idx === 0 ? "/gold.mp4" : idx === 1 ? "/silver.mp4" : "/bronz.mp4"}
                             style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.8 }}
                           />
                         </div>
