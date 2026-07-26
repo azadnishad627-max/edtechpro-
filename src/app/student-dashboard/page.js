@@ -232,8 +232,30 @@ export default function StudentDashboard() {
   };
 
   const fetchLeaderboard = async () => {
-    const { data } = await supabase.from('profiles').select('*').eq('role', 'student').order('points', { ascending: false }).limit(10);
-    if (data) setLeaderboard(data);
+    const { data: profiles } = await supabase.from('profiles').select('*').eq('role', 'student');
+    const { data: attempts } = await supabase.from('test_attempts').select('student_id, test_id, score, created_at').order('created_at', { ascending: true });
+    
+    if (profiles && attempts) {
+      const firstAttempts = {};
+      attempts.forEach(a => {
+         const key = `${a.student_id}_${a.test_id}`;
+         if (!firstAttempts[key]) firstAttempts[key] = a.score;
+      });
+
+      const studentScores = {};
+      Object.entries(firstAttempts).forEach(([key, score]) => {
+         const student_id = key.split('_')[0];
+         studentScores[student_id] = (studentScores[student_id] || 0) + score;
+      });
+
+      const updatedProfiles = profiles.map(p => ({
+        ...p,
+        total_test_score: studentScores[p.id] || 0
+      }));
+
+      updatedProfiles.sort((a, b) => b.total_test_score - a.total_test_score);
+      setLeaderboard(updatedProfiles.slice(0, 10));
+    }
   };
 
   const fetchAnnouncements = async () => {
@@ -803,7 +825,7 @@ export default function StudentDashboard() {
                       </div>
                     </div>
                     <div style={{ textAlign: 'right' }}>
-                      <h3 style={{ margin: '0 0 0.2rem 0', color: '#4CAF50', fontSize: '1.2rem' }}>{lbStudent.points || 0} Pts</h3>
+                      <h3 style={{ margin: '0 0 0.2rem 0', color: '#4CAF50', fontSize: '1.2rem' }}>{lbStudent.total_test_score || 0} Marks</h3>
                       <p style={{ margin: 0, color: '#ff4444', fontSize: '0.85rem', fontWeight: 'bold' }}>🔥 {lbStudent.streak_days || 0} Days</p>
                     </div>
                   </div>
