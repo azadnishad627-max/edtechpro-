@@ -781,52 +781,98 @@ export default function StudentDashboard() {
 
         {activeTab === 'leaderboard' && (
           <div className="animate-tab-enter">
-            <h2 className="mb-4 text-accent text-center" style={{ fontSize: '2rem' }}>🏆 Global Leaderboard</h2>
-            <div className="glass-card" style={{ padding: '0', overflow: 'hidden', border: '1px solid var(--glass-border)' }}>
-              {leaderboard.length === 0 ? <p className="text-muted text-center" style={{ padding: '2rem' }}>No data available yet.</p> : leaderboard.map((lbStudent, idx) => {
-                let badge = null;
-                let bgStyle = 'transparent';
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1.5rem', marginTop: '0.5rem' }}>
+              <h2 className="text-accent" style={{ fontSize: '1.8rem', margin: 0, display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                <span style={{ fontSize: '2.2rem' }}>🏆</span> Global Leaderboard
+              </h2>
+            </div>
+
+            <div className="glass-card" style={{ padding: '0', overflow: 'hidden', border: '1px solid var(--glass-border)', borderRadius: '16px' }}>
+              {leaderboard.length === 0 ? <p className="text-muted text-center" style={{ padding: '3rem' }}>No data available yet.</p> : leaderboard.map((lbStudent, idx) => {
+                let badgeLabel = null;
+                let badgeIcon = null;
+                let cardStyle = { background: 'transparent', borderLeft: '4px solid transparent' };
+                let rankColor = 'var(--text-muted)';
+                let avatarBorder = 'transparent';
+
                 if (idx === 0) {
-                  badge = <span style={{ background: 'linear-gradient(90deg, #FFD700, #FDB931)', color: 'black', padding: '0.2rem 0.6rem', borderRadius: '12px', fontSize: '0.8rem', fontWeight: 'bold' }}>🥇 GOLD</span>;
-                  bgStyle = 'rgba(255, 215, 0, 0.15)';
+                  badgeLabel = 'GOLD'; badgeIcon = '🥇';
+                  cardStyle.background = 'linear-gradient(90deg, rgba(255, 215, 0, 0.1) 0%, transparent 100%)';
+                  cardStyle.borderLeft = '4px solid #FFD700';
+                  rankColor = '#FFD700'; avatarBorder = '#FFD700';
                 } else if (idx === 1) {
-                  badge = <span style={{ background: 'linear-gradient(90deg, #C0C0C0, #E5E4E2)', color: 'black', padding: '0.2rem 0.6rem', borderRadius: '12px', fontSize: '0.8rem', fontWeight: 'bold' }}>🥈 SILVER</span>;
-                  bgStyle = 'rgba(192, 192, 192, 0.15)';
+                  badgeLabel = 'SILVER'; badgeIcon = '🥈';
+                  cardStyle.background = 'linear-gradient(90deg, rgba(192, 192, 192, 0.1) 0%, transparent 100%)';
+                  cardStyle.borderLeft = '4px solid #C0C0C0';
+                  rankColor = '#C0C0C0'; avatarBorder = '#C0C0C0';
                 } else if (idx === 2) {
-                  badge = <span style={{ background: 'linear-gradient(90deg, #CD7F32, #B87333)', color: 'black', padding: '0.2rem 0.6rem', borderRadius: '12px', fontSize: '0.8rem', fontWeight: 'bold' }}>🥉 BRONZE</span>;
-                  bgStyle = 'rgba(205, 127, 50, 0.15)';
+                  badgeLabel = 'BRONZE'; badgeIcon = '🥉';
+                  cardStyle.background = 'linear-gradient(90deg, rgba(205, 127, 50, 0.1) 0%, transparent 100%)';
+                  cardStyle.borderLeft = '4px solid #CD7F32';
+                  rankColor = '#CD7F32'; avatarBorder = '#CD7F32';
                 }
+
+                const isTop3 = idx < 3;
+                const isMe = student.id === lbStudent.id;
 
                 return (
                   <div key={lbStudent.id} style={{ 
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between', 
-                    padding: '1.5rem', 
+                    padding: '1.2rem', 
                     borderBottom: idx === leaderboard.length - 1 ? 'none' : '1px solid rgba(255,255,255,0.05)',
-                    background: bgStyle,
-                    transition: 'background 0.3s'
+                    transition: 'all 0.3s',
+                    ...cardStyle
                   }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                      <div style={{ width: '50px', textAlign: 'center', fontWeight: 'bold', fontSize: idx < 3 ? '1.8rem' : '1.5rem', color: idx === 0 ? '#ffd700' : idx === 1 ? '#c0c0c0' : idx === 2 ? '#cd7f32' : 'var(--text-muted)' }}>
+                    {/* Left: Rank & Avatar */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', flex: 1, minWidth: 0 }}>
+                      
+                      <div style={{ width: '30px', textAlign: 'center', fontWeight: 'bold', fontSize: isTop3 ? '1.4rem' : '1.1rem', color: rankColor, flexShrink: 0 }}>
                         #{idx + 1}
                       </div>
-                      <div style={{ width: idx === 0 ? '70px' : '55px', height: idx === 0 ? '70px' : '55px', borderRadius: '50%', overflow: 'hidden', border: `3px solid ${idx === 0 ? '#ffd700' : idx === 1 ? '#c0c0c0' : idx === 2 ? '#cd7f32' : 'transparent'}`, boxShadow: idx < 3 ? '0 0 15px rgba(0,0,0,0.5)' : 'none' }}>
-                        <img src={lbStudent.photo_url || `https://ui-avatars.com/api/?name=${lbStudent.name}&background=random`} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                      </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                          <h3 style={{ margin: 0, color: student.id === lbStudent.id ? 'var(--primary-color)' : 'white', fontSize: idx === 0 ? '1.3rem' : '1.1rem' }}>
-                            {lbStudent.name} {student.id === lbStudent.id && '(You)'}
-                          </h3>
-                          {badge}
+                      
+                      <div style={{ position: 'relative', flexShrink: 0, paddingBottom: isTop3 ? '8px' : '0' }}>
+                        <div style={{ 
+                          width: isTop3 ? '55px' : '45px', height: isTop3 ? '55px' : '45px', 
+                          borderRadius: '50%', overflow: 'hidden', border: `2px solid ${avatarBorder}`, 
+                          boxShadow: isTop3 ? `0 0 10px ${avatarBorder}66` : 'none', background: 'var(--bg-dark)'
+                        }}>
+                          <img src={lbStudent.photo_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(lbStudent.name)}&background=random`} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                         </div>
-                        <p className="text-muted" style={{ margin: 0, fontSize: '0.85rem' }}>
+                        {isTop3 && (
+                          <div style={{ 
+                            position: 'absolute', bottom: '0', left: '50%', transform: 'translateX(-50%)', 
+                            background: avatarBorder, color: 'black', fontSize: '0.6rem', fontWeight: '900', 
+                            padding: '2px 6px', borderRadius: '12px', whiteSpace: 'nowrap',
+                            boxShadow: '0 2px 5px rgba(0,0,0,0.5)', letterSpacing: '0.5px'
+                          }}>
+                            {badgeLabel}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Name & Batch */}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.1rem', flex: 1, minWidth: 0, paddingLeft: '0.3rem' }}>
+                        <h3 style={{ 
+                          margin: 0, color: isMe ? 'var(--primary-color)' : 'white', 
+                          fontSize: isTop3 ? '1.1rem' : '1rem',
+                          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'
+                        }}>
+                          {lbStudent.name} {isMe && '(You)'}
+                        </h3>
+                        <p className="text-muted" style={{ margin: 0, fontSize: '0.8rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                           Batch: <span style={{ color: 'var(--text-light)' }}>{lbStudent.class_name || 'N/A'}</span>
                         </p>
                       </div>
                     </div>
-                    <div style={{ textAlign: 'right' }}>
-                      <h3 style={{ margin: '0 0 0.2rem 0', color: '#4CAF50', fontSize: '1.2rem' }}>{lbStudent.total_test_score || 0} Marks</h3>
-                      <p style={{ margin: 0, color: '#ff4444', fontSize: '0.85rem', fontWeight: 'bold' }}>🔥 {lbStudent.streak_days || 0} Days</p>
+
+                    {/* Right: Score & Streak */}
+                    <div style={{ textAlign: 'right', flexShrink: 0, paddingLeft: '0.5rem' }}>
+                      <h3 style={{ margin: '0 0 0.2rem 0', color: '#4CAF50', fontSize: isTop3 ? '1.3rem' : '1.1rem', fontWeight: '800' }}>
+                        {lbStudent.total_test_score || 0} <span style={{ fontSize: '0.75rem', fontWeight: 'normal', color: 'var(--text-muted)' }}>Marks</span>
+                      </h3>
+                      <p style={{ margin: 0, color: '#ff4444', fontSize: '0.75rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '0.2rem' }}>
+                        🔥 {lbStudent.streak_days || 0} Days
+                      </p>
                     </div>
                   </div>
                 )
