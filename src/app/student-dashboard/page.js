@@ -831,7 +831,7 @@ export default function StudentDashboard() {
                             loop 
                             muted 
                             playsInline 
-                            src="https://drive.google.com/uc?export=download&id=1vyaDUnCH5QPhnXKBuajb-RKeF-MT0VhU#t=0,2"
+                            src="/gold.mp4#t=0,2"
                           />
                         </div>
                         <div className="video-inner-overlay"></div>
