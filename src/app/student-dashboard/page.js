@@ -816,27 +816,14 @@ export default function StudentDashboard() {
                 const isMe = student.id === lbStudent.id;
 
                 return (
-                  <div key={lbStudent.id} className={idx === 0 ? "video-bg-card" : ""} style={{ 
+                  <div key={lbStudent.id} className={idx === 0 ? "premium-spiral-card" : ""} style={{ 
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between', 
                     padding: '1.2rem', 
                     borderBottom: idx === leaderboard.length - 1 ? 'none' : '1px solid rgba(255,255,255,0.05)',
                     transition: 'all 0.3s',
                     ...cardStyle
                   }}>
-                    {idx === 0 && (
-                      <>
-                        <div className="video-bg-container">
-                          <video 
-                            autoPlay 
-                            loop 
-                            muted 
-                            playsInline 
-                            src="https://drive.google.com/uc?export=download&id=1vyaDUnCH5QPhnXKBuajb-RKeF-MT0VhU"
-                          />
-                        </div>
-                        <div className="video-inner-overlay"></div>
-                      </>
-                    )}
+                    {idx === 0 && <div className="premium-spiral-bg"></div>}
                     
                     {/* Left: Rank & Avatar */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', flex: 1, minWidth: 0 }}>
@@ -871,7 +858,8 @@ export default function StudentDashboard() {
                           <h3 className={idx === 0 ? "golden-text" : ""} style={{ 
                             margin: 0, color: isMe ? 'var(--primary-color)' : 'white', 
                             fontSize: isTop3 ? '1.1rem' : '1rem',
-                            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'
+                            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                            animation: idx === 0 ? 'smoothTextPulse 3s infinite alternate' : 'none'
                           }}>
                             {lbStudent.name} {isMe && '(You)'}
                           </h3>
