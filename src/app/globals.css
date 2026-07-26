@@ -375,87 +375,62 @@ button {
   to { opacity: 1; transform: translateY(0); }
 }
 
-/* Cyberpunk Edition Animation */
-@keyframes glitch-anim {
-  0% { clip-path: inset(20% 0 80% 0); transform: translate(-2px, 1px); }
-  20% { clip-path: inset(60% 0 10% 0); transform: translate(2px, -1px); }
-  40% { clip-path: inset(40% 0 50% 0); transform: translate(-2px, 2px); }
-  60% { clip-path: inset(80% 0 5% 0); transform: translate(2px, -2px); }
-  80% { clip-path: inset(10% 0 70% 0); transform: translate(-1px, 1px); }
-  100% { clip-path: inset(30% 0 20% 0); transform: translate(1px, -1px); }
+/* Neon Snake Edition */
+@keyframes snakeRotate {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 
-@keyframes scanline {
-  0% { transform: translateY(-100%); }
-  100% { transform: translateY(200%); }
-}
-
-.cyberpunk-kill-feed {
+.neon-snake-card {
   position: relative;
-  border: 2px solid #0ff !important;
-  box-shadow: 0 0 10px #0ff, inset 0 0 20px rgba(255, 0, 255, 0.4) !important;
-  background: linear-gradient(135deg, rgba(0,0,0,0.9), rgba(20,0,40,0.9)) !important;
   overflow: hidden !important;
+  border: none !important;
+  border-radius: 12px;
+  background: var(--bg-card) !important;
 }
 
-.cyberpunk-kill-feed::before {
+.neon-snake-card::before {
   content: '';
   position: absolute;
-  top: 0; left: 0; right: 0; height: 50%;
-  background: linear-gradient(to bottom, transparent, rgba(0, 255, 255, 0.5), transparent);
-  animation: scanline 3s linear infinite;
-  pointer-events: none;
+  top: -100%; left: -100%; width: 300%; height: 300%;
+  background: conic-gradient(transparent, transparent, transparent, #0ff);
+  animation: snakeRotate 2s linear infinite;
   z-index: 0;
 }
 
-.cyberpunk-kill-feed > * {
+.neon-snake-card::after {
+  content: '';
+  position: absolute;
+  top: 3px; left: 3px; right: 3px; bottom: 3px;
+  background: var(--bg-card); /* Dark inner background */
+  border-radius: 9px;
+  z-index: 0;
+}
+
+.neon-snake-card > * {
   position: relative;
   z-index: 1;
 }
 
-.cyberpunk-name-box {
-  display: inline-block;
-  padding: 4px 12px;
-  background: #f0f;
-  color: #fff !important;
-  font-family: 'Courier New', Courier, monospace;
-  font-weight: 900;
-  text-transform: uppercase;
-  letter-spacing: 2px;
-  position: relative;
-  clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
-  filter: drop-shadow(3px 3px 0px #0ff);
-  margin-bottom: 5px;
-  text-shadow: 1px 1px 0px #000;
-  border-left: 4px solid #0ff;
-}
-
-.cyberpunk-glitch {
-  position: relative;
-  display: inline-block;
-}
-
-.cyberpunk-glitch::before,
-.cyberpunk-glitch::after {
-  content: attr(data-text);
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: #f0f;
+.neon-text {
   color: #fff;
-  overflow: hidden;
+  text-shadow: 
+    0 0 5px #fff,
+    0 0 10px #fff,
+    0 0 20px #0ff,
+    0 0 40px #0ff;
+  animation: neonFlicker 2s infinite alternate;
 }
 
-.cyberpunk-glitch::before {
-  left: 2px;
-  text-shadow: -2px 0 #0ff;
-  animation: glitch-anim 2s infinite linear alternate-reverse;
-}
-
-.cyberpunk-glitch::after {
-  left: -2px;
-  text-shadow: -2px 0 #ffff00;
-  animation: glitch-anim 3s infinite linear alternate-reverse;
+@keyframes neonFlicker {
+  0%, 18%, 22%, 25%, 53%, 57%, 100% {
+    text-shadow: 
+      0 0 2px #fff,
+      0 0 5px #fff,
+      0 0 10px #0ff,
+      0 0 20px #0ff;
+  }
+  20%, 24%, 55% {
+    text-shadow: none;
+  }
 }

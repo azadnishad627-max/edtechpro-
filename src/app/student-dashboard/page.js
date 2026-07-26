@@ -816,7 +816,7 @@ export default function StudentDashboard() {
                 const isMe = student.id === lbStudent.id;
 
                 return (
-                  <div key={lbStudent.id} className={idx === 0 ? "cyberpunk-kill-feed" : ""} style={{ 
+                  <div key={lbStudent.id} className={idx === 0 ? "neon-snake-card" : ""} style={{ 
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between', 
                     padding: '1.2rem', 
                     borderBottom: idx === leaderboard.length - 1 ? 'none' : '1px solid rgba(255,255,255,0.05)',
@@ -852,22 +852,14 @@ export default function StudentDashboard() {
 
                       {/* Name & Batch */}
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.1rem', flex: 1, minWidth: 0, paddingLeft: '0.3rem' }}>
-                        <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', width: 'fit-content' }}>
-                          {idx === 0 && (
-                            <div className="cyberpunk-name-box">
-                              <span className="cyberpunk-glitch" data-text="// ELIMINATION //">// ELIMINATION //</span>
-                            </div>
-                          )}
-                          <div style={{ display: 'flex', alignItems: 'center', marginTop: idx === 0 ? '4px' : '0' }}>
-                            <h3 style={{ 
-                              margin: 0, color: isMe ? 'var(--primary-color)' : 'white', 
-                              fontSize: isTop3 ? '1.1rem' : '1rem',
-                              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                              textShadow: idx === 0 ? '0 0 5px #0ff, 0 0 10px #f0f' : 'none'
-                            }}>
-                              {lbStudent.name} {isMe && '(You)'}
-                            </h3>
-                          </div>
+                        <div style={{ display: 'flex', alignItems: 'center' }}>
+                          <h3 className={idx === 0 ? "neon-text" : ""} style={{ 
+                            margin: 0, color: isMe ? 'var(--primary-color)' : 'white', 
+                            fontSize: isTop3 ? '1.1rem' : '1rem',
+                            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'
+                          }}>
+                            {lbStudent.name} {isMe && '(You)'}
+                          </h3>
                         </div>
                         <p className="text-muted" style={{ margin: 0, fontSize: '0.8rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                           Batch: <span style={{ color: 'var(--text-light)' }}>{lbStudent.class_name || 'N/A'}</span>
