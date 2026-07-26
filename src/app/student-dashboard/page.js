@@ -838,9 +838,6 @@ export default function StudentDashboard() {
                       </>
                     )}
                     
-                    {/* Content Wrapper */}
-                    <div className={idx === 0 ? "content-wrapper" : ""} style={{ display: 'flex', width: '100%', alignItems: 'center', justifyContent: 'space-between' }}>
-                    
                     {/* Left: Rank & Avatar */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', flex: 1, minWidth: 0 }}>
                       
@@ -894,7 +891,6 @@ export default function StudentDashboard() {
                         🔥 {lbStudent.streak_days || 0} Days
                       </p>
                     </div>
-                    {idx === 0 && </div>}
                   </div>
                 )
               })}
