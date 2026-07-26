@@ -701,55 +701,39 @@ export default function StudentDashboard() {
         )}
 
         {activeTab === 'tests' && (
-          <div>
-            {(() => {
-              const now = new Date();
-              const activeTests = dbTests.filter(t => !t.scheduled_time || new Date(t.scheduled_time) <= now);
-              // Sort upcoming tests by time ascending so soonest is first
-              const upcomingTests = dbTests.filter(t => t.scheduled_time && new Date(t.scheduled_time) > now)
-                                           .sort((a, b) => new Date(a.scheduled_time) - new Date(b.scheduled_time));
+            <div>
+              <h2 className="mb-4 text-muted">Available Tests</h2>
+              {dbTests.length === 0 ? <p className="text-muted">No tests available right now.</p> : dbTests.map(test => {
+                const now = new Date();
+                const start = test.start_time ? new Date(test.start_time) : null;
+                const end = test.end_time ? new Date(test.end_time) : null;
+                const isTooEarly = start && now < start;
+                const isTooLate = end && now >= end;
+                
+                return (
+                <div key={test.id} className="glass-card mb-4" style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', justifyContent: 'space-between', alignItems: 'center', opacity: isTooLate ? 0.5 : 1 }}>
+                  <div>
+                    <h3 className="mb-2">{test.title}</h3>
+                    <p className="text-muted" style={{ fontSize: '0.9rem', marginBottom: '0.25rem' }}>Batch: {test.batches?.title} | Duration: {test.duration_mins} Mins | {test.total_questions} Questions</p>
+                    {(start || end) && (
+                      <p className="text-muted" style={{ fontSize: '0.85rem', color: isTooEarly ? '#ffd700' : isTooLate ? '#ff4444' : '#44ff44' }}>
+                        {isTooEarly ? `Starts at: ${start.toLocaleString()}` : isTooLate ? `Ended at: ${end.toLocaleString()}` : `Ends at: ${end ? end.toLocaleString() : 'No limit'}`}
+                      </p>
+                    )}
+                  </div>
+                  <button onClick={() => {
+                    if(test.test_url) {
+                      setActiveTestUrl(test.test_url);
+                    } else {
+                      router.push(`/test/${test.id}`);
+                    }
+                  }} className="btn-primary" style={{ padding: '0.5rem 1rem', background: isTooEarly || isTooLate ? '#555' : '', cursor: isTooEarly || isTooLate ? 'not-allowed' : 'pointer' }} disabled={isTooEarly || isTooLate}>
+                    {isTooEarly ? 'Upcoming' : isTooLate ? 'Ended' : 'Start Test'}
+                  </button>
+                </div>
+              )})}
 
-              return (
-                <>
-                  {upcomingTests.length > 0 && (
-                    <>
-                      <h2 className="mb-4" style={{ color: '#ff9100' }}>⏰ Upcoming Scheduled Tests</h2>
-                      {upcomingTests.map(test => (
-                        <div key={test.id} className="glass-card mb-4" style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', justifyContent: 'space-between', alignItems: 'center', opacity: 0.8, borderLeft: '4px solid #ff9100' }}>
-                          <div>
-                            <h3 className="mb-2">{test.title}</h3>
-                            <p className="text-muted">Batch: {test.batches?.title} | Duration: {test.duration_mins} Mins | {test.total_questions} Questions</p>
-                          </div>
-                          <div style={{ textAlign: 'right' }}>
-                            <p style={{ margin: '0 0 0.5rem 0', color: '#ff9100', fontWeight: 'bold' }}>Unlocks: {new Date(test.scheduled_time).toLocaleString()}</p>
-                            <button disabled className="btn-outline" style={{ padding: '0.5rem 1rem', cursor: 'not-allowed', opacity: 0.5 }}>Scheduled</button>
-                          </div>
-                        </div>
-                      ))}
-                    </>
-                  )}
-
-                  <h2 className="mb-4 text-accent mt-5">▶ Active Tests</h2>
-                  {activeTests.length === 0 ? <p className="text-muted">No active tests available right now.</p> : activeTests.map(test => (
-                    <div key={test.id} className="glass-card mb-4" style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <div>
-                        <h3 className="mb-2">{test.title}</h3>
-                        <p className="text-muted">Batch: {test.batches?.title} | Duration: {test.duration_mins} Mins | {test.total_questions} Questions</p>
-                      </div>
-                      <button onClick={() => {
-                        if(test.test_url) {
-                          setActiveTestUrl(test.test_url);
-                        } else {
-                          router.push(`/test/${test.id}`);
-                        }
-                      }} className="btn-primary" style={{ padding: '0.5rem 1rem' }}>Start Test</button>
-                    </div>
-                  ))}
-                </>
-              );
-            })()}
-
-            <h2 className="mb-4 text-accent mt-5" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>⭐ Saved Questions (For Revision)</h2>
+              <h2 className="mb-4 text-accent mt-5" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>⭐ Saved Questions (For Revision)</h2>
             {bookmarkedQuestions.length === 0 ? <p className="text-muted">You haven't bookmarked any questions yet. Start a test and click the ⭐ icon on difficult questions to save them here!</p> : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 {bookmarkedQuestions.map(bm => (
@@ -782,18 +766,18 @@ export default function StudentDashboard() {
                   display: 'flex', alignItems: 'center', justifyContent: 'space-between', 
                   padding: '1.5rem', 
                   borderBottom: idx === leaderboard.length - 1 ? 'none' : '1px solid rgba(255,255,255,0.05)',
-                  background: idx === 0 ? 'rgba(255, 215, 0, 0.1)' : idx === 1 ? 'rgba(192, 192, 192, 0.1)' : idx === 2 ? 'rgba(205, 127, 50, 0.1)' : 'transparent',
+                  background: idx === 0 ? 'rgba(0, 255, 255, 0.15)' : idx === 1 ? 'rgba(255, 215, 0, 0.1)' : idx === 2 ? 'rgba(192, 192, 192, 0.1)' : 'transparent',
                   transition: 'background 0.3s'
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                    <div style={{ width: '40px', fontWeight: 'bold', fontSize: '1.5rem', color: idx === 0 ? '#ffd700' : idx === 1 ? '#c0c0c0' : idx === 2 ? '#cd7f32' : 'var(--text-muted)' }}>
-                      #{idx + 1}
+                    <div style={{ width: '60px', textAlign: 'center', fontWeight: 'bold', fontSize: idx === 0 ? '2.5rem' : idx === 1 ? '2rem' : idx === 2 ? '1.8rem' : '1.5rem', color: idx === 0 ? '#00ffff' : idx === 1 ? '#ffd700' : idx === 2 ? '#c0c0c0' : 'var(--text-muted)', textShadow: idx === 0 ? '0 0 10px #00ffff' : 'none' }}>
+                      {idx === 0 ? '💎' : idx === 1 ? '🥇' : idx === 2 ? '🥈' : `#${idx + 1}`}
                     </div>
-                    <div style={{ width: '50px', height: '50px', borderRadius: '50%', overflow: 'hidden', border: `2px solid ${idx === 0 ? '#ffd700' : idx === 1 ? '#c0c0c0' : idx === 2 ? '#cd7f32' : 'transparent'}` }}>
+                    <div style={{ width: idx === 0 ? '70px' : '50px', height: idx === 0 ? '70px' : '50px', borderRadius: '50%', overflow: 'hidden', border: `3px solid ${idx === 0 ? '#00ffff' : idx === 1 ? '#ffd700' : idx === 2 ? '#c0c0c0' : 'transparent'}`, boxShadow: idx === 0 ? '0 0 15px rgba(0,255,255,0.5)' : 'none' }}>
                       <img src={lbStudent.photo_url || `https://ui-avatars.com/api/?name=${lbStudent.name}&background=random`} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     </div>
                     <div>
-                      <h3 style={{ margin: '0 0 0.2rem 0', color: student.id === lbStudent.id ? 'var(--primary-color)' : 'white' }}>
+                      <h3 style={{ margin: '0 0 0.2rem 0', color: student.id === lbStudent.id ? 'var(--primary-color)' : 'white', fontSize: idx === 0 ? '1.4rem' : '1.1rem' }}>
                         {lbStudent.name} {student.id === lbStudent.id && '(You)'}
                       </h3>
                       <p className="text-muted" style={{ margin: 0, fontSize: '0.85rem' }}>@{lbStudent.username || 'student'}</p>

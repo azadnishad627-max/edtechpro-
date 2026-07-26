@@ -31,6 +31,8 @@ export default function TakeTest() {
   
   const [faceMissingTimer, setFaceMissingTimer] = useState(0);
   const [proctorLockTimer, setProctorLockTimer] = useState(0);
+  const [isTooEarly, setIsTooEarly] = useState(false);
+  const [isTooLate, setIsTooLate] = useState(false);
 
   useEffect(() => {
     async function fetchTest() {
@@ -125,6 +127,35 @@ export default function TakeTest() {
     
     return () => clearTimeout(timer);
   }, [proctorLockTimer, isSubmitted, isEvaluating]);
+
+  
+  useEffect(() => {
+    if (!test || isSubmitted) return;
+    
+    const checkTime = () => {
+      const now = new Date();
+      if (test.start_time) {
+        const start = new Date(test.start_time);
+        if (now < start) {
+          setIsTooEarly(true);
+          return;
+        } else {
+          setIsTooEarly(false);
+        }
+      }
+      if (test.end_time) {
+        const end = new Date(test.end_time);
+        if (now >= end && !isSubmitted && !isEvaluating) {
+          setIsTooLate(true);
+          handleSubmit();
+        }
+      }
+    };
+    
+    checkTime();
+    const interval = setInterval(checkTime, 10000);
+    return () => clearInterval(interval);
+  }, [test, isSubmitted, isEvaluating]);
 
   const handleFaceStatus = (isFacePresent) => {
     if (isSubmitted || isEvaluating || proctorLockTimer > 0) return; // Don't track if locked or submitted

@@ -66,7 +66,8 @@ export default function AdminDashboard() {
   const [testTitle, setTestTitle] = useState('');
   const [duration, setDuration] = useState('');
   const [totalQuestions, setTotalQuestions] = useState('');
-  const [scheduledTime, setScheduledTime] = useState('');
+  const [testStartTime, setTestStartTime] = useState('');
+  const [testEndTime, setTestEndTime] = useState('');
   const [testTopic, setTestTopic] = useState('');
   const [testPdf, setTestPdf] = useState(null);
   const [rawText, setRawText] = useState('');
@@ -625,7 +626,7 @@ export default function AdminDashboard() {
     }
     try {
       const { data, error } = await supabase.from('tests').insert([
-        { batch_id: testBatch, title: testTitle, duration_mins: parseInt(duration), total_questions: parseInt(totalQuestions), test_url: testUrl, scheduled_time: scheduledTime ? new Date(scheduledTime).toISOString() : null }
+        { batch_id: testBatch, title: testTitle, duration_mins: parseInt(duration), total_questions: parseInt(totalQuestions), test_url: testUrl, start_time: testStartTime ? new Date(testStartTime).toISOString() : null, end_time: testEndTime ? new Date(testEndTime).toISOString() : null }
       ]);
       if (error) throw error;
       alert("Test Link Published Successfully!");
@@ -653,7 +654,7 @@ export default function AdminDashboard() {
           
           // 1. Insert Test
           const { data: testData, error: testError } = await supabase.from('tests').insert([
-            { batch_id: testBatch, title: testTitle, duration_mins: parseInt(duration), total_questions: parseInt(totalQuestions), scheduled_time: scheduledTime ? new Date(scheduledTime).toISOString() : null }
+            { batch_id: testBatch, title: testTitle, duration_mins: parseInt(duration), total_questions: parseInt(totalQuestions), start_time: testStartTime ? new Date(testStartTime).toISOString() : null, end_time: testEndTime ? new Date(testEndTime).toISOString() : null }
           ]).select();
           if (testError) throw testError;
           const testId = testData[0].id;
@@ -721,7 +722,7 @@ export default function AdminDashboard() {
 
       // 1. Insert Test
       const { data: testData, error: testError } = await supabase.from('tests').insert([
-        { batch_id: testBatch, title: testTitle, duration_mins: parseInt(duration), total_questions: parseInt(totalQuestions), scheduled_time: scheduledTime ? new Date(scheduledTime).toISOString() : null }
+        { batch_id: testBatch, title: testTitle, duration_mins: parseInt(duration), total_questions: parseInt(totalQuestions), start_time: testStartTime ? new Date(testStartTime).toISOString() : null, end_time: testEndTime ? new Date(testEndTime).toISOString() : null }
       ]).select();
 
       if (testError) throw testError;
@@ -774,7 +775,7 @@ export default function AdminDashboard() {
 
       // 1. Insert Test
       const { data: testData, error: testError } = await supabase.from('tests').insert([
-        { batch_id: testBatch, title: testTitle, duration_mins: parseInt(duration), total_questions: parseInt(totalQuestions), scheduled_time: scheduledTime ? new Date(scheduledTime).toISOString() : null }
+        { batch_id: testBatch, title: testTitle, duration_mins: parseInt(duration), total_questions: parseInt(totalQuestions), start_time: testStartTime ? new Date(testStartTime).toISOString() : null, end_time: testEndTime ? new Date(testEndTime).toISOString() : null }
       ]).select();
 
       if (testError) throw testError;
@@ -826,7 +827,7 @@ export default function AdminDashboard() {
 
       // 1. Insert Test
       const { data: testData, error: testError } = await supabase.from('tests').insert([
-        { batch_id: testBatch, title: testTitle, duration_mins: parseInt(duration), total_questions: parseInt(totalQuestions), scheduled_time: scheduledTime ? new Date(scheduledTime).toISOString() : null }
+        { batch_id: testBatch, title: testTitle, duration_mins: parseInt(duration), total_questions: parseInt(totalQuestions), start_time: testStartTime ? new Date(testStartTime).toISOString() : null, end_time: testEndTime ? new Date(testEndTime).toISOString() : null }
       ]).select();
 
       if (testError) throw testError;
