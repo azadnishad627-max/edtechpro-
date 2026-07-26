@@ -937,9 +937,9 @@ export default function StudentDashboard() {
           <span className="bottom-nav-icon">📚</span>
           <span>Courses</span>
         </div>
-        <div className={`bottom-nav-item ${activeTab === 'syllabus' ? 'active' : ''}`} onClick={() => switchTab('syllabus')}>
-          <span className="bottom-nav-icon">📄</span>
-          <span>Syllabus</span>
+        <div className={`bottom-nav-item ${activeTab === 'leaderboard' ? 'active' : ''}`} onClick={() => switchTab('leaderboard')}>
+          <span className="bottom-nav-icon">🏆</span>
+          <span>Leaderboard</span>
         </div>
         <div className={`bottom-nav-item ${activeTab === 'tests' ? 'active' : ''}`} onClick={() => switchTab('tests')}>
           <span className="bottom-nav-icon">📝</span>
