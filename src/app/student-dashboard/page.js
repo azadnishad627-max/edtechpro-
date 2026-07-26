@@ -821,24 +821,29 @@ export default function StudentDashboard() {
                     padding: '1.2rem', 
                     borderBottom: idx === leaderboard.length - 1 ? 'none' : '1px solid rgba(255,255,255,0.05)',
                     transition: 'all 0.3s',
+                    position: 'relative',
                     ...cardStyle
                   }}>
                     {idx === 0 && (
                       <>
-                        <div className="video-bg-container">
+                        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%', zIndex: 0, borderRadius: '15px', overflow: 'hidden' }}>
                           <video 
                             autoPlay 
                             loop 
                             muted 
                             playsInline 
-                            src="/gold.mp4#t=0,2"
+                            src="/gold.mp4"
+                            style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.8 }}
                           />
                         </div>
-                        <div className="video-inner-overlay"></div>
+                        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1, background: 'rgba(0,0,0,0.6)', borderRadius: '15px', pointerEvents: 'none' }}></div>
                       </>
                     )}
                     
-                    {/* Left: Rank & Avatar */}
+                    {/* Content Wrapper to keep items above video and perfectly aligned */}
+                    <div style={{ position: 'relative', zIndex: 2, display: 'flex', width: '100%', alignItems: 'center', justifyContent: 'space-between' }}>
+                      
+                      {/* Left: Rank & Avatar */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', flex: 1, minWidth: 0 }}>
                       
                       <div style={{ width: '30px', textAlign: 'center', fontWeight: 'bold', fontSize: isTop3 ? '1.4rem' : '1.1rem', color: rankColor, flexShrink: 0 }}>
@@ -891,6 +896,8 @@ export default function StudentDashboard() {
                         🔥 {lbStudent.streak_days || 0} Days
                       </p>
                     </div>
+                    
+                    </div> {/* End of Content Wrapper */}
                   </div>
                 )
               })}
