@@ -816,14 +816,31 @@ export default function StudentDashboard() {
                 const isMe = student.id === lbStudent.id;
 
                 return (
-                  <div key={lbStudent.id} className={idx === 0 ? "spiral-wave-card" : ""} style={{ 
+                  <div key={lbStudent.id} className={idx === 0 ? "video-bg-card" : ""} style={{ 
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between', 
                     padding: '1.2rem', 
                     borderBottom: idx === leaderboard.length - 1 ? 'none' : '1px solid rgba(255,255,255,0.05)',
                     transition: 'all 0.3s',
                     ...cardStyle
                   }}>
-                    {idx === 0 && <div className="spiral-inner-bg"></div>}
+                    {idx === 0 && (
+                      <>
+                        <div className="video-bg-container">
+                          <video 
+                            autoPlay 
+                            loop 
+                            muted 
+                            playsInline 
+                            src="https://drive.google.com/uc?export=download&id=1vyaDUnCH5QPhnXKBuajb-RKeF-MT0VhU"
+                          />
+                        </div>
+                        <div className="video-inner-overlay"></div>
+                      </>
+                    )}
+                    
+                    {/* Content Wrapper */}
+                    <div className={idx === 0 ? "content-wrapper" : ""} style={{ display: 'flex', width: '100%', alignItems: 'center', justifyContent: 'space-between' }}>
+                    
                     {/* Left: Rank & Avatar */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', flex: 1, minWidth: 0 }}>
                       
@@ -854,7 +871,7 @@ export default function StudentDashboard() {
                       {/* Name & Batch */}
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.1rem', flex: 1, minWidth: 0, paddingLeft: '0.3rem' }}>
                         <div style={{ display: 'flex', alignItems: 'center' }}>
-                          <h3 className={idx === 0 ? "spiral-text" : ""} style={{ 
+                          <h3 className={idx === 0 ? "golden-text" : ""} style={{ 
                             margin: 0, color: isMe ? 'var(--primary-color)' : 'white', 
                             fontSize: isTop3 ? '1.1rem' : '1rem',
                             whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'
@@ -862,7 +879,7 @@ export default function StudentDashboard() {
                             {lbStudent.name} {isMe && '(You)'}
                           </h3>
                         </div>
-                        <p className="text-muted" style={{ margin: 0, fontSize: '0.8rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        <p className="text-muted" style={{ margin: 0, fontSize: '0.8rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', textShadow: idx === 0 ? '0 0 5px #000' : 'none' }}>
                           Batch: <span style={{ color: 'var(--text-light)' }}>{lbStudent.class_name || 'N/A'}</span>
                         </p>
                       </div>
@@ -877,6 +894,7 @@ export default function StudentDashboard() {
                         🔥 {lbStudent.streak_days || 0} Days
                       </p>
                     </div>
+                    {idx === 0 && </div>}
                   </div>
                 )
               })}
