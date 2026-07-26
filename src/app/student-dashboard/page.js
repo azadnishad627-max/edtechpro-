@@ -816,7 +816,7 @@ export default function StudentDashboard() {
                 const isMe = student.id === lbStudent.id;
 
                 return (
-                  <div key={lbStudent.id} style={{ 
+                  <div key={lbStudent.id} className={idx === 0 ? "pubg-kill-feed" : ""} style={{ 
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between', 
                     padding: '1.2rem', 
                     borderBottom: idx === leaderboard.length - 1 ? 'none' : '1px solid rgba(255,255,255,0.05)',
