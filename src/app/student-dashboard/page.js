@@ -854,21 +854,7 @@ export default function StudentDashboard() {
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.1rem', flex: 1, minWidth: 0, paddingLeft: '0.3rem' }}>
                         <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', width: 'fit-content' }}>
                           {idx === 0 && (
-                            <div style={{ position: 'relative', width: '150px', height: '40px', marginBottom: '-5px', marginLeft: '25px' }}>
-                              <img 
-                                src="https://media.giphy.com/media/26FPCXdkvDbKBbgOI/giphy.gif" 
-                                alt="Fire" 
-                                style={{ 
-                                  width: '100%', 
-                                  height: '100%', 
-                                  objectFit: 'cover', 
-                                  mixBlendMode: 'screen', 
-                                  opacity: 1,
-                                  pointerEvents: 'none',
-                                  maskImage: 'linear-gradient(to right, transparent, black 20%, black 80%, transparent)',
-                                  WebkitMaskImage: 'linear-gradient(to right, transparent, black 20%, black 80%, transparent)'
-                                }} 
-                              />
+                            <div className="pubg-name-fire" style={{ position: 'relative', width: '150px', height: '25px', marginBottom: '-2px', marginLeft: '25px' }}>
                             </div>
                           )}
                           <div style={{ display: 'flex', alignItems: 'center' }}>

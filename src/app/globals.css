@@ -403,3 +403,11 @@ button {
   position: relative;
   z-index: 1;
 }
+
+.pubg-name-fire {
+  background: repeating-linear-gradient(90deg, transparent, rgba(255, 69, 0, 0.6) 10%, rgba(255, 140, 0, 0.9) 20%, rgba(255, 215, 0, 1) 30%, rgba(255, 69, 0, 0.6) 40%, transparent 50%);
+  background-size: 200% 100%;
+  animation: pubgFireFlow 1.5s infinite linear;
+  box-shadow: 0 0 12px rgba(255, 69, 0, 0.8), inset 0 0 8px rgba(255, 215, 0, 0.5);
+  border-radius: 20px;
+}
