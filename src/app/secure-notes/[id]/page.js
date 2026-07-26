@@ -12,6 +12,15 @@ pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/b
 export default function SecureNotesViewer() {
   const params = useParams();
   const router = useRouter();
+  const [windowWidth, setWindowWidth] = useState(0);
+
+  useEffect(() => {
+    setWindowWidth(window.innerWidth);
+    const handleResize = () => setWindowWidth(window.innerWidth);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   const [material, setMaterial] = useState(null);
   const [student, setStudent] = useState(null);
   const [numPages, setNumPages] = useState(null);
@@ -156,7 +165,8 @@ export default function SecureNotesViewer() {
                 pageNumber={index + 1} 
                 renderTextLayer={false} // Disable text layer entirely to prevent DOM scraping
                 renderAnnotationLayer={false}
-                scale={1.2}
+                width={windowWidth ? Math.min(windowWidth * 0.95, 1000) : undefined}
+                scale={windowWidth ? undefined : 1.2}
               />
             </div>
           ))}
