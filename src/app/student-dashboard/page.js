@@ -760,35 +760,55 @@ export default function StudentDashboard() {
         {activeTab === 'leaderboard' && (
           <div className="animate-tab-enter">
             <h2 className="mb-4 text-accent text-center" style={{ fontSize: '2rem' }}>🏆 Global Leaderboard</h2>
-            <div className="glass-card" style={{ padding: '0', overflow: 'hidden' }}>
-              {leaderboard.length === 0 ? <p className="text-muted text-center" style={{ padding: '2rem' }}>No data available yet.</p> : leaderboard.map((lbStudent, idx) => (
-                <div key={lbStudent.id} style={{ 
-                  display: 'flex', alignItems: 'center', justifyContent: 'space-between', 
-                  padding: '1.5rem', 
-                  borderBottom: idx === leaderboard.length - 1 ? 'none' : '1px solid rgba(255,255,255,0.05)',
-                  background: idx === 0 ? 'rgba(0, 255, 255, 0.15)' : idx === 1 ? 'rgba(255, 215, 0, 0.1)' : idx === 2 ? 'rgba(192, 192, 192, 0.1)' : 'transparent',
-                  transition: 'background 0.3s'
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                    <div style={{ width: '60px', textAlign: 'center', fontWeight: 'bold', fontSize: idx === 0 ? '2.5rem' : idx === 1 ? '2rem' : idx === 2 ? '1.8rem' : '1.5rem', color: idx === 0 ? '#00ffff' : idx === 1 ? '#ffd700' : idx === 2 ? '#c0c0c0' : 'var(--text-muted)', textShadow: idx === 0 ? '0 0 10px #00ffff' : 'none' }}>
-                      {idx === 0 ? '💎' : idx === 1 ? '🥇' : idx === 2 ? '🥈' : `#${idx + 1}`}
+            <div className="glass-card" style={{ padding: '0', overflow: 'hidden', border: '1px solid var(--glass-border)' }}>
+              {leaderboard.length === 0 ? <p className="text-muted text-center" style={{ padding: '2rem' }}>No data available yet.</p> : leaderboard.map((lbStudent, idx) => {
+                let badge = null;
+                let bgStyle = 'transparent';
+                if (idx === 0) {
+                  badge = <span style={{ background: 'linear-gradient(90deg, #FFD700, #FDB931)', color: 'black', padding: '0.2rem 0.6rem', borderRadius: '12px', fontSize: '0.8rem', fontWeight: 'bold' }}>🥇 GOLD</span>;
+                  bgStyle = 'rgba(255, 215, 0, 0.15)';
+                } else if (idx === 1) {
+                  badge = <span style={{ background: 'linear-gradient(90deg, #C0C0C0, #E5E4E2)', color: 'black', padding: '0.2rem 0.6rem', borderRadius: '12px', fontSize: '0.8rem', fontWeight: 'bold' }}>🥈 SILVER</span>;
+                  bgStyle = 'rgba(192, 192, 192, 0.15)';
+                } else if (idx === 2) {
+                  badge = <span style={{ background: 'linear-gradient(90deg, #CD7F32, #B87333)', color: 'black', padding: '0.2rem 0.6rem', borderRadius: '12px', fontSize: '0.8rem', fontWeight: 'bold' }}>🥉 BRONZE</span>;
+                  bgStyle = 'rgba(205, 127, 50, 0.15)';
+                }
+
+                return (
+                  <div key={lbStudent.id} style={{ 
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between', 
+                    padding: '1.5rem', 
+                    borderBottom: idx === leaderboard.length - 1 ? 'none' : '1px solid rgba(255,255,255,0.05)',
+                    background: bgStyle,
+                    transition: 'background 0.3s'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                      <div style={{ width: '50px', textAlign: 'center', fontWeight: 'bold', fontSize: idx < 3 ? '1.8rem' : '1.5rem', color: idx === 0 ? '#ffd700' : idx === 1 ? '#c0c0c0' : idx === 2 ? '#cd7f32' : 'var(--text-muted)' }}>
+                        #{idx + 1}
+                      </div>
+                      <div style={{ width: idx === 0 ? '70px' : '55px', height: idx === 0 ? '70px' : '55px', borderRadius: '50%', overflow: 'hidden', border: `3px solid ${idx === 0 ? '#ffd700' : idx === 1 ? '#c0c0c0' : idx === 2 ? '#cd7f32' : 'transparent'}`, boxShadow: idx < 3 ? '0 0 15px rgba(0,0,0,0.5)' : 'none' }}>
+                        <img src={lbStudent.photo_url || `https://ui-avatars.com/api/?name=${lbStudent.name}&background=random`} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          <h3 style={{ margin: 0, color: student.id === lbStudent.id ? 'var(--primary-color)' : 'white', fontSize: idx === 0 ? '1.3rem' : '1.1rem' }}>
+                            {lbStudent.name} {student.id === lbStudent.id && '(You)'}
+                          </h3>
+                          {badge}
+                        </div>
+                        <p className="text-muted" style={{ margin: 0, fontSize: '0.85rem' }}>
+                          Batch: <span style={{ color: 'var(--text-light)' }}>{lbStudent.class_name || 'N/A'}</span>
+                        </p>
+                      </div>
                     </div>
-                    <div style={{ width: idx === 0 ? '70px' : '50px', height: idx === 0 ? '70px' : '50px', borderRadius: '50%', overflow: 'hidden', border: `3px solid ${idx === 0 ? '#00ffff' : idx === 1 ? '#ffd700' : idx === 2 ? '#c0c0c0' : 'transparent'}`, boxShadow: idx === 0 ? '0 0 15px rgba(0,255,255,0.5)' : 'none' }}>
-                      <img src={lbStudent.photo_url || `https://ui-avatars.com/api/?name=${lbStudent.name}&background=random`} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                    </div>
-                    <div>
-                      <h3 style={{ margin: '0 0 0.2rem 0', color: student.id === lbStudent.id ? 'var(--primary-color)' : 'white', fontSize: idx === 0 ? '1.4rem' : '1.1rem' }}>
-                        {lbStudent.name} {student.id === lbStudent.id && '(You)'}
-                      </h3>
-                      <p className="text-muted" style={{ margin: 0, fontSize: '0.85rem' }}>@{lbStudent.username || 'student'}</p>
+                    <div style={{ textAlign: 'right' }}>
+                      <h3 style={{ margin: '0 0 0.2rem 0', color: '#4CAF50', fontSize: '1.2rem' }}>{lbStudent.points || 0} Pts</h3>
+                      <p style={{ margin: 0, color: '#ff4444', fontSize: '0.85rem', fontWeight: 'bold' }}>🔥 {lbStudent.streak_days || 0} Days</p>
                     </div>
                   </div>
-                  <div style={{ textAlign: 'right' }}>
-                    <h3 style={{ margin: '0 0 0.2rem 0', color: '#ffd700' }}>{lbStudent.points || 0} Pts</h3>
-                    <p style={{ margin: 0, color: '#ff4444', fontSize: '0.85rem', fontWeight: 'bold' }}>🔥 {lbStudent.streak_days || 0} Days</p>
-                  </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           </div>
         )}
