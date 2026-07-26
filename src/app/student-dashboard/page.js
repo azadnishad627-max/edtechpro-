@@ -816,7 +816,7 @@ export default function StudentDashboard() {
                 const isMe = student.id === lbStudent.id;
 
                 return (
-                  <div key={lbStudent.id} className={idx === 0 ? "pubg-kill-feed" : ""} style={{ 
+                  <div key={lbStudent.id} className={idx === 0 ? "cyberpunk-kill-feed" : ""} style={{ 
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between', 
                     padding: '1.2rem', 
                     borderBottom: idx === leaderboard.length - 1 ? 'none' : '1px solid rgba(255,255,255,0.05)',
@@ -854,17 +854,17 @@ export default function StudentDashboard() {
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.1rem', flex: 1, minWidth: 0, paddingLeft: '0.3rem' }}>
                         <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', width: 'fit-content' }}>
                           {idx === 0 && (
-                            <div className="pubg-name-fire" style={{ position: 'relative', width: '150px', height: '25px', marginBottom: '-2px', marginLeft: '25px' }}>
+                            <div className="cyberpunk-name-box">
+                              <span className="cyberpunk-glitch" data-text="// ELIMINATION //">// ELIMINATION //</span>
                             </div>
                           )}
-                          <div style={{ display: 'flex', alignItems: 'center' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', marginTop: idx === 0 ? '4px' : '0' }}>
                             <h3 style={{ 
                               margin: 0, color: isMe ? 'var(--primary-color)' : 'white', 
                               fontSize: isTop3 ? '1.1rem' : '1rem',
                               whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                              textShadow: idx === 0 ? '0 2px 4px rgba(0,0,0,1), 0 0 10px rgba(255,0,0,0.8)' : 'none'
+                              textShadow: idx === 0 ? '0 0 5px #0ff, 0 0 10px #f0f' : 'none'
                             }}>
-                              {idx === 0 && <span style={{ marginRight: '6px', fontSize: '1.2rem', display: 'inline-block', transform: 'translateY(-2px)' }}>🔫</span>}
                               {lbStudent.name} {isMe && '(You)'}
                             </h3>
                           </div>
