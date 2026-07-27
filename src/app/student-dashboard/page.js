@@ -234,12 +234,18 @@ export default function StudentDashboard() {
   const fetchLeaderboard = async () => {
     const { data: profiles } = await supabase.from('profiles').select('*').eq('role', 'student');
     const { data: attempts } = await supabase.from('test_attempts').select('student_id, test_id, score, created_at').order('created_at', { ascending: true });
+    const { data: activeTests } = await supabase.from('tests').select('id');
     
-    if (profiles && attempts) {
+    if (profiles && attempts && activeTests) {
+      const validTestIds = new Set(activeTests.map(t => t.id));
       const firstAttempts = {};
+      
       attempts.forEach(a => {
-         const key = `${a.student_id}_${a.test_id}`;
-         if (!firstAttempts[key]) firstAttempts[key] = a.score;
+         // Only count attempts for tests that still exist in the database!
+         if (validTestIds.has(a.test_id)) {
+           const key = `${a.student_id}_${a.test_id}`;
+           if (!firstAttempts[key]) firstAttempts[key] = a.score;
+         }
       });
 
       const studentScores = {};
@@ -248,13 +254,18 @@ export default function StudentDashboard() {
          studentScores[student_id] = (studentScores[student_id] || 0) + score;
       });
 
-      const updatedProfiles = profiles.map(p => ({
-        ...p,
-        total_test_score: studentScores[p.id] || 0
-      }));
+      // Only include students who have actually taken at least one valid test (score might be 0, but they must be in studentScores)
+      const updatedProfiles = profiles
+        .filter(p => studentScores[p.id] !== undefined)
+        .map(p => ({
+          ...p,
+          total_test_score: studentScores[p.id] || 0
+        }));
 
       updatedProfiles.sort((a, b) => b.total_test_score - a.total_test_score);
       setLeaderboard(updatedProfiles.slice(0, 10));
+    } else {
+      setLeaderboard([]);
     }
   };
 
