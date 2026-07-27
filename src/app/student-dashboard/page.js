@@ -236,35 +236,51 @@ export default function StudentDashboard() {
     const { data: attempts } = await supabase.from('test_attempts').select('student_id, test_id, score, created_at').order('created_at', { ascending: true });
     const { data: activeTests } = await supabase.from('tests').select('id');
     
-    if (profiles && attempts && activeTests) {
-      const validTestIds = new Set(activeTests.map(t => t.id));
-      const firstAttempts = {};
-      
-      attempts.forEach(a => {
-         // Only count attempts for tests that still exist in the database!
-         if (validTestIds.has(a.test_id)) {
-           const key = `${a.student_id}_${a.test_id}`;
-           if (!firstAttempts[key]) firstAttempts[key] = a.score;
-         }
-      });
-
-      const studentScores = {};
-      Object.entries(firstAttempts).forEach(([key, score]) => {
-         const student_id = key.split('_')[0];
-         studentScores[student_id] = (studentScores[student_id] || 0) + score;
-      });
-
-      // Only include students who have actually taken at least one valid test (score might be 0, but they must be in studentScores)
-      const updatedProfiles = profiles
-        .filter(p => studentScores[p.id] !== undefined)
-        .map(p => ({
-          ...p,
-          total_test_score: studentScores[p.id] || 0
-        }));
-
-      updatedProfiles.sort((a, b) => b.total_test_score - a.total_test_score);
-      setLeaderboard(updatedProfiles.slice(0, 10));
-    } else {
+      if (profiles && attempts && activeTests) {
+        const validTestIds = new Set(activeTests.map(t => t.id));
+        const firstAttempts = {};
+        
+        attempts.forEach(a => {
+           // Only count attempts for tests that still exist in the database!
+           if (validTestIds.has(a.test_id)) {
+             const key = `${a.student_id}_${a.test_id}`;
+             if (!firstAttempts[key]) firstAttempts[key] = a; // Store the full attempt object to track time
+           }
+        });
+  
+        const studentScores = {};
+        const studentLatestSubmit = {};
+        
+        Object.values(firstAttempts).forEach(a => {
+           const student_id = a.student_id;
+           studentScores[student_id] = (studentScores[student_id] || 0) + a.score;
+           
+           // Track the timestamp of their most recent test submission that contributes to their score
+           const attemptTime = new Date(a.created_at).getTime();
+           if (!studentLatestSubmit[student_id] || attemptTime > studentLatestSubmit[student_id]) {
+               studentLatestSubmit[student_id] = attemptTime;
+           }
+        });
+  
+        // Only include students who have actually taken at least one valid test (score might be 0, but they must be in studentScores)
+        const updatedProfiles = profiles
+          .filter(p => studentScores[p.id] !== undefined)
+          .map(p => ({
+            ...p,
+            total_test_score: studentScores[p.id] || 0,
+            latest_submit_time: studentLatestSubmit[p.id] || 0
+          }));
+  
+        updatedProfiles.sort((a, b) => {
+          if (b.total_test_score !== a.total_test_score) {
+            return b.total_test_score - a.total_test_score; // Highest score first
+          }
+          // Tie-breaker: If scores are equal, the student who submitted EARLIER comes first (smaller timestamp)
+          return a.latest_submit_time - b.latest_submit_time; 
+        });
+        
+        setLeaderboard(updatedProfiles.slice(0, 10));
+      } else {
       setLeaderboard([]);
     }
   };
