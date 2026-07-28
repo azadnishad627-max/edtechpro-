@@ -14,7 +14,7 @@ export default function OneSignalProvider({ children }) {
           },
           allowLocalhostAsSecureOrigin: true,
         });
-        OneSignal.Slidedown.promptPush();
+        window.OneSignal = OneSignal; OneSignal.Slidedown.promptPush();
       } catch (error) {
         console.error("OneSignal Initialization Error:", error);
       }
