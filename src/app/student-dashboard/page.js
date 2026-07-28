@@ -1114,7 +1114,7 @@ export default function StudentDashboard() {
               </div>
             </div>
             <div className="glass-card">
-              <h2 className="mb-4 text-accent">Report Issue / Feedback</h2>
+              <div className="glass-card"><h2 className="mb-4 text-accent">Push Notifications</h2><div onClick={() => { if (typeof window !== 'undefined' && window.OneSignal) { window.OneSignal.Slidedown.promptPush(); } else { alert("Notification system is initializing..."); } }} style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '1rem', background: 'rgba(255, 68, 68, 0.1)', borderRadius: '12px', border: '1px solid rgba(255, 68, 68, 0.3)', cursor: 'pointer' }}> <div style={{ fontSize: '2rem' }}>??</div> <div> <h3 style={{ margin: '0 0 0.3rem 0', color: 'white' }}>Enable Notifications</h3> <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.9rem' }}>Get WhatsApp-like alerts for tests</p> </div> </div></div> <h2 className="mb-4 text-accent">Report Issue / Feedback</h2>
               <form onSubmit={handleSubmitFeedback} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 <textarea 
                   value={feedbackMessage}
