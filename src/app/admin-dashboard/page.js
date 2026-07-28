@@ -321,7 +321,7 @@ export default function AdminDashboard() {
         message: attachmentMsg
       }]);
       
-      if (dbError) throw dbError;
+      if (dbError) throw dbError; sendPushNotification("New Attachment from RK Education", "The admin sent you a file.");
     } catch (error) {
       console.error("Upload error:", error);
       alert('Failed to send file.');
@@ -375,7 +375,7 @@ export default function AdminDashboard() {
       sender: 'admin',
       message: msg
     }]);
-    if (error) console.error("Error sending admin reply:", error);
+    if (error) console.error("Error sending admin reply:", error); else sendPushNotification("New Message from RK Education", msg);
   };
 
   const handleCreateLiveClass = async (e) => {
