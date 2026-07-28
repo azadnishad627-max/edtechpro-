@@ -594,23 +594,26 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleDeleteTest = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this test? This will also delete all its questions!")) return;
+  const handleDeleteTest = async (id, currentTitle) => {
+    if (!window.confirm("Are you sure you want to archive this test? It will be moved to Test History.")) return;
     
-    // First delete questions associated with the test
-    const { error: qError } = await supabase.from('questions').delete().eq('test_id', id);
-    if (qError) {
-      alert("Error deleting questions: " + qError.message);
-      return;
-    }
-
-    // Then delete the test itself
-    const { error: tError } = await supabase.from('tests').delete().eq('id', id);
+    const { error: tError } = await supabase.from('tests').update({ title: `[ARCHIVED] ${currentTitle}` }).eq('id', id);
     if (tError) {
-      alert("Error deleting test: " + tError.message);
+      alert("Error archiving test: " + tError.message);
     } else {
-      setDbTests(prev => prev.filter(t => t.id !== id));
-      alert("Test and all questions deleted successfully!");
+      setDbTests(prev => prev.map(t => t.id === id ? { ...t, title: `[ARCHIVED] ${currentTitle}` } : t));
+      alert("Test moved to Test History successfully!");
+    }
+  };
+
+  const handleRestoreTest = async (id, currentTitle) => {
+    const newTitle = currentTitle.replace('[ARCHIVED] ', '');
+    const { error: tError } = await supabase.from('tests').update({ title: newTitle }).eq('id', id);
+    if (tError) {
+      alert("Error restoring test: " + tError.message);
+    } else {
+      setDbTests(prev => prev.map(t => t.id === id ? { ...t, title: newTitle } : t));
+      alert("Test restored and is active again!");
     }
   };
 
@@ -880,6 +883,7 @@ export default function AdminDashboard() {
         <button className={activeTab === 'results' ? 'btn-primary' : 'btn-outline'} onClick={() => switchTab('results')} style={{ padding: '0.5rem 1rem' }}>Test Results</button>
         <button className={activeTab === 'content' ? 'btn-primary' : 'btn-outline'} onClick={() => switchTab('content')} style={{ padding: '0.5rem 1rem' }}>Content Manager</button>
         <button className={activeTab === 'test' ? 'btn-primary' : 'btn-outline'} onClick={() => switchTab('test')} style={{ padding: '0.5rem 1rem' }}>Test Manager</button>
+        <button className={activeTab === 'test_history' ? 'btn-primary' : 'btn-outline'} onClick={() => switchTab('test_history')} style={{ padding: '0.5rem 1rem' }}>Test History</button>
         <button className={activeTab === 'live' ? 'btn-primary' : 'btn-outline'} onClick={() => switchTab('live')} style={{ padding: '0.5rem 1rem' }}>Live Classes</button>
         <button className={activeTab === 'announcements' ? 'btn-primary' : 'btn-outline'} onClick={() => switchTab('announcements')} style={{ padding: '0.5rem 1rem' }}>Announcements</button>
         <button className={activeTab === 'feedback' ? 'btn-primary' : 'btn-outline'} onClick={() => switchTab('feedback')} style={{ padding: '0.5rem 1rem' }}>Student Feedback</button>
@@ -1157,19 +1161,40 @@ export default function AdminDashboard() {
           <div className="glass-card">
             <h3 className="mb-4">Manage Published Tests</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', maxHeight: '600px', overflowY: 'auto', paddingRight: '10px' }}>
-              {dbTests.length === 0 ? <p className="text-muted">No tests published yet.</p> : dbTests.map(t => (
+              {dbTests.filter(t => !t.title.startsWith('[ARCHIVED]')).length === 0 ? <p className="text-muted">No tests published yet.</p> : dbTests.filter(t => !t.title.startsWith('[ARCHIVED]')).map(t => (
                 <div key={t.id} style={{ padding: '1rem', border: '1px solid var(--glass-border)', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.02)' }}>
                   <div>
                     <h4 style={{ margin: '0 0 0.25rem 0' }}>{t.title}</h4>
                     <p className="text-muted" style={{ fontSize: '0.85rem', margin: 0 }}>Batch: {t.batches?.title} • {t.duration_mins}m • {t.total_questions}Q</p>
                   </div>
-                  <button onClick={() => handleDeleteTest(t.id)} className="btn-outline" style={{ border: '1px solid #ff4444', color: '#ff4444', padding: '0.5rem 1rem' }}>Delete</button>
+                  <button onClick={() => handleDeleteTest(t.id, t.title)} className="btn-outline" style={{ border: '1px solid #ff4444', color: '#ff4444', padding: '0.5rem 1rem' }}>Delete</button>
                 </div>
               ))}
             </div>
           </div>
         </div>
       )}
+
+      {activeTab === 'test_history' && (
+        <div className="animate-tab-enter">
+          <div className="glass-card">
+            <h3 className="mb-4">Test History (Deleted Tests)</h3>
+            <p className="text-muted mb-4">Tests here are hidden from students and the leaderboard. You can restore them at any time.</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', maxHeight: '600px', overflowY: 'auto', paddingRight: '10px' }}>
+              {dbTests.filter(t => t.title.startsWith('[ARCHIVED]')).length === 0 ? <p className="text-muted">No deleted tests found in history.</p> : dbTests.filter(t => t.title.startsWith('[ARCHIVED]')).map(t => (
+                <div key={t.id} style={{ padding: '1rem', border: '1px dashed #ff4444', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255, 68, 68, 0.05)' }}>
+                  <div>
+                    <h4 style={{ margin: '0 0 0.25rem 0', color: 'var(--text-light)' }}>{t.title}</h4>
+                    <p className="text-muted" style={{ fontSize: '0.85rem', margin: 0 }}>Batch: {t.batches?.title} • {t.duration_mins}m • {t.total_questions}Q</p>
+                  </div>
+                  <button onClick={() => handleRestoreTest(t.id, t.title)} className="btn-primary" style={{ background: '#4CAF50' }}>Re-Test (Restore)</button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
       {activeTab === 'students' && (
         <div className="animate-tab-enter">
           <div className="glass-card">

@@ -234,10 +234,11 @@ export default function StudentDashboard() {
   const fetchLeaderboard = async () => {
     const { data: profiles } = await supabase.from('profiles').select('*').eq('role', 'student');
     const { data: attempts } = await supabase.from('test_attempts').select('student_id, test_id, score, created_at').order('created_at', { ascending: true });
-    const { data: activeTests } = await supabase.from('tests').select('id');
+    const { data: activeTests } = await supabase.from('tests').select('id, title');
     
       if (profiles && attempts && activeTests) {
-        const validTestIds = new Set(activeTests.map(t => t.id));
+        // Filter out archived tests from the leaderboard calculation
+        const validTestIds = new Set(activeTests.filter(t => !t.title.startsWith('[ARCHIVED]')).map(t => t.id));
         const firstAttempts = {};
         
         attempts.forEach(a => {
@@ -300,10 +301,13 @@ export default function StudentDashboard() {
     if (mData) setDbMaterials(mData);
   };
 
-  const fetchTests = async () => {
-    const { data: tData } = await supabase.from('tests').select('*, batches(title)');
-    if (tData) setDbTests(tData);
-  };
+    const fetchTests = async () => {
+      const { data: tData } = await supabase.from('tests').select('*, batches(title)');
+      if (tData) {
+        // Only show tests that are not archived
+        setDbTests(tData.filter(t => !t.title.startsWith('[ARCHIVED]')));
+      }
+    };
 
   const fetchAdminChats = async () => {
     const sData = localStorage.getItem('studentInfo');
