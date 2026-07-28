@@ -578,16 +578,17 @@ export default function AdminDashboard() {
   };
 
   const handleDeleteStudent = async (studentId) => {
-    if (!window.confirm("Are you sure you want to delete this student's account? This will remove them from the system.")) return;
+    if (!window.confirm("Are you sure you want to delete this student's account? This will remove them from the system permanently.")) return;
     
-    // Manually delete enrollments first to avoid foreign key constraints
+    // Manually delete dependent records first to avoid foreign key constraints
+    await supabase.from('test_attempts').delete().eq('student_id', studentId);
     await supabase.from('enrollments').delete().eq('student_id', studentId);
     
     const { error } = await supabase.from('profiles').delete().eq('id', studentId);
     if (error) {
       alert("Error deleting student: " + error.message);
     } else {
-      alert("Student deleted successfully.");
+      alert("Student deleted successfully and permanently.");
       setDbStudents(prev => prev.filter(s => s.id !== studentId));
       setTotalStudents(prev => prev - 1);
     }
