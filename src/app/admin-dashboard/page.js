@@ -577,7 +577,6 @@ export default function AdminDashboard() {
     }
   };
 
-
   const handleDeleteStudent = async (studentId) => {
     if (!window.confirm("Are you sure you want to delete this student's account? This will remove them from the system.")) return;
     
@@ -591,6 +590,17 @@ export default function AdminDashboard() {
       alert("Student deleted successfully.");
       setDbStudents(prev => prev.filter(s => s.id !== studentId));
       setTotalStudents(prev => prev - 1);
+    }
+  };
+
+  const handleApproveStudent = async (studentId, currentUsername) => {
+    const newUsername = currentUsername.replace('[PENDING] ', '');
+    const { error } = await supabase.from('profiles').update({ username: newUsername }).eq('id', studentId);
+    if (error) {
+      alert("Error approving student: " + error.message);
+    } else {
+      setDbStudents(prev => prev.map(s => s.id === studentId ? { ...s, username: newUsername } : s));
+      alert("Student approved successfully! They can now log in.");
     }
   };
 
@@ -879,6 +889,14 @@ export default function AdminDashboard() {
 
       <div className="flex mb-4" style={{ gap: '0.5rem', overflowX: 'auto', paddingBottom: '0.5rem', whiteSpace: 'nowrap' }}>
         <button className={activeTab === 'overview' ? 'btn-primary' : 'btn-outline'} onClick={() => switchTab('overview')} style={{ padding: '0.5rem 1rem' }}>Overview</button>
+        <button className={activeTab === 'pending' ? 'btn-primary' : 'btn-outline'} onClick={() => switchTab('pending')} style={{ padding: '0.5rem 1rem', position: 'relative' }}>
+          Pending Approvals
+          {dbStudents.filter(s => s.username?.startsWith('[PENDING] ')).length > 0 && (
+            <span style={{ position: 'absolute', top: '-5px', right: '-5px', background: '#ff4444', color: 'white', borderRadius: '50%', padding: '2px 6px', fontSize: '10px', fontWeight: 'bold' }}>
+              {dbStudents.filter(s => s.username?.startsWith('[PENDING] ')).length}
+            </span>
+          )}
+        </button>
         <button className={activeTab === 'students' ? 'btn-primary' : 'btn-outline'} onClick={() => switchTab('students')} style={{ padding: '0.5rem 1rem' }}>Students List</button>
         <button className={activeTab === 'results' ? 'btn-primary' : 'btn-outline'} onClick={() => switchTab('results')} style={{ padding: '0.5rem 1rem' }}>Test Results</button>
         <button className={activeTab === 'content' ? 'btn-primary' : 'btn-outline'} onClick={() => switchTab('content')} style={{ padding: '0.5rem 1rem' }}>Content Manager</button>
@@ -997,86 +1015,86 @@ export default function AdminDashboard() {
         </div>
       )}
 
-            {activeTab === 'results' && (
-          <div className="animate-tab-enter">
-            <div className="glass-card">
-              <h3 className="mb-4">Student Test Results</h3>
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', minWidth: '600px', borderCollapse: 'collapse', textAlign: 'left' }}>
-                  <thead>
-                    <tr style={{ borderBottom: '1px solid var(--glass-border)' }}>
-                      <th style={{ padding: '1rem', color: 'var(--text-secondary-dark)' }}>Student Name</th>
-                      <th style={{ padding: '1rem', color: 'var(--text-secondary-dark)' }}>Test Title</th>
-                      <th style={{ padding: '1rem', color: 'var(--text-secondary-dark)' }}>Total Attempts</th>
-                      <th style={{ padding: '1rem', color: 'var(--text-secondary-dark)' }}>Attempt Details</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {(() => {
-                      if (dbTestAttempts.length === 0) return <tr><td colSpan="4" style={{ padding: '1rem', textAlign: 'center' }}>No results found.</td></tr>;
-                      
-                      const grouped = {};
-                      dbTestAttempts.forEach(attempt => {
-                        const key = attempt.student_id + '_' + attempt.test_id;
-                        if (!grouped[key]) {
-                          grouped[key] = {
-                            student_id: attempt.student_id,
-                            test_id: attempt.test_id,
-                            studentName: attempt.profiles?.name || 'N/A',
-                            className: attempt.profiles?.class_name || 'N/A',
-                            testTitle: attempt.tests?.title || 'Deleted Test',
-                            attempts: []
-                          };
-                        }
-                        grouped[key].attempts.push(attempt);
-                      });
+      {activeTab === 'results' && (
+        <div className="animate-tab-enter">
+          <div className="glass-card">
+            <h3 className="mb-4">Student Test Results</h3>
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', minWidth: '600px', borderCollapse: 'collapse', textAlign: 'left' }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid var(--glass-border)' }}>
+                    <th style={{ padding: '1rem', color: 'var(--text-secondary-dark)' }}>Student Name</th>
+                    <th style={{ padding: '1rem', color: 'var(--text-secondary-dark)' }}>Test Title</th>
+                    <th style={{ padding: '1rem', color: 'var(--text-secondary-dark)' }}>Total Attempts</th>
+                    <th style={{ padding: '1rem', color: 'var(--text-secondary-dark)' }}>Attempt Details</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(() => {
+                    if (dbTestAttempts.length === 0) return <tr><td colSpan="4" style={{ padding: '1rem', textAlign: 'center' }}>No results found.</td></tr>;
+                    
+                    const grouped = {};
+                    dbTestAttempts.forEach(attempt => {
+                      const key = attempt.student_id + '_' + attempt.test_id;
+                      if (!grouped[key]) {
+                        grouped[key] = {
+                          student_id: attempt.student_id,
+                          test_id: attempt.test_id,
+                          studentName: attempt.profiles?.name || 'N/A',
+                          className: attempt.profiles?.class_name || 'N/A',
+                          testTitle: attempt.tests?.title || 'Deleted Test',
+                          attempts: []
+                        };
+                      }
+                      grouped[key].attempts.push(attempt);
+                    });
 
-                      return Object.values(grouped).map(group => {
-                        const sortedAttempts = [...group.attempts].sort((a,b) => a.attempt_number - b.attempt_number);
-                        
-                        return (
-                          <tr key={group.student_id + '_' + group.test_id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', verticalAlign: 'top' }}>
-                            <td style={{ padding: '1rem', fontWeight: 'bold' }}>
-                              {group.studentName} <span style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-muted)' }}>({group.className})</span>
-                            </td>
-                            <td style={{ padding: '1rem' }}>{group.testTitle}</td>
-                            <td style={{ padding: '1rem' }}>
-                              <span style={{ background: 'rgba(255,255,255,0.1)', padding: '0.2rem 0.6rem', borderRadius: '4px', fontSize: '0.85rem' }}>
-                                {group.attempts.length} Attempts
-                              </span>
-                            </td>
-                            <td style={{ padding: '1rem' }}>
-                              <details style={{ cursor: 'pointer', minWidth: '200px' }}>
-                                <summary style={{ padding: '0.5rem 1rem', background: 'rgba(255,255,255,0.05)', borderRadius: '6px', fontWeight: 'bold', userSelect: 'none', color: 'var(--text-accent)' }}>
-                                  View Attempt Details
-                                </summary>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.5rem' }}>
-                                  {sortedAttempts.map(att => (
-                                    <div key={att.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(0,0,0,0.2)', padding: '0.5rem 1rem', borderRadius: '6px' }}>
-                                      <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                        <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Attempt {att.attempt_number}</span>
-                                        <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{new Date(att.created_at).toLocaleString()}</span>
-                                      </div>
-                                      <span style={{ fontWeight: 'bold', fontSize: '1.1rem', color: att.score >= att.total_questions / 2 ? '#10b981' : '#ff4444' }}>
-                                        {att.score} / {att.total_questions}
-                                      </span>
+                    return Object.values(grouped).map(group => {
+                      const sortedAttempts = [...group.attempts].sort((a,b) => a.attempt_number - b.attempt_number);
+                      
+                      return (
+                        <tr key={group.student_id + '_' + group.test_id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', verticalAlign: 'top' }}>
+                          <td style={{ padding: '1rem', fontWeight: 'bold' }}>
+                            {group.studentName} <span style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-muted)' }}>({group.className})</span>
+                          </td>
+                          <td style={{ padding: '1rem' }}>{group.testTitle}</td>
+                          <td style={{ padding: '1rem' }}>
+                            <span style={{ background: 'rgba(255,255,255,0.1)', padding: '0.2rem 0.6rem', borderRadius: '4px', fontSize: '0.85rem' }}>
+                              {group.attempts.length} Attempts
+                            </span>
+                          </td>
+                          <td style={{ padding: '1rem' }}>
+                            <details style={{ cursor: 'pointer', minWidth: '200px' }}>
+                              <summary style={{ padding: '0.5rem 1rem', background: 'rgba(255,255,255,0.05)', borderRadius: '6px', fontWeight: 'bold', userSelect: 'none', color: 'var(--text-accent)' }}>
+                                View Attempt Details
+                              </summary>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.5rem' }}>
+                                {sortedAttempts.map(att => (
+                                  <div key={att.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(0,0,0,0.2)', padding: '0.5rem 1rem', borderRadius: '6px' }}>
+                                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                      <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Attempt {att.attempt_number}</span>
+                                      <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{new Date(att.created_at).toLocaleString()}</span>
                                     </div>
-                                  ))}
-                                </div>
-                              </details>
-                            </td>
-                          </tr>
-                        );
-                      });
-                    })()}
-                  </tbody>
-                </table>
-              </div>
+                                    <span style={{ fontWeight: 'bold', fontSize: '1.1rem', color: att.score >= att.total_questions / 2 ? '#10b981' : '#ff4444' }}>
+                                      {att.score} / {att.total_questions}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            </details>
+                          </td>
+                        </tr>
+                      );
+                    });
+                  })()}
+                </tbody>
+              </table>
             </div>
           </div>
-        )}
-        
-        {activeTab === 'test' && (
+        </div>
+      )}
+      
+      {activeTab === 'test' && (
         <div className="animate-tab-enter grid-cols-2" style={{ alignItems: 'flex-start' }}>
           <div className="glass-card mb-4">
             <h3 className="mb-4">Create New Online Test</h3>
@@ -1195,10 +1213,52 @@ export default function AdminDashboard() {
         </div>
       )}
 
+      {activeTab === 'pending' && (
+        <div className="animate-tab-enter">
+          <div className="glass-card">
+            <h3 className="mb-4">Pending Student Approvals</h3>
+            <p className="text-muted mb-4">These students have registered but cannot log in until you approve them. You should receive a WhatsApp message from them.</p>
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', minWidth: '600px', borderCollapse: 'collapse', textAlign: 'left' }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid var(--glass-border)' }}>
+                    <th style={{ padding: '1rem', color: 'var(--text-secondary-dark)' }}>Name</th>
+                    <th style={{ padding: '1rem', color: 'var(--text-secondary-dark)' }}>Username</th>
+                    <th style={{ padding: '1rem', color: 'var(--text-secondary-dark)' }}>Class</th>
+                    <th style={{ padding: '1rem', color: 'var(--text-secondary-dark)', textAlign: 'right' }}>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {dbStudents.filter(s => s.username?.startsWith('[PENDING] ')).length === 0 ? (
+                    <tr><td colSpan="4" style={{ padding: '1rem', textAlign: 'center', color: 'var(--text-muted)' }}>No pending approvals.</td></tr>
+                  ) : dbStudents.filter(s => s.username?.startsWith('[PENDING] ')).map(s => (
+                    <tr key={s.id} style={{ borderBottom: '1px solid var(--glass-border)' }}>
+                      <td style={{ padding: '1rem' }}>{s.name}</td>
+                      <td style={{ padding: '1rem', color: '#ff4444' }}>{s.username}</td>
+                      <td style={{ padding: '1rem' }}>{s.class_name}</td>
+                      <td style={{ padding: '1rem', textAlign: 'right' }}>
+                        <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                          <button onClick={() => handleApproveStudent(s.id, s.username)} className="btn-primary" style={{ background: '#4CAF50', padding: '0.5rem 1rem', fontSize: '0.85rem' }}>
+                            Approve
+                          </button>
+                          <button onClick={() => handleDeleteStudent(s.id)} className="btn-outline" style={{ border: '1px solid #ff4444', color: '#ff4444', padding: '0.5rem 1rem', fontSize: '0.85rem' }}>
+                            Reject (Delete)
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
       {activeTab === 'students' && (
         <div className="animate-tab-enter">
           <div className="glass-card">
-            <h3 className="mb-4">Registered Students ({dbStudents.length})</h3>
+            <h3 className="mb-4">Registered Students ({dbStudents.filter(s => !s.username?.startsWith('[PENDING] ')).length})</h3>
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', minWidth: '600px', borderCollapse: 'collapse', textAlign: 'left' }}>
                 <thead>
@@ -1212,9 +1272,9 @@ export default function AdminDashboard() {
                   </tr>
                 </thead>
                 <tbody>
-                  {dbStudents.length === 0 ? (
+                  {dbStudents.filter(s => !s.username?.startsWith('[PENDING] ')).length === 0 ? (
                     <tr><td colSpan="6" style={{ padding: '1rem', textAlign: 'center' }}>No students found.</td></tr>
-                  ) : dbStudents.map(student => (
+                  ) : dbStudents.filter(s => !s.username?.startsWith('[PENDING] ')).map(student => (
                     <tr key={student.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
                       <td style={{ padding: '1rem', fontWeight: 'bold' }}>{student.name || 'N/A'}</td>
                       <td style={{ padding: '1rem' }}>{student.username || 'N/A'}</td>
