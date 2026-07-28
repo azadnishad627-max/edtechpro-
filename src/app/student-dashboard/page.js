@@ -154,6 +154,10 @@ export default function StudentDashboard() {
   const [dbTests, setDbTests] = useState([]);
   const [dbMaterials, setDbMaterials] = useState([]);
   const [selectedBatch, setSelectedBatch] = useState(null);
+  
+  // Profile & Analytics State
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [myTestAttempts, setMyTestAttempts] = useState([]);
 
   // Profile Edit State
   const [editName, setEditName] = useState('');
@@ -193,7 +197,8 @@ export default function StudentDashboard() {
       fetchBatches();
       fetchMaterials();
       fetchTests();
-      fetchAnnouncements();
+      fetchMyAttempts();
+      fetchAdminChats();
       fetchLiveClasses();
       fetchLeaderboard();
       fetchBookmarks();
@@ -307,6 +312,14 @@ export default function StudentDashboard() {
         // Only show tests that are not archived
         setDbTests(tData.filter(t => !t.title.startsWith('[ARCHIVED]')));
       }
+    };
+
+    const fetchMyAttempts = async () => {
+      const sData = localStorage.getItem('studentInfo');
+      if (!sData) return;
+      const student = JSON.parse(sData);
+      const { data: aData } = await supabase.from('test_attempts').select('*, tests(title, total_questions)').eq('student_id', student.id).order('created_at', { ascending: false });
+      if (aData) setMyTestAttempts(aData);
     };
 
   const fetchAdminChats = async () => {
@@ -652,7 +665,19 @@ export default function StudentDashboard() {
       <div className="flex gap-4 mb-4 mobile-hide" style={{ gap: '1rem', overflowX: 'auto', paddingBottom: '0.5rem', whiteSpace: 'nowrap' }}>
         <button className={activeTab === 'courses' ? 'btn-primary' : 'btn-outline'} onClick={() => { switchTab('courses'); setSelectedBatch(null); }}>My Courses</button>
         <button className={activeTab === 'leaderboard' ? 'btn-primary' : 'btn-outline'} onClick={() => switchTab('leaderboard')}>🏆 Leaderboard</button>
-        <button className={activeTab === 'tests' ? 'btn-primary' : 'btn-outline'} onClick={() => switchTab('tests')}>Online Tests</button>
+        <button className={activeTab === 'tests' ? 'btn-primary' : 'btn-outline'} onClick={() => switchTab('tests')} style={{ position: 'relative' }}>
+          Online Tests
+          {(() => {
+            const takenTestIds = new Set(myTestAttempts.map(a => a.test_id));
+            const activeTestIds = dbTests.filter(t => t.is_active && (!t.batch_id || t.batch_id === student?.batch_id)).map(t => t.id);
+            const missedCount = activeTestIds.filter(id => !takenTestIds.has(id)).length;
+            return missedCount > 0 ? (
+              <span style={{ position: 'absolute', top: '-5px', right: '-5px', background: '#ff4444', color: 'white', borderRadius: '50%', padding: '2px 6px', fontSize: '10px', fontWeight: 'bold' }}>
+                🔔 {missedCount}
+              </span>
+            ) : null;
+          })()}
+        </button>
 
         <button className={activeTab === 'profile' ? 'btn-primary' : 'btn-outline'} onClick={() => switchTab('profile')}>👤 Profile</button>
         <button className={activeTab === 'more' ? 'btn-primary' : 'btn-outline'} onClick={() => switchTab('more')}>🎮 More</button>
@@ -950,42 +975,123 @@ export default function StudentDashboard() {
               <p className="text-muted mb-2">@{student.username}</p>
               <p className="text-accent font-bold mb-4">Student</p>
               
-              <hr style={{ width: '100%', border: 'none', borderTop: '1px solid var(--glass-border)', margin: '1rem 0' }} />
-              
-              <button onClick={handleLogout} className="btn-outline" style={{ width: '100%', border: '1px solid #ff4444', color: '#ff4444' }}>
-                Sign Out
-              </button>
+              <div style={{ display: 'flex', gap: '1rem', width: '100%', marginBottom: '1rem' }}>
+                <button onClick={() => setIsEditingProfile(!isEditingProfile)} className="btn-primary" style={{ flex: 1, padding: '0.6rem' }}>
+                  {isEditingProfile ? 'Cancel Edit' : 'Edit Profile'}
+                </button>
+                <button onClick={handleLogout} className="btn-outline" style={{ flex: 1, border: '1px solid #ff4444', color: '#ff4444', padding: '0.6rem' }}>
+                  Sign Out
+                </button>
+              </div>
             </div>
 
-            <div className="glass-card">
-              <h3 className="mb-4">Edit Profile</h3>
-              <form onSubmit={handleSaveProfile} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                <div>
-                  <label className="text-muted" style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem' }}>Full Name</label>
-                  <input type="text" value={editName} onChange={(e) => setEditName(e.target.value)} style={{ width: '100%', padding: '1rem', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'var(--bg-dark)', color: 'white' }} required />
+            {isEditingProfile ? (
+              <div className="glass-card animate-fade-in">
+                <h3 className="mb-4">Edit Profile</h3>
+                <form onSubmit={handleSaveProfile} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  <div>
+                    <label className="text-muted" style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem' }}>Full Name</label>
+                    <input type="text" value={editName} onChange={(e) => setEditName(e.target.value)} style={{ width: '100%', padding: '1rem', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'var(--bg-dark)', color: 'white' }} required />
+                  </div>
+                  
+                  <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+                    <div style={{ flex: 1, minWidth: '150px' }}>
+                      <label className="text-muted" style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem' }}>Date of Birth</label>
+                      <input type="date" value={editDob} onChange={(e) => setEditDob(e.target.value)} style={{ width: '100%', padding: '1rem', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'var(--bg-dark)', color: 'white' }} required />
+                    </div>
+                    <div style={{ flex: 1, minWidth: '150px' }}>
+                      <label className="text-muted" style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem' }}>Class / Standard</label>
+                      <input type="text" value={editClass} onChange={(e) => setEditClass(e.target.value)} style={{ width: '100%', padding: '1rem', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'var(--bg-dark)', color: 'white' }} required />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-muted" style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem' }}>Change Profile Photo</label>
+                    <input type="file" accept="image/*" ref={photoInputRef} onChange={(e) => setNewPhotoFile(e.target.files[0])} style={{ width: '100%', padding: '1rem', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'var(--bg-dark)', color: 'white' }} />
+                  </div>
+
+                  <button type="submit" disabled={isSavingProfile} className="btn-primary mt-4" style={{ width: '100%', background: 'var(--gradient-brand)' }}>
+                    {isSavingProfile ? 'Saving Changes...' : 'Save Profile Details'}
+                  </button>
+                </form>
+              </div>
+            ) : (
+              <div className="glass-card animate-fade-in" style={{ padding: '0' }}>
+                <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--glass-border)', background: 'linear-gradient(135deg, rgba(6,182,212,0.1), rgba(139,92,246,0.1))' }}>
+                  <h3 style={{ margin: 0 }}>Academic Performance</h3>
+                  <p className="text-muted" style={{ margin: '0.5rem 0 0 0', fontSize: '0.9rem' }}>Overview of your tests and results.</p>
                 </div>
                 
-                <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-                  <div style={{ flex: 1, minWidth: '150px' }}>
-                    <label className="text-muted" style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem' }}>Date of Birth</label>
-                    <input type="date" value={editDob} onChange={(e) => setEditDob(e.target.value)} style={{ width: '100%', padding: '1rem', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'var(--bg-dark)', color: 'white' }} required />
+                <div style={{ padding: '1.5rem', display: 'flex', gap: '1rem', borderBottom: '1px solid var(--glass-border)' }}>
+                  <div style={{ flex: 1, background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.3)', padding: '1rem', borderRadius: '8px', textAlign: 'center' }}>
+                    <h4 style={{ margin: '0 0 0.5rem 0', color: '#10b981', fontSize: '2rem' }}>
+                      {new Set(myTestAttempts.map(a => a.test_id)).size}
+                    </h4>
+                    <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.9rem' }}>Tests Taken</p>
                   </div>
-                  <div style={{ flex: 1, minWidth: '150px' }}>
-                    <label className="text-muted" style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem' }}>Class / Standard</label>
-                    <input type="text" value={editClass} onChange={(e) => setEditClass(e.target.value)} style={{ width: '100%', padding: '1rem', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'var(--bg-dark)', color: 'white' }} required />
+                  <div style={{ flex: 1, background: 'rgba(255, 68, 68, 0.1)', border: '1px solid rgba(255, 68, 68, 0.3)', padding: '1rem', borderRadius: '8px', textAlign: 'center' }}>
+                    <h4 style={{ margin: '0 0 0.5rem 0', color: '#ff4444', fontSize: '2rem' }}>
+                      {dbTests.filter(t => t.is_active && (!t.batch_id || t.batch_id === student?.batch_id)).map(t => t.id).filter(id => !new Set(myTestAttempts.map(a => a.test_id)).has(id)).length}
+                    </h4>
+                    <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.9rem' }}>Tests Missed</p>
                   </div>
                 </div>
 
-                <div>
-                  <label className="text-muted" style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem' }}>Change Profile Photo</label>
-                  <input type="file" accept="image/*" ref={photoInputRef} onChange={(e) => setNewPhotoFile(e.target.files[0])} style={{ width: '100%', padding: '1rem', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'var(--bg-dark)', color: 'white' }} />
-                </div>
+                <div style={{ padding: '1.5rem' }}>
+                  <h4 className="mb-3">Test History</h4>
+                  {myTestAttempts.length === 0 ? (
+                    <p className="text-muted">You haven't taken any tests yet.</p>
+                  ) : (
+                    <div style={{ overflowX: 'auto' }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.9rem' }}>
+                        <thead>
+                          <tr style={{ borderBottom: '1px solid var(--glass-border)' }}>
+                            <th style={{ padding: '0.8rem', color: 'var(--text-secondary-dark)' }}>Test Name</th>
+                            <th style={{ padding: '0.8rem', color: 'var(--text-secondary-dark)' }}>Score</th>
+                            <th style={{ padding: '0.8rem', color: 'var(--text-secondary-dark)' }}>Grade</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {(() => {
+                            // Deduplicate attempts by picking the highest score for a test
+                            const bestAttempts = {};
+                            myTestAttempts.forEach(att => {
+                              if (!bestAttempts[att.test_id] || bestAttempts[att.test_id].score < att.score) {
+                                bestAttempts[att.test_id] = att;
+                              }
+                            });
+                            
+                            return Object.values(bestAttempts).map(att => {
+                              const percentage = (att.score / att.tests?.total_questions) * 100;
+                              let grade = '';
+                              let gradeColor = '';
+                              if (percentage >= 90) { grade = 'A+'; gradeColor = '#10b981'; } // Green
+                              else if (percentage >= 80) { grade = 'A'; gradeColor = '#10b981'; } // Green
+                              else if (percentage >= 70) { grade = 'B+'; gradeColor = '#f59e0b'; } // Yellow
+                              else if (percentage >= 60) { grade = 'B'; gradeColor = '#f59e0b'; } // Yellow
+                              else if (percentage >= 50) { grade = 'C'; gradeColor = '#f97316'; } // Orange
+                              else { grade = 'Fail'; gradeColor = '#ff4444'; } // Red
 
-                <button type="submit" disabled={isSavingProfile} className="btn-primary mt-4" style={{ width: '100%', background: 'var(--gradient-brand)' }}>
-                  {isSavingProfile ? 'Saving Changes...' : 'Save Profile Details'}
-                </button>
-              </form>
-            </div>
+                              return (
+                                <tr key={att.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                                  <td style={{ padding: '0.8rem' }}>{att.tests?.title || 'Unknown Test'}</td>
+                                  <td style={{ padding: '0.8rem', fontWeight: 'bold' }}>{att.score} / {att.tests?.total_questions}</td>
+                                  <td style={{ padding: '0.8rem' }}>
+                                    <span style={{ color: gradeColor, fontWeight: 'bold', background: `${gradeColor}22`, padding: '0.2rem 0.6rem', borderRadius: '4px' }}>
+                                      {grade}
+                                    </span>
+                                  </td>
+                                </tr>
+                              );
+                            });
+                          })()}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         )}
 
