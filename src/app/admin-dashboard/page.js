@@ -1224,17 +1224,19 @@ export default function AdminDashboard() {
                   <tr style={{ borderBottom: '1px solid var(--glass-border)' }}>
                     <th style={{ padding: '1rem', color: 'var(--text-secondary-dark)' }}>Name</th>
                     <th style={{ padding: '1rem', color: 'var(--text-secondary-dark)' }}>Username</th>
+                    <th style={{ padding: '1rem', color: 'var(--text-secondary-dark)' }}>WhatsApp</th>
                     <th style={{ padding: '1rem', color: 'var(--text-secondary-dark)' }}>Class</th>
                     <th style={{ padding: '1rem', color: 'var(--text-secondary-dark)', textAlign: 'right' }}>Action</th>
                   </tr>
                 </thead>
                 <tbody>
                   {dbStudents.filter(s => s.username?.startsWith('[PENDING] ')).length === 0 ? (
-                    <tr><td colSpan="4" style={{ padding: '1rem', textAlign: 'center', color: 'var(--text-muted)' }}>No pending approvals.</td></tr>
+                    <tr><td colSpan="5" style={{ padding: '1rem', textAlign: 'center', color: 'var(--text-muted)' }}>No pending approvals.</td></tr>
                   ) : dbStudents.filter(s => s.username?.startsWith('[PENDING] ')).map(s => (
                     <tr key={s.id} style={{ borderBottom: '1px solid var(--glass-border)' }}>
                       <td style={{ padding: '1rem' }}>{s.name}</td>
                       <td style={{ padding: '1rem', color: '#ff4444' }}>{s.username}</td>
+                      <td style={{ padding: '1rem' }}>{s.whatsapp_number || 'N/A'}</td>
                       <td style={{ padding: '1rem' }}>{s.class_name}</td>
                       <td style={{ padding: '1rem', textAlign: 'right' }}>
                         <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
@@ -1265,6 +1267,7 @@ export default function AdminDashboard() {
                   <tr style={{ borderBottom: '1px solid var(--glass-border)' }}>
                     <th style={{ padding: '1rem', color: 'var(--text-secondary-dark)' }}>Name</th>
                     <th style={{ padding: '1rem', color: 'var(--text-secondary-dark)' }}>Username</th>
+                    <th style={{ padding: '1rem', color: 'var(--text-secondary-dark)' }}>WhatsApp</th>
                     <th style={{ padding: '1rem', color: 'var(--text-secondary-dark)' }}>Class</th>
                     <th style={{ padding: '1rem', color: 'var(--text-secondary-dark)' }}>DOB</th>
                     <th style={{ padding: '1rem', color: 'var(--text-secondary-dark)' }}>Joined Date</th>
@@ -1273,11 +1276,12 @@ export default function AdminDashboard() {
                 </thead>
                 <tbody>
                   {dbStudents.filter(s => !s.username?.startsWith('[PENDING] ')).length === 0 ? (
-                    <tr><td colSpan="6" style={{ padding: '1rem', textAlign: 'center' }}>No students found.</td></tr>
+                    <tr><td colSpan="7" style={{ padding: '1rem', textAlign: 'center' }}>No students found.</td></tr>
                   ) : dbStudents.filter(s => !s.username?.startsWith('[PENDING] ')).map(student => (
                     <tr key={student.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
                       <td style={{ padding: '1rem', fontWeight: 'bold' }}>{student.name || 'N/A'}</td>
                       <td style={{ padding: '1rem' }}>{student.username || 'N/A'}</td>
+                      <td style={{ padding: '1rem' }}>{student.whatsapp_number || 'N/A'}</td>
                       <td style={{ padding: '1rem' }}>{student.class_name || 'N/A'}</td>
                       <td style={{ padding: '1rem' }}>{student.dob || 'N/A'}</td>
                       <td style={{ padding: '1rem' }}>{new Date(student.created_at).toLocaleDateString()}</td>

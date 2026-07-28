@@ -4,18 +4,26 @@ import { useRouter } from 'next/navigation';
 import { supabase } from '../../lib/supabaseClient';
 
 export default function StudentSetup() {
-  const [formData, setFormData] = useState({ name: '', dob: '', className: '', username: '', password: '' });
+  const [formData, setFormData] = useState({ name: '', dob: '', className: '', username: '', password: '', whatsapp: '' });
   const [profilePhoto, setProfilePhoto] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isVerificationStep, setIsVerificationStep] = useState(false);
   const router = useRouter();
 
-  const ADMIN_WHATSAPP = "919999999999"; // Default placeholder
+  const ADMIN_WHATSAPP = "919795206548"; // Admin's actual WhatsApp number
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
     
+    // Check if whatsapp_number already exists to prevent duplicate IDs
+    const { data: existingPhone } = await supabase.from('profiles').select('id').eq('whatsapp_number', formData.whatsapp).maybeSingle();
+    if (existingPhone) {
+      alert("This WhatsApp number is already registered! Only 1 ID is allowed per number.");
+      setIsSubmitting(false);
+      return;
+    }
+
     // Check if username already exists (either normal or pending)
     const { data: existingUser } = await supabase.from('profiles').select('id').in('username', [formData.username, `[PENDING] ${formData.username}`]).maybeSingle();
     if (existingUser) {
@@ -56,7 +64,8 @@ export default function StudentSetup() {
         dob: formData.dob,
         class_name: formData.className,
         role: 'student',
-        photo_url: finalPhotoUrl
+        photo_url: finalPhotoUrl,
+        whatsapp_number: formData.whatsapp
       }
     ]);
 
@@ -72,7 +81,7 @@ export default function StudentSetup() {
   };
 
   if (isVerificationStep) {
-    const whatsappMsg = `Hello Sir, please activate my EdTech account. My Username is: ${formData.username}`;
+    const whatsappMsg = `Hello Sir, my name is ${formData.name}. Please approve my request. Username: ${formData.username}`;
     const whatsappUrl = `https://wa.me/${ADMIN_WHATSAPP}?text=${encodeURIComponent(whatsappMsg)}`;
 
     return (
@@ -140,6 +149,16 @@ export default function StudentSetup() {
             onChange={(e) => setFormData({...formData, dob: e.target.value})}
             style={{ padding: '1rem', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'var(--bg-dark)', color: 'white' }}
             required
+          />
+          <input 
+            type="tel" 
+            placeholder="WhatsApp Number (10 Digits)"
+            pattern="[0-9]{10}"
+            value={formData.whatsapp}
+            onChange={(e) => setFormData({...formData, whatsapp: e.target.value})}
+            style={{ padding: '1rem', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'var(--bg-dark)', color: 'white' }}
+            required
+            title="Please enter a valid 10-digit WhatsApp number"
           />
           <input 
             type="text" 
