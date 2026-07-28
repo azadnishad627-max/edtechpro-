@@ -197,7 +197,7 @@ export default function AdminDashboard() {
       if (mData) setDbMaterials(mData);
 
       const { data: tData } = await supabase.from('tests').select('*, batches(title)');
-      if (tData) setDbTests(tData);
+      if (tData) setDbTests(tData); sendPushNotification("New Test Available", `Test: ${testTitle} has been published.`);
 
       const { data: testAttemptsData } = await supabase
         .from('test_attempts')
@@ -404,6 +404,18 @@ export default function AdminDashboard() {
     }
   };
 
+  const sendPushNotification = async (title, message) => {
+    try {
+      await fetch('/api/notify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title, message })
+      });
+    } catch (e) {
+      console.error("Push failed", e);
+    }
+  };
+
   const handleCreateAnnouncement = async (e) => {
     e.preventDefault();
     if (!announcementTitle || !announcementContent) return;
@@ -415,6 +427,7 @@ export default function AdminDashboard() {
       setDbAnnouncements([data[0], ...dbAnnouncements]);
       setAnnouncementTitle('');
       setAnnouncementContent('');
+      sendPushNotification(announcementTitle, announcementContent);
     }
   };
 
@@ -646,7 +659,7 @@ export default function AdminDashboard() {
       alert("Test Link Published Successfully!");
       setTestTitle(''); setTestUrl(''); setDuration(''); setTotalQuestions('');
       const { data: tData } = await supabase.from('tests').select('*, batches(title)');
-      if (tData) setDbTests(tData);
+      if (tData) setDbTests(tData); sendPushNotification("New Test Available", `Test: ${testTitle} has been published.`);
     } catch (err) {
       alert("Error: " + err.message);
     }
@@ -706,7 +719,8 @@ export default function AdminDashboard() {
             document.getElementById('csv-upload').value = '';
           }
           const { data: tData } = await supabase.from('tests').select('*, batches(title)');
-          if (tData) setDbTests(tData);
+          if (tData) setDbTests(tData); sendPushNotification("New Test Available", `Test: ${testTitle} has been published.`);
+          sendPushNotification("New Test Available", `Test: ${testTitle} has been published.`);
         } catch (err) {
           alert("Error processing CSV: " + err.message);
         }
@@ -760,7 +774,7 @@ export default function AdminDashboard() {
       setTestTitle(''); setTestTopic(''); setDuration(''); setTotalQuestions('');
       
       const { data: tData } = await supabase.from('tests').select('*, batches(title)');
-      if (tData) setDbTests(tData);
+      if (tData) setDbTests(tData); sendPushNotification("New Test Available", `Test: ${testTitle} has been published.`);
     } catch (err) {
       alert("Error generating test: " + err.message);
     }
@@ -815,7 +829,7 @@ export default function AdminDashboard() {
       document.getElementById('pdf-upload').value = '';
       
       const { data: tData } = await supabase.from('tests').select('*, batches(title)');
-      if (tData) setDbTests(tData);
+      if (tData) setDbTests(tData); sendPushNotification("New Test Available", `Test: ${testTitle} has been published.`);
     } catch (err) {
       alert("Error generating test from PDF: " + err.message);
     }
@@ -865,7 +879,7 @@ export default function AdminDashboard() {
       setTestTitle(''); setRawText(''); setDuration(''); setTotalQuestions('');
       
       const { data: tData } = await supabase.from('tests').select('*, batches(title)');
-      if (tData) setDbTests(tData);
+      if (tData) setDbTests(tData); sendPushNotification("New Test Available", `Test: ${testTitle} has been published.`);
     } catch (err) {
       alert("Error generating test from text: " + err.message);
     }
