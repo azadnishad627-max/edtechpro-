@@ -1,7 +1,7 @@
 import "./globals.css";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
-import OneSignalProvider from "../components/OneSignalProvider";
+
 
 export const metadata = {
   title: "RK Education | Premium Online Classes",
@@ -15,11 +15,11 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en">
       <body>
-        <OneSignalProvider>
+        
           <Navbar />
           <main>{children}</main>
           <Footer />
-        </OneSignalProvider>
+        
       </body>
     </html>
   );
