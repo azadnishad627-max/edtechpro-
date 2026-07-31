@@ -309,8 +309,7 @@ export default function StudentDashboard() {
     const fetchTests = async () => {
       const { data: tData } = await supabase.from('tests').select('*, batches(title)');
       if (tData) {
-        // Only show tests that are not archived
-        setDbTests(tData.filter(t => !t.title.startsWith('[ARCHIVED]')));
+        setDbTests(tData);
       }
     };
 
@@ -669,7 +668,7 @@ export default function StudentDashboard() {
           Online Tests
           {(() => {
             const takenTestIds = new Set(myTestAttempts.map(a => a.test_id));
-            const activeTestIds = dbTests.filter(t => t.is_active && (!t.batch_id || t.batch_id === student?.batch_id)).map(t => t.id);
+            const activeTestIds = dbTests.filter(t => t.is_active && !t.title.startsWith('[ARCHIVED]') && (!t.batch_id || t.batch_id === student?.batch_id)).map(t => t.id);
             const missedCount = activeTestIds.filter(id => !takenTestIds.has(id)).length;
             return missedCount > 0 ? (
               <span style={{ position: 'absolute', top: '-5px', right: '-5px', background: '#ff4444', color: 'white', borderRadius: '50%', padding: '2px 6px', fontSize: '10px', fontWeight: 'bold' }}>
@@ -781,7 +780,9 @@ export default function StudentDashboard() {
         {activeTab === 'tests' && (
             <div>
               <h2 className="mb-4 text-muted">Available Tests</h2>
-              {dbTests.length === 0 ? <p className="text-muted">No tests available right now.</p> : dbTests.map(test => {
+              {(() => {
+                const activeTests = dbTests.filter(t => !t.title.startsWith('[ARCHIVED]'));
+                return activeTests.length === 0 ? <p className="text-muted">No tests available right now.</p> : activeTests.map(test => {
                 const now = new Date();
                 const start = test.start_time ? new Date(test.start_time) : null;
                 const end = test.end_time ? new Date(test.end_time) : null;
@@ -818,7 +819,9 @@ export default function StudentDashboard() {
                     {isTooEarly ? 'Upcoming' : isTooLate ? 'Ended' : 'Start Test'}
                   </button>
                 </div>
-              )})}
+              );
+              })
+            })()}
 
               <h2 className="mb-4 text-accent mt-5" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>⭐ Saved Questions (For Revision)</h2>
             {bookmarkedQuestions.length === 0 ? <p className="text-muted">You haven't bookmarked any questions yet. Start a test and click the ⭐ icon on difficult questions to save them here!</p> : (
@@ -1040,7 +1043,7 @@ export default function StudentDashboard() {
                   </div>
                   <div style={{ flex: 1, background: 'rgba(255, 68, 68, 0.1)', border: '1px solid rgba(255, 68, 68, 0.3)', padding: '1rem', borderRadius: '8px', textAlign: 'center' }}>
                     <h4 style={{ margin: '0 0 0.5rem 0', color: '#ff4444', fontSize: '2rem' }}>
-                      {dbTests.filter(t => t.is_active && (!t.batch_id || t.batch_id === student?.batch_id)).map(t => t.id).filter(id => !new Set(myTestAttempts.map(a => a.test_id)).has(id)).length}
+                      {dbTests.filter(t => t.is_active && !t.title.startsWith('[ARCHIVED]') && (!t.batch_id || t.batch_id === student?.batch_id)).map(t => t.id).filter(id => !new Set(myTestAttempts.map(a => a.test_id)).has(id)).length}
                     </h4>
                     <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.9rem' }}>Tests Missed</p>
                   </div>

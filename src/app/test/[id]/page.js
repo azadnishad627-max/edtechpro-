@@ -96,7 +96,7 @@ export default function TakeTest() {
 
   // Main test timer logic
   useEffect(() => {
-    if (timeLeft === null || isSubmitted || isEvaluating || proctorLockTimer > 0) return; // Paused if penalty lock is active
+    if (timeLeft === null || isSubmitted || isEvaluating) return; 
     
     if (timeLeft <= 0) {
       handleSubmit();
@@ -108,7 +108,7 @@ export default function TakeTest() {
     }, 1000);
     
     return () => clearTimeout(timer);
-  }, [timeLeft, isSubmitted, isEvaluating, proctorLockTimer]);
+  }, [timeLeft, isSubmitted, isEvaluating]);
 
   // Save progress to local storage continuously
   useEffect(() => {
@@ -118,16 +118,7 @@ export default function TakeTest() {
     }
   }, [answers, currentIdx, timeLeft, id, isSubmitted, isEvaluating]);
 
-  // Proctor Penalty Timer logic
-  useEffect(() => {
-    if (proctorLockTimer <= 0 || isSubmitted || isEvaluating) return;
-    
-    const timer = setTimeout(() => {
-      setProctorLockTimer(prev => prev - 1);
-    }, 1000);
-    
-    return () => clearTimeout(timer);
-  }, [proctorLockTimer, isSubmitted, isEvaluating]);
+
 
   
   useEffect(() => {
