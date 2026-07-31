@@ -75,6 +75,14 @@ export default function AdminDashboard() {
   const [testUrl, setTestUrl] = useState('');
   const [csvFile, setCsvFile] = useState(null);
   const [showLegacyOptions, setShowLegacyOptions] = useState(false);
+  const [isReasoning, setIsReasoning] = useState(false);
+  
+  // Edit Questions Modal State
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [selectedTestId, setSelectedTestId] = useState(null);
+  const [testQuestions, setTestQuestions] = useState([]);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+
   // Announcements & Feedback State
   const [announcementTitle, setAnnouncementTitle] = useState('');
   const [announcementContent, setAnnouncementContent] = useState('');
@@ -628,6 +636,23 @@ export default function AdminDashboard() {
     }
   };
 
+  const autoArchivePreviousTests = async (batchId) => {
+    // Fetch all active tests for this batch
+    const { data: activeTests } = await supabase.from('tests').select('id, title').eq('batch_id', batchId).not('title', 'ilike', '[ARCHIVED]%');
+    if (activeTests && activeTests.length > 0) {
+      for (const t of activeTests) {
+        const newTitle = `[ARCHIVED] ${t.title}`;
+        await supabase.from('tests').update({ title: newTitle }).eq('id', t.id);
+      }
+      // Refresh local state to reflect archives
+      setDbTests(prev => prev.map(t => {
+        const active = activeTests.find(a => a.id === t.id);
+        if (active) return { ...t, title: `[ARCHIVED] ${t.title}` };
+        return t;
+      }));
+    }
+  };
+
   const handlePublishTest = async (e) => {
     e.preventDefault();
     alert("Manual publish is not fully wired. Use AI Generation below!");
@@ -639,12 +664,13 @@ export default function AdminDashboard() {
       return;
     }
     try {
+      await autoArchivePreviousTests(testBatch);
       const { data, error } = await supabase.from('tests').insert([
-        { batch_id: testBatch, title: testTitle, duration_mins: parseInt(duration), total_questions: parseInt(totalQuestions), test_url: testUrl, start_time: testStartTime ? new Date(testStartTime).toISOString() : null, end_time: testEndTime ? new Date(testEndTime).toISOString() : null }
+        { batch_id: testBatch, title: isReasoning ? '[REASONING] ' + testTitle : testTitle, duration_mins: parseInt(duration), total_questions: parseInt(totalQuestions), test_url: testUrl, start_time: testStartTime ? new Date(testStartTime).toISOString() : null, end_time: testEndTime ? new Date(testEndTime).toISOString() : null }
       ]);
       if (error) throw error;
       alert("Test Link Published Successfully!");
-      setTestTitle(''); setTestUrl(''); setDuration(''); setTotalQuestions('');
+      setTestTitle(''); setTestUrl(''); setDuration(''); setTotalQuestions(''); setIsReasoning(false);
       const { data: tData } = await supabase.from('tests').select('*, batches(title)');
       if (tData) setDbTests(tData);
     } catch (err) {
@@ -666,9 +692,11 @@ export default function AdminDashboard() {
           const rows = results.data;
           if(rows.length === 0) throw new Error("CSV is empty");
           
-          // 1. Insert Test
+          // 1. Auto Archive
+          await autoArchivePreviousTests(testBatch);
+          // 2. Insert Test
           const { data: testData, error: testError } = await supabase.from('tests').insert([
-            { batch_id: testBatch, title: testTitle, duration_mins: parseInt(duration), total_questions: parseInt(totalQuestions), start_time: testStartTime ? new Date(testStartTime).toISOString() : null, end_time: testEndTime ? new Date(testEndTime).toISOString() : null }
+            { batch_id: testBatch, title: isReasoning ? '[REASONING] ' + testTitle : testTitle, duration_mins: parseInt(duration), total_questions: parseInt(totalQuestions), start_time: testStartTime ? new Date(testStartTime).toISOString() : null, end_time: testEndTime ? new Date(testEndTime).toISOString() : null }
           ]).select();
           if (testError) throw testError;
           const testId = testData[0].id;
@@ -701,7 +729,7 @@ export default function AdminDashboard() {
           if (qError) throw qError;
           
           alert(`Success! Generated and saved ${questionsToInsert.length} questions from CSV to the database.`);
-          setTestTitle(''); setCsvFile(null); setDuration(''); setTotalQuestions('');
+          setTestTitle(''); setCsvFile(null); setDuration(''); setTotalQuestions(''); setIsReasoning(false);
           if(document.getElementById('csv-upload')) {
             document.getElementById('csv-upload').value = '';
           }
@@ -734,9 +762,11 @@ export default function AdminDashboard() {
       if (data.error) throw new Error(data.error);
       if (!data.questions || data.questions.length === 0) throw new Error("No questions generated.");
 
-      // 1. Insert Test
+      // 1. Auto Archive
+      await autoArchivePreviousTests(testBatch);
+      // 2. Insert Test
       const { data: testData, error: testError } = await supabase.from('tests').insert([
-        { batch_id: testBatch, title: testTitle, duration_mins: parseInt(duration), total_questions: parseInt(totalQuestions), start_time: testStartTime ? new Date(testStartTime).toISOString() : null, end_time: testEndTime ? new Date(testEndTime).toISOString() : null }
+        { batch_id: testBatch, title: isReasoning ? '[REASONING] ' + testTitle : testTitle, duration_mins: parseInt(duration), total_questions: parseInt(totalQuestions), start_time: testStartTime ? new Date(testStartTime).toISOString() : null, end_time: testEndTime ? new Date(testEndTime).toISOString() : null }
       ]).select();
 
       if (testError) throw testError;
@@ -757,7 +787,7 @@ export default function AdminDashboard() {
       if (qError) throw qError;
 
       alert(`Success! Generated and saved ${questionsToInsert.length} questions to the database.`);
-      setTestTitle(''); setTestTopic(''); setDuration(''); setTotalQuestions('');
+      setTestTitle(''); setTestTopic(''); setDuration(''); setTotalQuestions(''); setIsReasoning(false);
       
       const { data: tData } = await supabase.from('tests').select('*, batches(title)');
       if (tData) setDbTests(tData);
@@ -787,9 +817,11 @@ export default function AdminDashboard() {
       if (data.error) throw new Error(data.error);
       if (!data.questions || data.questions.length === 0) throw new Error("No questions generated.");
 
-      // 1. Insert Test
+      // 1. Auto Archive
+      await autoArchivePreviousTests(testBatch);
+      // 2. Insert Test
       const { data: testData, error: testError } = await supabase.from('tests').insert([
-        { batch_id: testBatch, title: testTitle, duration_mins: parseInt(duration), total_questions: parseInt(totalQuestions), start_time: testStartTime ? new Date(testStartTime).toISOString() : null, end_time: testEndTime ? new Date(testEndTime).toISOString() : null }
+        { batch_id: testBatch, title: isReasoning ? '[REASONING] ' + testTitle : testTitle, duration_mins: parseInt(duration), total_questions: parseInt(totalQuestions), start_time: testStartTime ? new Date(testStartTime).toISOString() : null, end_time: testEndTime ? new Date(testEndTime).toISOString() : null }
       ]).select();
 
       if (testError) throw testError;
@@ -810,7 +842,7 @@ export default function AdminDashboard() {
       if (qError) throw qError;
 
       alert(`Success! Generated and saved ${questionsToInsert.length} questions from PDF to the database.`);
-      setTestTitle(''); setTestPdf(null); setDuration(''); setTotalQuestions('');
+      setTestTitle(''); setTestPdf(null); setDuration(''); setTotalQuestions(''); setIsReasoning(false);
       // reset file input
       document.getElementById('pdf-upload').value = '';
       
@@ -839,9 +871,11 @@ export default function AdminDashboard() {
       if (data.error) throw new Error(data.error);
       if (!data.questions || data.questions.length === 0) throw new Error("No questions generated.");
 
-      // 1. Insert Test
+      // 1. Auto Archive
+      await autoArchivePreviousTests(testBatch);
+      // 2. Insert Test
       const { data: testData, error: testError } = await supabase.from('tests').insert([
-        { batch_id: testBatch, title: testTitle, duration_mins: parseInt(duration), total_questions: parseInt(totalQuestions), start_time: testStartTime ? new Date(testStartTime).toISOString() : null, end_time: testEndTime ? new Date(testEndTime).toISOString() : null }
+        { batch_id: testBatch, title: isReasoning ? '[REASONING] ' + testTitle : testTitle, duration_mins: parseInt(duration), total_questions: parseInt(totalQuestions), start_time: testStartTime ? new Date(testStartTime).toISOString() : null, end_time: testEndTime ? new Date(testEndTime).toISOString() : null }
       ]).select();
 
       if (testError) throw testError;
@@ -862,7 +896,7 @@ export default function AdminDashboard() {
       if (qError) throw qError;
 
       alert(`Success! Generated and saved ${questionsToInsert.length} questions from text to the database.`);
-      setTestTitle(''); setRawText(''); setDuration(''); setTotalQuestions('');
+      setTestTitle(''); setRawText(''); setDuration(''); setTotalQuestions(''); setIsReasoning(false);
       
       const { data: tData } = await supabase.from('tests').select('*, batches(title)');
       if (tData) setDbTests(tData);
@@ -870,6 +904,55 @@ export default function AdminDashboard() {
       alert("Error generating test from text: " + err.message);
     }
     setIsGenerating(false);
+  };
+
+  const openEditModal = async (testId) => {
+    setSelectedTestId(testId);
+    setTestQuestions([]);
+    setIsEditModalOpen(true);
+    try {
+      const { data, error } = await supabase.from('questions').select('*').eq('test_id', testId).order('id', { ascending: true });
+      if (error) throw error;
+      setTestQuestions(data || []);
+    } catch (err) {
+      alert("Error fetching questions: " + err.message);
+    }
+  };
+
+  const handleUploadQuestionImage = async (questionId, file) => {
+    if (!file) return;
+    setIsUploadingImage(true);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Math.random()}.${fileExt}`;
+      const filePath = `${questionId}/${fileName}`;
+      
+      const { error: uploadError } = await supabase.storage.from('question_images').upload(filePath, file);
+      if (uploadError) {
+        if (uploadError.message.includes('Bucket not found')) {
+          throw new Error("The 'question_images' bucket does not exist. Please create it in your Supabase Storage dashboard and make it public.");
+        }
+        throw uploadError;
+      }
+      
+      const { data: publicUrlData } = supabase.storage.from('question_images').getPublicUrl(filePath);
+      const publicUrl = publicUrlData.publicUrl;
+
+      const { error: updateError } = await supabase.from('questions').update({ image_url: publicUrl }).eq('id', questionId);
+      if (updateError) {
+        if (updateError.message.includes('column "image_url" of relation "questions" does not exist')) {
+          throw new Error("The 'image_url' column does not exist. Please run the SQL command provided to add it.");
+        }
+        throw updateError;
+      }
+      
+      // Update local state
+      setTestQuestions(prev => prev.map(q => q.id === questionId ? { ...q, image_url: publicUrl } : q));
+      alert("Image uploaded and attached successfully!");
+    } catch (err) {
+      alert("Error uploading image: " + err.message);
+    }
+    setIsUploadingImage(false);
   };
 
   return (
@@ -1112,6 +1195,10 @@ export default function AdminDashboard() {
                   <input type="datetime-local" placeholder="Start Time (Optional)" value={testStartTime} onChange={(e) => setTestStartTime(e.target.value)} title="Start Time (Optional)" style={{ flex: 1, minWidth: '150px', padding: '1rem', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'var(--bg-dark)', color: 'white' }} />
                   <input type="datetime-local" placeholder="End Time (Optional)" value={testEndTime} onChange={(e) => setTestEndTime(e.target.value)} title="End Time (Optional)" style={{ flex: 1, minWidth: '150px', padding: '1rem', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'var(--bg-dark)', color: 'white' }} />
                 </div>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', background: 'rgba(255, 23, 68, 0.1)', padding: '1rem', borderRadius: '8px', border: '1px solid rgba(255, 23, 68, 0.3)' }}>
+                  <input type="checkbox" checked={isReasoning} onChange={(e) => setIsReasoning(e.target.checked)} style={{ width: '20px', height: '20px', accentColor: '#ff1744' }} />
+                  <span style={{ color: 'var(--text-light)', fontWeight: 'bold' }}>Is this a Reasoning/Maths Test? (Disables Camera Monitoring)</span>
+                </label>
               </div>
               
               <h4 className="mt-2 text-accent" style={{ color: '#4CAF50' }}>Option 1: Embed a Test Link (Google Forms, etc.)</h4>
@@ -1186,7 +1273,10 @@ export default function AdminDashboard() {
                     <h4 style={{ margin: '0 0 0.25rem 0' }}>{t.title}</h4>
                     <p className="text-muted" style={{ fontSize: '0.85rem', margin: 0 }}>Batch: {t.batches?.title} • {t.duration_mins}m • {t.total_questions}Q</p>
                   </div>
-                  <button onClick={() => handleDeleteTest(t.id, t.title)} className="btn-outline" style={{ border: '1px solid #ff4444', color: '#ff4444', padding: '0.5rem 1rem' }}>Delete</button>
+                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <button onClick={() => openEditModal(t.id)} className="btn-outline" style={{ border: '1px solid #4CAF50', color: '#4CAF50', padding: '0.5rem 1rem' }}>Edit Questions</button>
+                    <button onClick={() => handleDeleteTest(t.id, t.title)} className="btn-outline" style={{ border: '1px solid #ff4444', color: '#ff4444', padding: '0.5rem 1rem' }}>Delete</button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -1541,6 +1631,50 @@ export default function AdminDashboard() {
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
               </button>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Questions Modal */}
+      {isEditModalOpen && (
+        <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.8)', zIndex: 9999, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '2rem' }}>
+          <div className="glass-card" style={{ width: '100%', maxWidth: '800px', maxHeight: '90vh', overflowY: 'auto', background: 'var(--bg-dark)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+              <h3 style={{ margin: 0 }}>Edit Test Questions</h3>
+              <button onClick={() => setIsEditModalOpen(false)} className="btn-outline" style={{ border: 'none', fontSize: '1.5rem', cursor: 'pointer' }}>✖</button>
+            </div>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+              {testQuestions.length === 0 ? (
+                <p className="text-muted">Loading questions or no questions found...</p>
+              ) : (
+                testQuestions.map((q, idx) => (
+                  <div key={q.id} style={{ padding: '1rem', border: '1px solid var(--glass-border)', borderRadius: '8px', background: 'rgba(255,255,255,0.02)' }}>
+                    <p style={{ margin: '0 0 1rem 0', fontWeight: 'bold' }}>Q{idx + 1}. {q.question_text}</p>
+                    
+                    {q.image_url && (
+                      <div style={{ marginBottom: '1rem' }}>
+                        <img src={q.image_url} alt="Question Diagram" style={{ maxWidth: '100%', maxHeight: '200px', borderRadius: '8px', objectFit: 'contain', background: 'white' }} />
+                      </div>
+                    )}
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+                      <label style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1 }}>
+                        <span className="text-muted" style={{ fontSize: '0.85rem' }}>{q.image_url ? "Replace Image:" : "Attach Image:"}</span>
+                        <input 
+                          type="file" 
+                          accept="image/*" 
+                          onChange={(e) => handleUploadQuestionImage(q.id, e.target.files[0])} 
+                          disabled={isUploadingImage}
+                          style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--glass-border)', background: 'rgba(0,0,0,0.2)', color: 'white', width: '100%' }} 
+                        />
+                      </label>
+                      {isUploadingImage && <span className="text-accent" style={{ fontSize: '0.85rem' }}>Uploading...</span>}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
           </div>
         </div>
       )}

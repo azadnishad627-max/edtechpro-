@@ -7,7 +7,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { supabase } from '../../../lib/supabaseClient';
 import dynamic from 'next/dynamic';
 
-const ProctoringCamera = dynamic(() => import('../../../components/ProctoringCamera'), { ssr: false });
+
 
 export default function TakeTest() {
   const params = useParams();
@@ -31,8 +31,7 @@ export default function TakeTest() {
   const [timeLeft, setTimeLeft] = useState(null);
   const [lockedUntil, setLockedUntil] = useState(null);
   
-  const [faceMissingTimer, setFaceMissingTimer] = useState(0);
-  const [proctorLockTimer, setProctorLockTimer] = useState(0);
+
   const [isTooEarly, setIsTooEarly] = useState(false);
   const [isTooLate, setIsTooLate] = useState(false);
 
@@ -48,7 +47,7 @@ export default function TakeTest() {
       }
 
       // Only select fields needed for taking the test, DO NOT send correct_answer or explanation to client!
-      const { data: qData } = await supabase.from('questions').select('id, test_id, question_text, option_a, option_b, option_c, option_d').eq('test_id', id);
+      const { data: qData } = await supabase.from('questions').select('id, test_id, question_text, option_a, option_b, option_c, option_d, image_url').eq('test_id', id);
       if (qData) setQuestions(qData);
 
       const sData = localStorage.getItem('studentInfo');
@@ -171,22 +170,6 @@ export default function TakeTest() {
     return () => clearInterval(interval);
   }, [test, isSubmitted, isEvaluating, answers, studentInfo?.id, id]);
 
-  const handleFaceStatus = (isFacePresent) => {
-    if (isSubmitted || isEvaluating || proctorLockTimer > 0) return; // Don't track if locked or submitted
-
-    if (isFacePresent) {
-      setFaceMissingTimer(0);
-    } else {
-      setFaceMissingTimer(prev => {
-        const newVal = prev + 1;
-        if (newVal >= 5) {
-          setProctorLockTimer(120); // 2 minute lock
-          return 0;
-        }
-        return newVal;
-      });
-    }
-  };
 
   const handleBookmark = async (questionId) => {
     if (!studentInfo) return;
@@ -300,7 +283,6 @@ export default function TakeTest() {
   }
 
   const currentQuestions = language === 'hi' && translatedQuestions ? translatedQuestions : questions;
-dQuestions : questions;
 
   if (isSubmitted && evaluationData) {
     return (
@@ -331,6 +313,11 @@ dQuestions : questions;
             return (
               <div key={idx} className="glass-card" style={{ borderLeft: `4px solid ${isCorrect ? '#00e676' : '#ff1744'}` }}>
                 <h4 style={{ marginBottom: '1rem' }}>Q{idx + 1}. {displayQText}</h4>
+                {cq.image_url && (
+                  <div style={{ marginBottom: '1rem', textAlign: 'center' }}>
+                    <img src={cq.image_url} alt="Question Diagram" style={{ maxWidth: '100%', maxHeight: '300px', borderRadius: '8px', objectFit: 'contain', background: 'white' }} />
+                  </div>
+                )}
                 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1rem' }}>
                   {['option_a', 'option_b', 'option_c', 'option_d'].map((optKey, optIdx) => {
@@ -385,39 +372,12 @@ dQuestions : questions;
     return `${m}:${s < 10 ? '0' : ''}${s}`;
   };
 
-  if (proctorLockTimer > 0) {
-    return (
-      <div className="container py-4 text-center animate-fade-in" style={{ marginTop: '10vh' }}>
-        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1.5rem' }}>
-          <ProctoringCamera onFaceStatus={handleFaceStatus} />
-        </div>
-        <div className="glass-card" style={{ maxWidth: '500px', margin: '0 auto', padding: '3rem', border: '2px solid #ff1744' }}>
-          <h2 style={{ fontSize: '3rem', margin: '0 0 1rem 0' }}>🚨</h2>
-          <h2 className="text-accent mb-4" style={{ color: '#ff1744' }}>Suspicious Activity Detected</h2>
-          <p className="text-muted" style={{ lineHeight: '1.6', fontSize: '1.1rem' }}>
-            Your face was not detected or you were looking away for over 5 seconds. 
-            As a penalty, your test has been temporarily locked. Please look straight at the screen.
-          </p>
-          <div style={{ margin: '2rem 0', padding: '1rem', background: 'rgba(255, 23, 68, 0.1)', border: '1px solid #ff1744', borderRadius: '12px' }}>
-            <strong style={{ color: '#ff1744', fontSize: '1.5rem' }}>Time until unlock: {Math.floor(proctorLockTimer/60)}:{(proctorLockTimer%60).toString().padStart(2, '0')}</strong>
-          </div>
-        </div>
-      </div>
-    );
-  }
+
 
   return (
     <div className="container py-4">
         
-        {faceMissingTimer > 0 && faceMissingTimer < 10 && (
-          <motion.div 
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            style={{ position: 'fixed', top: '20px', left: '50%', transform: 'translateX(-50%)', background: '#ff1744', color: 'white', padding: '0.8rem 1.5rem', borderRadius: '50px', zIndex: 9999, fontWeight: 'bold', boxShadow: '0 4px 15px rgba(255, 23, 68, 0.4)' }}
-          >
-            ⚠️ Look straight at screen! Locking in {10 - faceMissingTimer}s
-          </motion.div>
-        )}
+        
         <div style={{ 
           display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem',
           position: 'sticky', top: '10px', zIndex: 50, padding: '1rem', background: 'rgba(15, 15, 15, 0.75)', backdropFilter: 'blur(16px)',
@@ -451,11 +411,12 @@ dQuestions : questions;
               <span style={{ fontVariantNumeric: 'tabular-nums' }}>{formatTime(timeLeft)}</span>
             </div>
           )}
-          <ProctoringCamera onFaceStatus={handleFaceStatus} />
         </div>
 
         {/* Row 2: Title */}
-        <h2 style={{ margin: 0, width: '100%' }}>{test.title}</h2>
+        <h2 style={{ margin: 0, width: '100%' }}>
+          {test.title.replace('[REASONING] ', '')}
+        </h2>
         
         {/* Row 3: Language + Question count */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', width: '100%', justifyContent: 'space-between' }}>
@@ -499,9 +460,15 @@ dQuestions : questions;
           >
             {bookmarkedQs.has(q.id) ? '⭐' : '☆'}
           </button>
-        </div>
+          </div>
         
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          {q.image_url && (
+            <div style={{ marginBottom: '1.5rem', textAlign: 'center' }}>
+              <img src={q.image_url} alt="Question Diagram" style={{ maxWidth: '100%', maxHeight: '400px', borderRadius: '8px', objectFit: 'contain', background: 'white' }} />
+            </div>
+          )}
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           {['option_a', 'option_b', 'option_c', 'option_d'].map((optKey, optIdx) => {
             const originalOptText = originalQ[optKey];
             const translatedOptText = q[optKey];

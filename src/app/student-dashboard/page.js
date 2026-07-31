@@ -791,7 +791,16 @@ export default function StudentDashboard() {
                 return (
                 <div key={test.id} className="glass-card mb-4" style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', justifyContent: 'space-between', alignItems: 'center', opacity: isTooLate ? 0.5 : 1 }}>
                   <div>
-                    <h3 className="mb-2">{test.title}</h3>
+                    {test.title.startsWith('[REASONING]') ? (
+                      <h3 className="mb-2">
+                        {test.title.replace('[REASONING] ', '')}
+                        <span style={{ fontSize: '0.7rem', background: 'rgba(255, 23, 68, 0.2)', color: '#ff1744', padding: '0.2rem 0.5rem', borderRadius: '4px', marginLeft: '0.5rem', verticalAlign: 'middle' }}>
+                          🧠 Reasoning Test
+                        </span>
+                      </h3>
+                    ) : (
+                      <h3 className="mb-2">{test.title}</h3>
+                    )}
                     <p className="text-muted" style={{ fontSize: '0.9rem', marginBottom: '0.25rem' }}>Batch: {test.batches?.title} | Duration: {test.duration_mins} Mins | {test.total_questions} Questions</p>
                     {(start || end) && (
                       <p className="text-muted" style={{ fontSize: '0.85rem', color: isTooEarly ? '#ffd700' : isTooLate ? '#ff4444' : '#44ff44' }}>
@@ -1089,6 +1098,41 @@ export default function StudentDashboard() {
                       </table>
                     </div>
                   )}
+                </div>
+
+                {/* --- PRACTICE & REVISION (Archived Tests) --- */}
+                <div style={{ padding: '1.5rem', borderTop: '1px solid var(--glass-border)' }}>
+                  <h4 className="mb-3">Practice & Revision</h4>
+                  <p className="text-muted mb-4" style={{ fontSize: '0.9rem' }}>These are older tests. You can attempt them anytime for practice. Scores won't affect the live leaderboard.</p>
+                  
+                  {(() => {
+                    const archivedTests = dbTests.filter(t => t.title.startsWith('[ARCHIVED]') && (!t.batch_id || t.batch_id === student?.batch_id));
+                    if (archivedTests.length === 0) {
+                      return <p className="text-muted">No archived tests available for practice.</p>;
+                    }
+                    return (
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1rem' }}>
+                        {archivedTests.map(test => {
+                          const hasAttempted = myTestAttempts.some(a => a.test_id === test.id);
+                          return (
+                            <div key={test.id} style={{ padding: '1rem', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--glass-border)', borderRadius: '12px' }}>
+                              <h4 style={{ margin: '0 0 0.5rem 0' }}>{test.title.replace('[ARCHIVED] ', '')}</h4>
+                              <p className="text-muted" style={{ margin: '0 0 1rem 0', fontSize: '0.85rem' }}>
+                                {test.total_questions} Questions • {test.duration_mins} Mins
+                              </p>
+                              <button 
+                                onClick={() => router.push(`/test/${test.id}`)}
+                                className={hasAttempted ? 'btn-outline' : 'btn-primary'}
+                                style={{ width: '100%', padding: '0.6rem' }}
+                              >
+                                {hasAttempted ? 'Re-attempt Test' : 'Attempt for Revision'}
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  })()}
                 </div>
               </div>
             )}
