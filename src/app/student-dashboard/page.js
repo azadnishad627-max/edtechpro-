@@ -813,7 +813,7 @@ export default function StudentDashboard() {
                     if(test.test_url) {
                       setActiveTestUrl(test.test_url);
                     } else {
-                      router.push(`/test/${test.id}`);
+                      router.push(`/test/${test.id}?practice=true`);
                     }
                   }} className="btn-primary" style={{ padding: '0.5rem 1rem', background: isTooEarly || isTooLate ? '#555' : '', cursor: isTooEarly || isTooLate ? 'not-allowed' : 'pointer' }} disabled={isTooEarly || isTooLate}>
                     {isTooEarly ? 'Upcoming' : isTooLate ? 'Ended' : 'Start Test'}
@@ -1096,7 +1096,7 @@ export default function StudentDashboard() {
                                   </td>
                                   <td style={{ padding: '0.8rem' }}>
                                     <button 
-                                      onClick={() => router.push(`/test/${att.test_id}`)}
+                                      onClick={() => router.push(`/test/${att.test_id}?practice=true`)}
                                       className="btn-outline" 
                                       style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}
                                     >

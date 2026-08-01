@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import Confetti from 'react-confetti';
 import { useWindowSize } from 'react-use';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '../../../lib/supabaseClient';
 import dynamic from 'next/dynamic';
 
@@ -14,6 +14,8 @@ export default function TakeTest() {
   const id = params?.id;
   const router = useRouter();
   const { width, height } = useWindowSize();
+  const searchParams = useSearchParams();
+  const isPractice = searchParams?.get('practice') === 'true';
   
   const [test, setTest] = useState(null);
   const [questions, setQuestions] = useState([]);
@@ -125,6 +127,7 @@ export default function TakeTest() {
     if (!test || isSubmitted) return;
     
     const checkTime = () => {
+      if (isPractice) return;
       const now = new Date();
       if (test.start_time) {
         const start = new Date(test.start_time);
