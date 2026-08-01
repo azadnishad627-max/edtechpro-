@@ -1061,6 +1061,7 @@ export default function StudentDashboard() {
                             <th style={{ padding: '0.8rem', color: 'var(--text-secondary-dark)' }}>Test Name</th>
                             <th style={{ padding: '0.8rem', color: 'var(--text-secondary-dark)' }}>Score</th>
                             <th style={{ padding: '0.8rem', color: 'var(--text-secondary-dark)' }}>Grade</th>
+                            <th style={{ padding: '0.8rem', color: 'var(--text-secondary-dark)' }}>Action</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -1092,6 +1093,15 @@ export default function StudentDashboard() {
                                     <span style={{ color: gradeColor, fontWeight: 'bold', background: `${gradeColor}22`, padding: '0.2rem 0.6rem', borderRadius: '4px' }}>
                                       {grade}
                                     </span>
+                                  </td>
+                                  <td style={{ padding: '0.8rem' }}>
+                                    <button 
+                                      onClick={() => router.push(`/test/${att.test_id}`)}
+                                      className="btn-outline" 
+                                      style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}
+                                    >
+                                      Re-attempt / Practice
+                                    </button>
                                   </td>
                                 </tr>
                               );
