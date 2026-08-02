@@ -313,34 +313,51 @@ export default function TakeTest() {
                   </div>
                 )}
                 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1rem' }}>
-                  {['option_a', 'option_b', 'option_c', 'option_d'].map((optKey, optIdx) => {
-                    // Display text (might be translated) vs logic text
-                    const displayOptText = cq[optKey];
-                    const originalOptText = q[optKey];
-                    
-                    const isUserSelection = userAnswer === originalOptText;
-                    const isActualCorrect = actualCorrect === originalOptText;
-                    
-                    let bg = 'rgba(255,255,255,0.05)';
-                    let border = '1px solid var(--glass-border)';
-                    if (isActualCorrect) {
-                      bg = 'rgba(0, 230, 118, 0.1)';
-                      border = '1px solid #00e676';
-                    } else if (isUserSelection && !isCorrect) {
-                      bg = 'rgba(255, 23, 68, 0.1)';
-                        border = '1px solid #ff1744';
-                      }
+                {(() => {
+                  const matchedAnyOption = ['option_a', 'option_b', 'option_c', 'option_d'].some(
+                    optKey => q[optKey] && actualCorrect && q[optKey].trim().toLowerCase() === actualCorrect.trim().toLowerCase()
+                  );
 
-                      return (
-                        <div key={optKey} style={{ padding: '0.8rem 1rem', borderRadius: '8px', background: bg, border: border, display: 'flex', justifyContent: 'space-between' }}>
-                          <span><strong style={{ color: isActualCorrect ? '#00e676' : 'var(--accent)', marginRight: '10px' }}>{String.fromCharCode(65 + optIdx)}.</strong> {displayOptText}</span>
-                          {isActualCorrect && <span style={{ color: '#00e676', fontWeight: 'bold', flexShrink: 0, marginLeft: '1rem' }}>✓ Correct</span>}
-                          {isUserSelection && !isActualCorrect && <span style={{ color: '#ff1744', fontWeight: 'bold', flexShrink: 0, marginLeft: '1rem' }}>✗ Your Answer</span>}
+                  return (
+                    <>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1rem' }}>
+                        {['option_a', 'option_b', 'option_c', 'option_d'].map((optKey, optIdx) => {
+                          const displayOptText = cq[optKey];
+                          const originalOptText = q[optKey];
+                          
+                          const isUserSelection = userAnswer && originalOptText && userAnswer.trim().toLowerCase() === originalOptText.trim().toLowerCase();
+                          const isActualCorrect = actualCorrect && originalOptText && actualCorrect.trim().toLowerCase() === originalOptText.trim().toLowerCase();
+                          
+                          let bg = 'rgba(255,255,255,0.05)';
+                          let border = '1px solid var(--glass-border)';
+                          if (isActualCorrect) {
+                            bg = 'rgba(0, 230, 118, 0.1)';
+                            border = '1px solid #00e676';
+                          } else if (isUserSelection && !isActualCorrect) {
+                            bg = 'rgba(255, 23, 68, 0.1)';
+                            border = '1px solid #ff1744';
+                          }
+
+                          return (
+                            <div key={optKey} style={{ padding: '0.8rem 1rem', borderRadius: '8px', background: bg, border: border, display: 'flex', justifyContent: 'space-between' }}>
+                              <span><strong style={{ color: isActualCorrect ? '#00e676' : 'var(--accent)', marginRight: '10px' }}>{String.fromCharCode(65 + optIdx)}.</strong> {displayOptText}</span>
+                              {isActualCorrect && <span style={{ color: '#00e676', fontWeight: 'bold', flexShrink: 0, marginLeft: '1rem' }}>✓ Correct</span>}
+                              {isUserSelection && !isActualCorrect && <span style={{ color: '#ff1744', fontWeight: 'bold', flexShrink: 0, marginLeft: '1rem' }}>✗ Your Answer</span>}
+                            </div>
+                          )
+                        })}
+                      </div>
+
+                      {!matchedAnyOption && (
+                        <div style={{ padding: '1rem', background: 'rgba(255, 193, 7, 0.1)', borderRadius: '8px', border: '1px solid #ffc107', marginBottom: '1rem' }}>
+                          <strong style={{ color: '#ffc107' }}>Correct Answer (Database Record): </strong> 
+                          <span style={{ color: 'var(--text-primary)' }}>{actualCorrect}</span>
+                          <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '0.5rem', marginBottom: 0 }}>This question might have been configured incorrectly. The answer in the database does not exactly match any of the provided options.</p>
                         </div>
-                      )
-                    })}
-                  </div>
+                      )}
+                    </>
+                  );
+                })()}
 
                   {q.explanation && (
                     <div style={{ padding: '1rem', background: 'rgba(0, 229, 255, 0.05)', borderRadius: '8px', border: '1px solid rgba(0, 229, 255, 0.2)' }}>
