@@ -23,7 +23,7 @@ import {
   X,
 } from "lucide-react";
 import { OrganViewer } from "./OrganViewer";
-import { organById, organs, type Organ, type OrganId } from "../lib/anatomy-data";
+import { organById, organs, type Organ, type OrganId } from "../../lib/anatomy/anatomy-data";
 
 type Modal = "lesson" | "quiz" | "animation" | "system" | null;
 

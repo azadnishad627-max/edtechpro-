@@ -12,8 +12,8 @@ import {
   Sparkles,
   X,
 } from "lucide-react";
-import type { Hotspot, Organ } from "../lib/anatomy-data";
-import type { AnatomyViewer } from "../lib/three/viewer";
+import type { Hotspot, Organ } from "../../lib/anatomy/anatomy-data";
+import type { AnatomyViewer } from "../../lib/anatomy/three/viewer";
 
 type Props = {
   organ: Organ;
@@ -55,7 +55,7 @@ export function OrganViewer({ organ, autoRotate, onAutoRotate, compare, onCompar
     let cancelled = false;
     let viewer: AnatomyViewer | null = null;
 
-    void import("../lib/three/viewer").then(({ AnatomyViewer: Viewer }) => {
+    void import("../../lib/anatomy/three/viewer").then(({ AnatomyViewer: Viewer }) => {
       if (cancelled || !mountRef.current) return;
       viewer = new Viewer(mountRef.current, {
         onSelect: setSelected,
