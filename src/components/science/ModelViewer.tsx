@@ -80,21 +80,20 @@ export function ModelViewer({ fileUrl, scale = 1, cameraPosition = [0, 0, 5], ho
         loadedModel = gltf.scene;
         
         // Use a pivot group to handle centering and scaling correctly
-        const pivot = new THREE.Group();
-        
         const box = new THREE.Box3().setFromObject(loadedModel);
-        const center = box.getCenter(new THREE.Vector3());
         const size = box.getSize(new THREE.Vector3());
+        const center = box.getCenter(new THREE.Vector3());
         
-        // Shift model so its geometric center is at the pivot's origin (0,0,0)
-        loadedModel.position.sub(center);
+        const maxDim = Math.max(size.x, size.y, size.z, 0.001);
+        // Use 3.8 to match the anatomy-data.ts coordinate space
+        const fitScale = 3.8 / maxDim;
+        const finalScale = fitScale * scale;
         
-        // Add model to pivot, then scale the pivot
+        loadedModel.scale.setScalar(finalScale);
+        loadedModel.position.copy(center.multiplyScalar(-finalScale));
+        
+        const pivot = new THREE.Group();
         pivot.add(loadedModel);
-        
-        const maxDim = Math.max(size.x, size.y, size.z);
-        const fitScale = 4.0 / maxDim; // Normalize size to 4 units
-        pivot.scale.setScalar(fitScale * scale);
         
         // Enable shadows
         loadedModel.traverse((child) => {
