@@ -137,19 +137,19 @@ export const scienceModels: ScienceModel[] = [
     id: "plant-cell",
     name: "Plant Cell (पादप कोशिका)",
     description: "Sketchfab 3D Model: पादप कोशिका में एक कठोर कोशिका भित्ति (Cell Wall) और क्लोरोप्लास्ट (Chloroplast) होता है जो प्रकाश संश्लेषण में मदद करता है।",
-    sketchfabId: "64757c918ee948258efae21ebce6d81d",
+    sketchfabId: "06c34533b4f441569bfa207aff7c8a19",
   },
   {
     id: "animal-cell",
     name: "Animal Cell (जंतु कोशिका)",
     description: "Sketchfab 3D Model: जंतु कोशिका में कोशिका भित्ति नहीं होती है। इसमें न्यूक्लियस (केंद्रक) और माइटोकॉन्ड्रिया (Mitochondria) जैसे अंग होते हैं।",
-    sketchfabId: "3dfd206f406443cfa1d7c3d22d26d0bb",
+    sketchfabId: "abaa9a651c834cdaa67072b32fb0024f",
   },
   {
     id: "dna",
     name: "DNA Structure (डीएनए)",
     description: "Sketchfab 3D Model: डीएनए (Deoxyribonucleic acid) वह अणु है जो सभी जीवों के आनुवंशिक (genetic) निर्देशों को अपने अंदर सुरक्षित रखता है।",
-    sketchfabId: "148e653063f24bfd8c973a97121c4302",
+    sketchfabId: "60e95170b37549e3b45ee490b74bb112",
   }
 ];
 
