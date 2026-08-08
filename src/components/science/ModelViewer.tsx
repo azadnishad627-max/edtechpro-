@@ -76,12 +76,17 @@ export function ModelViewer({ fileUrl, scale = 1, cameraPosition = [0, 0, 5] }: 
       (gltf) => {
         loadedModel = gltf.scene;
         
-        // Center and scale model
+        // Center and auto-scale model to fit camera view
         const box = new THREE.Box3().setFromObject(loadedModel);
         const center = box.getCenter(new THREE.Vector3());
         loadedModel.position.sub(center);
         
-        loadedModel.scale.setScalar(scale);
+        const size = box.getSize(new THREE.Vector3());
+        const maxDim = Math.max(size.x, size.y, size.z);
+        const fitScale = 4.0 / maxDim; // Normalize size to 4 units
+        
+        // Multiply by the user-provided scale for fine-tuning
+        loadedModel.scale.setScalar(fitScale * scale);
         
         // Enable shadows
         loadedModel.traverse((child) => {
@@ -112,15 +117,21 @@ export function ModelViewer({ fileUrl, scale = 1, cameraPosition = [0, 0, 5] }: 
 
     // Handle resize
     const handleResize = () => {
+      if (!currentMount) return;
       camera.aspect = currentMount.clientWidth / currentMount.clientHeight;
       camera.updateProjectionMatrix();
       renderer.setSize(currentMount.clientWidth, currentMount.clientHeight);
     };
-    window.addEventListener("resize", handleResize);
+    
+    const resizeObserver = new ResizeObserver(() => handleResize());
+    resizeObserver.observe(currentMount);
+
+    // Initial resize to ensure correct dimensions after layout
+    setTimeout(handleResize, 100);
 
     // Cleanup
     return () => {
-      window.removeEventListener("resize", handleResize);
+      resizeObserver.disconnect();
       cancelAnimationFrame(animationFrameId);
       currentMount.removeChild(renderer.domElement);
       renderer.dispose();
