@@ -108,15 +108,30 @@ export function ScienceApp() {
           </div>
         </header>
 
-        {/* 3D Canvas */}
+        {/* 3D Canvas / Sketchfab */}
         <div style={{ flex: 1, width: '100%', height: '100%' }}>
-          <ModelViewer 
-            fileUrl={selectedModel.fileUrl} 
-            scale={selectedModel.scale} 
-            cameraPosition={selectedModel.cameraPosition}
-            hotspots={selectedModel.hotspots}
-            onHotspotClick={setActiveHotspot}
-          />
+          {selectedModel.sketchfabId ? (
+            <div style={{ width: '100%', height: '100%', borderRadius: '12px', overflow: 'hidden' }}>
+              <iframe 
+                title={selectedModel.name}
+                style={{ width: '100%', height: '100%', border: 'none' }}
+                allowFullScreen 
+                allow="autoplay; fullscreen; xr-spatial-tracking" 
+                execution-while-out-of-viewport="true" 
+                execution-while-not-rendered="true" 
+                web-share="true" 
+                src={`https://sketchfab.com/models/${selectedModel.sketchfabId}/embed?autostart=1&ui_theme=dark`}
+              ></iframe>
+            </div>
+          ) : (
+            <ModelViewer 
+              fileUrl={selectedModel.fileUrl || ""} 
+              scale={selectedModel.scale} 
+              cameraPosition={selectedModel.cameraPosition}
+              hotspots={selectedModel.hotspots}
+              onHotspotClick={setActiveHotspot}
+            />
+          )}
         </div>
       </main>
     </div>

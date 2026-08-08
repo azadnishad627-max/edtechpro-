@@ -9,7 +9,8 @@ export type ScienceModel = {
   id: string;
   name: string;
   description: string;
-  fileUrl: string;
+  fileUrl?: string;
+  sketchfabId?: string;
   scale?: number;
   cameraPosition?: [number, number, number];
   hotspots?: Hotspot[];
@@ -67,6 +68,88 @@ export const scienceModels: ScienceModel[] = [
         description: "यह मस्तिष्क को रीढ़ की हड्डी से जोड़ता है। यह सांस लेने, दिल की धड़कन और ब्लड प्रेशर जैसे जीवन रक्षक स्वचालित कार्यों को कंट्रोल करता है।"
       }
     ]
+  },
+  {
+    id: "heart",
+    name: "Heart (हृदय)",
+    description: "मानव हृदय एक मांसपेशीय अंग है जो पूरे शरीर में रक्त पंप करता है। यह ऑक्सीजन और पोषक तत्वों को सभी अंगों तक पहुँचाने का काम करता है।",
+    fileUrl: "/models/heart.glb",
+    scale: 1,
+    cameraPosition: [0, 0, 5],
+  },
+  {
+    id: "lungs",
+    name: "Lungs (फेफड़े)",
+    description: "फेफड़े श्वसन प्रणाली का मुख्य अंग हैं। ये हवा से ऑक्सीजन खींचकर रक्त में मिलाते हैं और कार्बन डाइऑक्साइड को शरीर से बाहर निकालते हैं।",
+    fileUrl: "/models/lungs.glb",
+    scale: 1,
+    cameraPosition: [0, 0, 5],
+  },
+  {
+    id: "eyeball",
+    name: "Eye (आंख)",
+    description: "आंख हमारे शरीर का कैमरा है। यह प्रकाश को कैप्चर करके दृष्टि तंत्रिकाओं के माध्यम से मस्तिष्क तक सिग्नल भेजती है।",
+    fileUrl: "/models/eyeball.glb",
+    scale: 1,
+    cameraPosition: [0, 0, 5],
+  },
+  {
+    id: "kidneys",
+    name: "Kidneys (गुर्दे)",
+    description: "गुर्दे रक्त को फिल्टर करके शरीर से अपशिष्ट (waste) और अतिरिक्त पानी को मूत्र के रूप में बाहर निकालते हैं।",
+    fileUrl: "/models/kidneys.glb",
+    scale: 1,
+    cameraPosition: [0, 0, 5],
+  },
+  {
+    id: "liver",
+    name: "Liver (यकृत)",
+    description: "लिवर शरीर का सबसे बड़ा आंतरिक अंग है। यह भोजन पचाने, विषैले तत्वों को बाहर निकालने और ऊर्जा स्टोर करने का काम करता है।",
+    fileUrl: "/models/liver.glb",
+    scale: 1,
+    cameraPosition: [0, 0, 5],
+  },
+  {
+    id: "pancreas",
+    name: "Pancreas (अग्न्याशय)",
+    description: "पैंक्रियाज इंसुलिन बनाता है जो ब्लड शुगर को कंट्रोल करता है, और पाचन में मदद करने वाले एंजाइम भी बनाता है।",
+    fileUrl: "/models/pancreas.glb",
+    scale: 1,
+    cameraPosition: [0, 0, 5],
+  },
+  {
+    id: "skin",
+    name: "Skin Anatomy (त्वचा)",
+    description: "त्वचा शरीर का सबसे बड़ा अंग है जो हमें बाहरी वातावरण से बचाता है और शरीर का तापमान नियंत्रित करता है।",
+    fileUrl: "/models/skin.glb",
+    scale: 1,
+    cameraPosition: [0, 0, 5],
+  },
+  {
+    id: "intestine",
+    name: "Intestines (आंतें)",
+    description: "आंतें (छोटी और बड़ी) भोजन को पूरी तरह से पचाने और उसमें से पोषक तत्वों को सोखने (absorb) का काम करती हैं।",
+    fileUrl: "/models/intestine.glb",
+    scale: 1,
+    cameraPosition: [0, 0, 5],
+  },
+  {
+    id: "plant-cell",
+    name: "Plant Cell (पादप कोशिका)",
+    description: "Sketchfab 3D Model: पादप कोशिका में एक कठोर कोशिका भित्ति (Cell Wall) और क्लोरोप्लास्ट (Chloroplast) होता है जो प्रकाश संश्लेषण में मदद करता है।",
+    sketchfabId: "64757c918ee948258efae21ebce6d81d",
+  },
+  {
+    id: "animal-cell",
+    name: "Animal Cell (जंतु कोशिका)",
+    description: "Sketchfab 3D Model: जंतु कोशिका में कोशिका भित्ति नहीं होती है। इसमें न्यूक्लियस (केंद्रक) और माइटोकॉन्ड्रिया (Mitochondria) जैसे अंग होते हैं।",
+    sketchfabId: "3dfd206f406443cfa1d7c3d22d26d0bb",
+  },
+  {
+    id: "dna",
+    name: "DNA Structure (डीएनए)",
+    description: "Sketchfab 3D Model: डीएनए (Deoxyribonucleic acid) वह अणु है जो सभी जीवों के आनुवंशिक (genetic) निर्देशों को अपने अंदर सुरक्षित रखता है।",
+    sketchfabId: "148e653063f24bfd8c973a97121c4302",
   }
 ];
 
