@@ -79,9 +79,7 @@ export function ModelViewer({ fileUrl, scale = 1, cameraPosition = [0, 0, 5] }: 
         // Center and scale model
         const box = new THREE.Box3().setFromObject(loadedModel);
         const center = box.getCenter(new THREE.Vector3());
-        loadedModel.position.x += (loadedModel.position.x - center.x);
-        loadedModel.position.y += (loadedModel.position.y - center.y);
-        loadedModel.position.z += (loadedModel.position.z - center.z);
+        loadedModel.position.sub(center);
         
         loadedModel.scale.setScalar(scale);
         

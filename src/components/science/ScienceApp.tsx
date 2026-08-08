@@ -96,7 +96,7 @@ export function ScienceApp() {
       {/* Main Viewer Area */}
       <main style={{ flex: 1, position: 'relative', display: 'flex', flexDirection: 'column', backgroundColor: '#2f2a27' }}>
         {/* Top Bar with Description */}
-        <header style={{ position: 'absolute', top: 0, left: 0, right: 0, padding: isMobile ? '1rem' : '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', zIndex: 10, pointerEvents: 'none' }}>
+        <header style={{ position: isMobile ? 'relative' : 'absolute', top: 0, left: 0, right: 0, padding: isMobile ? '1rem' : '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', zIndex: 10, pointerEvents: 'none' }}>
           <div style={{ maxWidth: '42rem', width: '100%', backgroundColor: 'rgba(31, 26, 24, 0.8)', backdropFilter: 'blur(12px)', padding: isMobile ? '1rem' : '1.5rem', borderRadius: '1rem', border: '1px solid #3a3532', pointerEvents: 'auto', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)' }}>
             <h2 style={{ fontSize: isMobile ? '1.25rem' : '1.5rem', fontWeight: 300, letterSpacing: '0.025em', color: 'white', margin: '0 0 0.5rem 0' }}>
               {selectedModel.name}
