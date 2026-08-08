@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ArrowLeft, Beaker, ChevronRight } from "lucide-react";
 import { scienceModels, type ScienceModel } from "../../lib/science/science-data";
 import { ModelViewer } from "./ModelViewer";
