@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
-import { DRACOLoader } from "three/examples/jsm/loaders/DRACOLoader.js";
+import { MeshoptDecoder } from "three/examples/jsm/libs/meshopt_decoder.module.js";
 
 type Props = {
   fileUrl: string;
@@ -68,10 +68,8 @@ export function ModelViewer({ fileUrl, scale = 1, cameraPosition = [0, 0, 5] }: 
     setLoading(true);
     let loadedModel: THREE.Group | null = null;
     
-    const dracoLoader = new DRACOLoader();
-    dracoLoader.setDecoderPath('/draco/');
     const loader = new GLTFLoader();
-    loader.setDRACOLoader(dracoLoader);
+    loader.setMeshoptDecoder(MeshoptDecoder);
 
     loader.load(
       fileUrl,
@@ -128,7 +126,6 @@ export function ModelViewer({ fileUrl, scale = 1, cameraPosition = [0, 0, 5] }: 
       cancelAnimationFrame(animationFrameId);
       currentMount.removeChild(renderer.domElement);
       renderer.dispose();
-      dracoLoader.dispose();
       
       if (loadedModel) {
         scene.remove(loadedModel);
