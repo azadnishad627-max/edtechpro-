@@ -76,17 +76,22 @@ export function ModelViewer({ fileUrl, scale = 1, cameraPosition = [0, 0, 5] }: 
       (gltf) => {
         loadedModel = gltf.scene;
         
-        // Center and auto-scale model to fit camera view
+        // Use a pivot group to handle centering and scaling correctly
+        const pivot = new THREE.Group();
+        
         const box = new THREE.Box3().setFromObject(loadedModel);
         const center = box.getCenter(new THREE.Vector3());
+        const size = box.getSize(new THREE.Vector3());
+        
+        // Shift model so its geometric center is at the pivot's origin (0,0,0)
         loadedModel.position.sub(center);
         
-        const size = box.getSize(new THREE.Vector3());
+        // Add model to pivot, then scale the pivot
+        pivot.add(loadedModel);
+        
         const maxDim = Math.max(size.x, size.y, size.z);
         const fitScale = 4.0 / maxDim; // Normalize size to 4 units
-        
-        // Multiply by the user-provided scale for fine-tuning
-        loadedModel.scale.setScalar(fitScale * scale);
+        pivot.scale.setScalar(fitScale * scale);
         
         // Enable shadows
         loadedModel.traverse((child) => {
@@ -96,7 +101,8 @@ export function ModelViewer({ fileUrl, scale = 1, cameraPosition = [0, 0, 5] }: 
           }
         });
 
-        scene.add(loadedModel);
+        scene.add(pivot);
+        loadedModel = pivot; // Keep reference to pivot for cleanup
         setLoading(false);
       },
       undefined,
