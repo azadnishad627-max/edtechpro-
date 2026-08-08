@@ -5,14 +5,17 @@ import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { MeshoptDecoder } from "three/examples/jsm/libs/meshopt_decoder.module.js";
+import type { Hotspot } from "../../lib/science/science-data";
 
 type Props = {
   fileUrl: string;
   scale?: number;
   cameraPosition?: [number, number, number];
+  hotspots?: Hotspot[];
+  onHotspotClick?: (hotspot: Hotspot) => void;
 };
 
-export function ModelViewer({ fileUrl, scale = 1, cameraPosition = [0, 0, 5] }: Props) {
+export function ModelViewer({ fileUrl, scale = 1, cameraPosition = [0, 0, 5], hotspots, onHotspotClick }: Props) {
   const mountRef = useRef<HTMLDivElement>(null);
   const [loading, setLoading] = useState(true);
 
@@ -112,14 +115,45 @@ export function ModelViewer({ fileUrl, scale = 1, cameraPosition = [0, 0, 5] }: 
       }
     );
 
-    // Animation loop
-    let animationFrameId: number;
-    const animate = () => {
-      animationFrameId = requestAnimationFrame(animate);
-      controls.update();
-      renderer.render(scene, camera);
+    // Handle hotspots projection
+    const updateHotspots = () => {
+      if (!currentMount || !loadedModel || !hotspots) return;
+      
+      const width = currentMount.clientWidth;
+      const height = currentMount.clientHeight;
+      
+      hotspots.forEach((hotspot) => {
+        const el = document.getElementById(`hotspot-${hotspot.id}`);
+        if (!el) return;
+        
+        // Convert local position to world space based on the pivot
+        const vector = new THREE.Vector3(...hotspot.position);
+        loadedModel!.localToWorld(vector);
+        vector.project(camera);
+        
+        // If it's behind the camera, hide it
+        if (vector.z > 1) {
+          el.style.display = 'none';
+          return;
+        }
+        
+        const x = (vector.x * 0.5 + 0.5) * width;
+        const y = (-(vector.y * 0.5) + 0.5) * height;
+        
+        el.style.display = 'flex';
+        el.style.transform = `translate(-50%, -50%) translate(${x}px, ${y}px)`;
+      });
     };
-    animate();
+
+    // Animation Loop
+    let animationFrameId: number;
+    const render = () => {
+      controls.update();
+      updateHotspots();
+      renderer.render(scene, camera);
+      animationFrameId = requestAnimationFrame(render);
+    };
+    render();
 
     // Handle resize
     const handleResize = () => {
@@ -144,38 +178,49 @@ export function ModelViewer({ fileUrl, scale = 1, cameraPosition = [0, 0, 5] }: 
       
       if (loadedModel) {
         scene.remove(loadedModel);
-        loadedModel.traverse((child) => {
-          if (child instanceof THREE.Mesh) {
-            child.geometry.dispose();
-            if (Array.isArray(child.material)) {
-              child.material.forEach(m => m.dispose());
-            } else {
-              child.material.dispose();
-            }
-          }
-        });
       }
     };
-  }, [fileUrl, scale]);
+  }, [fileUrl, scale, cameraPosition, hotspots, onHotspotClick]);
 
   return (
     <div style={{ position: "relative", width: "100%", height: "100%" }}>
       {loading && (
-        <div style={{
-          position: "absolute",
-          top: 0, left: 0, right: 0, bottom: 0,
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          background: "rgba(0,0,0,0.5)",
-          color: "white",
-          zIndex: 10,
-          borderRadius: "12px"
-        }}>
-          Loading 3D Model...
+        <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: "#2f2a27", zIndex: 10 }}>
+          <div style={{ color: "#8d847c" }}>Loading 3D Model...</div>
         </div>
       )}
       <div ref={mountRef} style={{ width: "100%", height: "100%", borderRadius: "12px", overflow: "hidden" }} />
+      
+      {/* Hotspots Overlay */}
+      {hotspots && hotspots.length > 0 && (
+        <div style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", pointerEvents: "none", overflow: "hidden", zIndex: 5 }}>
+          {hotspots.map((hotspot) => (
+            <button
+              key={hotspot.id}
+              id={`hotspot-${hotspot.id}`}
+              onClick={() => onHotspotClick && onHotspotClick(hotspot)}
+              style={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                width: "24px",
+                height: "24px",
+                backgroundColor: "rgba(235, 124, 107, 0.8)",
+                border: "2px solid white",
+                borderRadius: "50%",
+                pointerEvents: "auto",
+                cursor: "pointer",
+                boxShadow: "0 0 10px rgba(0,0,0,0.5)",
+                display: "none", // initially hidden until projected
+                justifyContent: "center",
+                alignItems: "center"
+              }}
+            >
+              <div style={{ width: "6px", height: "6px", backgroundColor: "white", borderRadius: "50%" }} />
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

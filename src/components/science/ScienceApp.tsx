@@ -2,13 +2,14 @@
 
 import { useState, useEffect } from "react";
 import { ArrowLeft, Beaker, ChevronRight } from "lucide-react";
-import { scienceModels, type ScienceModel } from "../../lib/science/science-data";
+import { scienceModels, type ScienceModel, type Hotspot } from "../../lib/science/science-data";
 import { ModelViewer } from "./ModelViewer";
 import { useRouter } from "next/navigation";
 
 export function ScienceApp() {
   const router = useRouter();
   const [selectedModel, setSelectedModel] = useState<ScienceModel>(scienceModels[0]);
+  const [activeHotspot, setActiveHotspot] = useState<Hotspot | null>(null);
 
   // Mobile detection state for responsive design
   const [isMobile, setIsMobile] = useState(false);
@@ -64,7 +65,7 @@ export function ScienceApp() {
             return (
               <button
                 key={model.id}
-                onClick={() => setSelectedModel(model)}
+                onClick={() => { setSelectedModel(model); setActiveHotspot(null); }}
                 style={{
                   width: '100%',
                   textAlign: 'left',
@@ -99,10 +100,10 @@ export function ScienceApp() {
         <header style={{ position: isMobile ? 'relative' : 'absolute', top: 0, left: 0, right: 0, padding: isMobile ? '1rem' : '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', zIndex: 10, pointerEvents: 'none' }}>
           <div style={{ maxWidth: '42rem', width: '100%', backgroundColor: 'rgba(31, 26, 24, 0.8)', backdropFilter: 'blur(12px)', padding: isMobile ? '1rem' : '1.5rem', borderRadius: '1rem', border: '1px solid #3a3532', pointerEvents: 'auto', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)' }}>
             <h2 style={{ fontSize: isMobile ? '1.25rem' : '1.5rem', fontWeight: 300, letterSpacing: '0.025em', color: 'white', margin: '0 0 0.5rem 0' }}>
-              {selectedModel.name}
+              {activeHotspot ? activeHotspot.title : selectedModel.name}
             </h2>
             <p style={{ color: '#a49a92', lineHeight: 1.6, fontSize: '0.875rem', margin: 0 }}>
-              {selectedModel.description}
+              {activeHotspot ? activeHotspot.description : selectedModel.description}
             </p>
           </div>
         </header>
@@ -112,7 +113,9 @@ export function ScienceApp() {
           <ModelViewer 
             fileUrl={selectedModel.fileUrl} 
             scale={selectedModel.scale} 
-            cameraPosition={selectedModel.cameraPosition} 
+            cameraPosition={selectedModel.cameraPosition}
+            hotspots={selectedModel.hotspots}
+            onHotspotClick={setActiveHotspot}
           />
         </div>
       </main>
