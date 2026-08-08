@@ -95,16 +95,50 @@ export function ModelViewer({ fileUrl, scale = 1, cameraPosition = [0, 0, 5], ho
         const pivot = new THREE.Group();
         pivot.add(loadedModel);
         
-        // Enable shadows
+        // Enable shadows and collect meshes for snapping
+        const meshes: THREE.Mesh[] = [];
         loadedModel.traverse((child) => {
           if (child instanceof THREE.Mesh) {
             child.castShadow = true;
             child.receiveShadow = true;
+            meshes.push(child);
           }
         });
 
         scene.add(pivot);
         loadedModel = pivot; // Keep reference to pivot for cleanup
+        
+        // Snap hotspots to the nearest surface vertex to prevent parallax drift
+        if (hotspots && hotspots.length > 0) {
+          pivot.updateWorldMatrix(true, true);
+          const toPivot = new THREE.Matrix4().copy(pivot.matrixWorld).invert();
+          const local = new THREE.Matrix4();
+          const vertex = new THREE.Vector3();
+          
+          const anchors = hotspots.map(h => new THREE.Vector3(...h.position));
+          const closestDist = hotspots.map(() => Infinity);
+          
+          for (const mesh of meshes) {
+            const position = mesh.geometry.getAttribute("position");
+            if (!position) continue;
+            local.multiplyMatrices(toPivot, mesh.matrixWorld);
+            
+            for (let i = 0; i < position.count; i++) {
+              vertex.fromBufferAttribute(position, i).applyMatrix4(local);
+              for (let h = 0; h < anchors.length; h++) {
+                const dist = vertex.distanceToSquared(anchors[h]);
+                if (dist < closestDist[h]) {
+                  closestDist[h] = dist;
+                  // Store snapped position, adding a tiny lift so it sits just outside the surface
+                  anchors[h].copy(vertex).add(vertex.clone().normalize().multiplyScalar(0.02));
+                }
+              }
+            }
+          }
+          // Store snapped anchors on the pivot object for the render loop to use
+          pivot.userData.hotspotAnchors = anchors;
+        }
+
         setLoading(false);
       },
       undefined,
@@ -121,12 +155,17 @@ export function ModelViewer({ fileUrl, scale = 1, cameraPosition = [0, 0, 5], ho
       const width = currentMount.clientWidth;
       const height = currentMount.clientHeight;
       
-      hotspots.forEach((hotspot) => {
+      hotspots.forEach((hotspot, index) => {
         const el = document.getElementById(`hotspot-${hotspot.id}`);
         if (!el) return;
         
         // Convert local position to world space based on the pivot
-        const vector = new THREE.Vector3(...hotspot.position);
+        // Use snapped anchor if available, otherwise fallback to authored position
+        const anchors = loadedModel!.userData.hotspotAnchors;
+        const vector = anchors && anchors[index] 
+          ? anchors[index].clone() 
+          : new THREE.Vector3(...hotspot.position);
+          
         loadedModel!.localToWorld(vector);
         vector.project(camera);
         
