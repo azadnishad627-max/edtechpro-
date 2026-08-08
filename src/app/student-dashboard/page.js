@@ -1203,7 +1203,24 @@ export default function StudentDashboard() {
               </div>
             </div>
 
-            <div className="glass-card">
+            <div className="glass-card mt-6">
+              <h2 className="mb-4 text-accent">Science Lab 🔭</h2>
+              <div 
+                onClick={() => router.push('/student-dashboard/science-lab')}
+                style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '1rem', background: 'rgba(255,255,255,0.05)', borderRadius: '12px', border: '1px solid var(--glass-border)', cursor: 'pointer', transition: 'all 0.3s' }}
+                onMouseOver={e => e.currentTarget.style.background='rgba(255,255,255,0.1)'}
+                onMouseOut={e => e.currentTarget.style.background='rgba(255,255,255,0.05)'}
+              >
+                <div style={{ fontSize: '2rem' }}>🔬</div>
+                <div>
+                  <h3 style={{ margin: '0 0 0.3rem 0', color: 'white' }}>Explore 3D Science Models</h3>
+                  <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.9rem' }}>Interactive physics, biology, and custom models</p>
+                </div>
+                <div style={{ marginLeft: 'auto', color: 'var(--primary-color)' }}>➔</div>
+              </div>
+            </div>
+
+            <div className="glass-card mt-6">
               <h2 className="mb-4 text-primary">Brain Break 🎮</h2>
               <Game2048 />
             </div>
