@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { ArrowLeft, Beaker, ChevronRight } from "lucide-react";
+import { ArrowLeft, Beaker, ChevronRight, Search, Loader2 } from "lucide-react";
 import { scienceModels, type ScienceModel, type Hotspot } from "../../lib/science/science-data";
 import { ModelViewer } from "./ModelViewer";
 import { useRouter } from "next/navigation";
@@ -14,12 +14,83 @@ export function ScienceApp() {
   // Mobile detection state for responsive design
   const [isMobile, setIsMobile] = useState(false);
   
+  // Search state
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchResults, setSearchResults] = useState<ScienceModel[]>([]);
+  const [showSearchResults, setShowSearchResults] = useState(false);
+  
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768);
     checkMobile();
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
+
+  // Fetch initial batch of ~100 biology models on load
+  useEffect(() => {
+    const fetchInitialBiologyModels = async () => {
+      try {
+        const queries = ['biology cell', 'human anatomy', 'virus', 'microscope'];
+        const allFetched: ScienceModel[] = [];
+        
+        for (const q of queries) {
+          const res = await fetch(`https://api.sketchfab.com/v3/search?type=models&q=${encodeURIComponent(q)}&sort_by=-likeCount`);
+          const data = await res.json();
+          const items = data.results.slice(0, 24).map((item: any) => ({
+            id: item.uid,
+            name: item.name,
+            description: "Sketchfab 3D Model: " + item.name + " (Auto-fetched online)",
+            sketchfabId: item.uid
+          }));
+          
+          for (const item of items) {
+            if (!allFetched.find(m => m.id === item.id) && !scienceModels.find(m => m.sketchfabId === item.id)) {
+              allFetched.push(item);
+            }
+          }
+        }
+        
+        // Append them as search results initially, but without hiding default models completely
+        setSearchResults(allFetched);
+        // We will show them by default along with regular models
+      } catch (err) {
+        console.error("Failed to load initial biology models", err);
+      }
+    };
+    
+    fetchInitialBiologyModels();
+  }, []);
+
+  const handleSearch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!searchQuery.trim()) {
+      setShowSearchResults(false);
+      return;
+    }
+    
+    setIsSearching(true);
+    setShowSearchResults(true);
+    try {
+      const res = await fetch(`https://api.sketchfab.com/v3/search?type=models&q=${encodeURIComponent(searchQuery)}`);
+      const data = await res.json();
+      
+      const results: ScienceModel[] = data.results.map((item: any) => ({
+        id: item.uid,
+        name: item.name,
+        description: `Sketchfab 3D Model: ${item.name}`,
+        sketchfabId: item.uid
+      }));
+      
+      setSearchResults(results);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const displayModels = showSearchResults && searchQuery ? searchResults : [...scienceModels, ...searchResults];
 
   return (
     <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', height: '100vh', backgroundColor: '#2f2a27', color: 'white', overflow: 'hidden', fontFamily: 'sans-serif' }}>
@@ -41,8 +112,27 @@ export function ScienceApp() {
             </div>
           </div>
           
+          <div style={{ padding: '0.5rem 1rem' }}>
+            <form onSubmit={handleSearch} style={{ display: 'flex', gap: '0.5rem' }}>
+              <input 
+                type="text" 
+                placeholder="Search models... (e.g. DNA)"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                style={{ flex: 1, padding: '0.5rem', borderRadius: '0.5rem', border: '1px solid #3a3532', backgroundColor: '#1f1a18', color: 'white' }}
+              />
+              <button type="submit" style={{ padding: '0.5rem', borderRadius: '0.5rem', backgroundColor: '#eb7c6b', border: 'none', color: 'white', cursor: 'pointer' }}>
+                <Search style={{ width: '1rem', height: '1rem' }} />
+              </button>
+            </form>
+          </div>
+          
           <div style={{ display: 'flex', overflowX: 'auto', padding: '0.75rem', gap: '0.5rem', whiteSpace: 'nowrap', WebkitOverflowScrolling: 'touch' }}>
-            {scienceModels.map(model => {
+            {isSearching ? (
+               <div style={{ padding: '0.5rem 1rem', color: '#8d847c' }}><Loader2 className="animate-spin" style={{width:'1rem',height:'1rem'}} /></div>
+            ) : displayModels.length === 0 ? (
+               <div style={{ padding: '0.5rem 1rem', color: '#8d847c' }}>No results</div>
+            ) : displayModels.map(model => {
               const isSelected = selectedModel.id === model.id;
               return (
                 <button
@@ -98,10 +188,29 @@ export function ScienceApp() {
                 <p style={{ fontSize: '0.875rem', color: '#8d847c', margin: '0.125rem 0 0 0' }}>Explore 3D Models</p>
               </div>
             </div>
+            
+            <form onSubmit={handleSearch} style={{ display: 'flex', gap: '0.5rem', marginTop: '1.5rem' }}>
+              <input 
+                type="text" 
+                placeholder="Search anything..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                style={{ flex: 1, padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid #3a3532', backgroundColor: '#241f1c', color: 'white', fontSize: '0.875rem' }}
+              />
+              <button type="submit" style={{ padding: '0.75rem', borderRadius: '0.5rem', backgroundColor: '#eb7c6b', border: 'none', color: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Search style={{ width: '1.25rem', height: '1.25rem' }} />
+              </button>
+            </form>
           </div>
 
           <div style={{ flex: 1, overflowY: 'auto', padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-            {scienceModels.map((model) => {
+            {isSearching ? (
+              <div style={{ display: 'flex', justifyContent: 'center', padding: '2rem', color: '#8d847c' }}>
+                <Loader2 className="animate-spin" style={{ width: '1.5rem', height: '1.5rem' }} />
+              </div>
+            ) : displayModels.length === 0 ? (
+               <div style={{ textAlign: 'center', padding: '2rem', color: '#8d847c' }}>No models found</div>
+            ) : displayModels.map((model) => {
               const isSelected = selectedModel.id === model.id;
               return (
                 <button
@@ -125,10 +234,10 @@ export function ScienceApp() {
                   onMouseOver={(e) => { if (!isSelected) { e.currentTarget.style.backgroundColor = '#2f2a27'; e.currentTarget.style.color = '#d4ccc6'; } }}
                   onMouseOut={(e) => { if (!isSelected) { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = '#8d847c'; } }}
                 >
-                  <div style={{ fontWeight: 500 }}>
+                  <div style={{ fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', paddingRight: '0.5rem' }}>
                     {model.name}
                   </div>
-                  <ChevronRight style={{ width: '1rem', height: '1rem', opacity: isSelected ? 1 : 0.5, color: isSelected ? '#eb7c6b' : 'currentColor' }} />
+                  <ChevronRight style={{ width: '1rem', height: '1rem', opacity: isSelected ? 1 : 0.5, color: isSelected ? '#eb7c6b' : 'currentColor', flexShrink: 0 }} />
                 </button>
               );
             })}
