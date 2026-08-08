@@ -150,6 +150,24 @@ export const scienceModels: ScienceModel[] = [
     name: "DNA Structure (डीएनए)",
     description: "Sketchfab 3D Model: डीएनए (Deoxyribonucleic acid) वह अणु है जो सभी जीवों के आनुवंशिक (genetic) निर्देशों को अपने अंदर सुरक्षित रखता है।",
     sketchfabId: "60e95170b37549e3b45ee490b74bb112",
+  },
+  {
+    id: "coronavirus",
+    name: "Coronavirus (कोरोनावायरस)",
+    description: "Sketchfab 3D Model: कोरोनावायरस (SARS-CoV-2) एक सूक्ष्म वायरस है जिसने पूरी दुनिया को प्रभावित किया। इसके सतह पर स्पाइक प्रोटीन (Spike Protein) होते हैं।",
+    sketchfabId: "81acdfb6457b471c9aa355f1925fe2b9",
+  },
+  {
+    id: "neuron",
+    name: "Neuron (तंत्रिका कोशिका)",
+    description: "Sketchfab 3D Model: न्यूरॉन मस्तिष्क और तंत्रिका तंत्र (Nervous System) की सबसे छोटी इकाई है। यह पूरे शरीर में सिग्नल्स भेजता और ग्रहण करता है।",
+    sketchfabId: "20e930a5fae5457fa6d1738afa00c7bb",
+  },
+  {
+    id: "microscope",
+    name: "Microscope (सूक्ष्मदर्शी)",
+    description: "Sketchfab 3D Model: माइक्रोस्कोप एक ऐसा यंत्र है जिसका उपयोग उन छोटी चीजों को देखने के लिए किया जाता है, जिन्हें हम अपनी नंगी आंखों से नहीं देख सकते।",
+    sketchfabId: "a9c83e6af504463aa354e3b7e1b21c53",
   }
 ];
 
