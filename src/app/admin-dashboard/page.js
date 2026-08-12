@@ -753,22 +753,61 @@ export default function AdminDashboard() {
     }
     setIsGenerating(true);
     try {
-      const res = await fetch('/api/generate-test', {
+      const apiKey = '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';
+      
+      const systemPrompt = `You are an expert educational test generator. Generate exactly ${totalQuestions} multiple choice questions about "${testTopic}".
+The questions, options, and explanations MUST be written in ${testLanguage}.
+Return ONLY a valid JSON array of objects. Do not include markdown blocks like \`\`\`json.
+Each object must have exactly these keys: "question_text", "option_a", "option_b", "option_c", "option_d", "correct_answer", "explanation".
+The "correct_answer" MUST be the exact full text of the correct option (not just A/B/C/D).
+The "explanation" MUST be a detailed step-by-step solution or reason explaining how to arrive at the correct answer.
+Make sure the JSON output is perfectly formatted and valid.`;
+
+      const res = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ topic: testTopic, questionCount: totalQuestions, language: testLanguage })
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`
+        },
+        body: JSON.stringify({
+          model: "nvidia/nemotron-3.5-lightning-30b-a3b",
+          messages: [
+            {"role": "system", "content": systemPrompt},
+            {"role": "user", "content": `Generate ${totalQuestions} questions on ${testTopic} in ${testLanguage}.`}
+          ],
+          temperature: 0.7,
+          top_p: 0.95,
+          max_tokens: 16384
+        })
       });
       
-      const textResponse = await res.text();
-      let data;
-      try {
-        data = JSON.parse(textResponse);
-      } catch (parseError) {
-        throw new Error(`Server returned invalid response (Timeout or Error). Snippet: ${textResponse.substring(0, 50)}...`);
+      if (!res.ok) {
+        const errText = await res.text();
+        throw new Error(`API Error: ${res.status} - ${errText.substring(0, 50)}`);
       }
       
-      if (data.error) throw new Error(data.error);
-      if (!data.questions || data.questions.length === 0) throw new Error("No questions generated.");
+      const responseData = await res.json();
+      let aiResponse = responseData.choices[0]?.message?.content || "";
+      
+      if (!aiResponse) throw new Error("AI returned empty response");
+
+      // Clean up markdown blocks if the AI disobeyed
+      aiResponse = aiResponse.replace(/```json/gi, "").replace(/```/g, "").trim();
+      
+      // Attempt to extract json array if there is conversational text
+      const jsonMatch = aiResponse.match(/\[\s*\{[\s\S]*\}\s*\]/);
+      if (jsonMatch) {
+        aiResponse = jsonMatch[0];
+      }
+
+      let generatedQuestions;
+      try {
+        generatedQuestions = JSON.parse(aiResponse);
+      } catch (parseError) {
+        throw new Error(`Failed to parse AI JSON response. AI output snippet: ${aiResponse.substring(0, 100)}...`);
+      }
+      
+      if (!generatedQuestions || generatedQuestions.length === 0) throw new Error("No questions generated.");
 
       // 1. Auto Archive
       await autoArchivePreviousTests(testBatch);
@@ -781,7 +820,7 @@ export default function AdminDashboard() {
       const testId = testData[0].id;
 
       // 2. Insert Questions
-      const questionsToInsert = data.questions.map(q => ({
+      const questionsToInsert = generatedQuestions.map(q => ({
         test_id: testId,
         question_text: q.question_text,
         option_a: q.option_a,
