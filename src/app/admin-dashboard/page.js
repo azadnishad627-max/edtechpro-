@@ -756,7 +756,7 @@ export default function AdminDashboard() {
     setGenerateProgress(`Initializing generation...`);
     try {
       const total = parseInt(totalQuestions, 10);
-      const batchSize = 5; // Reduced from 10 to 5 to avoid Edge runtime timeout
+      const batchSize = 2; // Extreme micro-chunks to absolutely guarantee no timeout
       let allGeneratedQuestions = [];
 
       for (let i = 0; i < total; i += batchSize) {

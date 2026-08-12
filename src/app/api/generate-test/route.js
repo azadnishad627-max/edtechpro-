@@ -35,6 +35,9 @@ Make sure the JSON output is perfectly formatted and valid.`;
       temperature: 0.7,
       top_p: 0.95,
       max_tokens: 16384,
+      extra_body: {
+        chat_template_kwargs: { "enable_thinking": false }
+      }
     });
     
     let aiResponse = completion.choices[0]?.message?.content || "";
