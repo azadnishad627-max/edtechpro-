@@ -72,6 +72,7 @@ export default function AdminDashboard() {
   const [testPdf, setTestPdf] = useState(null);
   const [rawText, setRawText] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
+  const [generateProgress, setGenerateProgress] = useState('');
   const [testUrl, setTestUrl] = useState('');
   const [csvFile, setCsvFile] = useState(null);
   const [showLegacyOptions, setShowLegacyOptions] = useState(false);
@@ -752,62 +753,40 @@ export default function AdminDashboard() {
       return;
     }
     setIsGenerating(true);
+    setGenerateProgress(`Initializing generation...`);
     try {
-      const apiKey = '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';
-      
-      const systemPrompt = `You are an expert educational test generator. Generate exactly ${totalQuestions} multiple choice questions about "${testTopic}".
-The questions, options, and explanations MUST be written in ${testLanguage}.
-Return ONLY a valid JSON array of objects. Do not include markdown blocks like \`\`\`json.
-Each object must have exactly these keys: "question_text", "option_a", "option_b", "option_c", "option_d", "correct_answer", "explanation".
-The "correct_answer" MUST be the exact full text of the correct option (not just A/B/C/D).
-The "explanation" MUST be a detailed step-by-step solution or reason explaining how to arrive at the correct answer.
-Make sure the JSON output is perfectly formatted and valid.`;
+      const total = parseInt(totalQuestions, 10);
+      const batchSize = 10;
+      let allGeneratedQuestions = [];
 
-      const res = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`
-        },
-        body: JSON.stringify({
-          model: "nvidia/nemotron-3.5-lightning-30b-a3b",
-          messages: [
-            {"role": "system", "content": systemPrompt},
-            {"role": "user", "content": `Generate ${totalQuestions} questions on ${testTopic} in ${testLanguage}.`}
-          ],
-          temperature: 0.7,
-          top_p: 0.95,
-          max_tokens: 16384
-        })
-      });
-      
-      if (!res.ok) {
-        const errText = await res.text();
-        throw new Error(`API Error: ${res.status} - ${errText.substring(0, 50)}`);
+      for (let i = 0; i < total; i += batchSize) {
+        const count = Math.min(batchSize, total - i);
+        setGenerateProgress(`Generating ${i + 1} to ${i + count} of ${total}...`);
+        
+        const res = await fetch('/api/generate-test', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ topic: testTopic, questionCount: count, language: testLanguage })
+        });
+        
+        const textResponse = await res.text();
+        let data;
+        try {
+          data = JSON.parse(textResponse);
+        } catch (parseError) {
+          throw new Error(`Server returned invalid response. Snippet: ${textResponse.substring(0, 50)}...`);
+        }
+        
+        if (data.error) throw new Error(data.error);
+        if (!data.questions || data.questions.length === 0) throw new Error(`No questions generated for batch ${i}-${i+count}.`);
+        
+        allGeneratedQuestions = allGeneratedQuestions.concat(data.questions);
       }
       
-      const responseData = await res.json();
-      let aiResponse = responseData.choices[0]?.message?.content || "";
+      setGenerateProgress(`Saving ${allGeneratedQuestions.length} questions to database...`);
       
-      if (!aiResponse) throw new Error("AI returned empty response");
-
-      // Clean up markdown blocks if the AI disobeyed
-      aiResponse = aiResponse.replace(/```json/gi, "").replace(/```/g, "").trim();
-      
-      // Attempt to extract json array if there is conversational text
-      const jsonMatch = aiResponse.match(/\[\s*\{[\s\S]*\}\s*\]/);
-      if (jsonMatch) {
-        aiResponse = jsonMatch[0];
-      }
-
-      let generatedQuestions;
-      try {
-        generatedQuestions = JSON.parse(aiResponse);
-      } catch (parseError) {
-        throw new Error(`Failed to parse AI JSON response. AI output snippet: ${aiResponse.substring(0, 100)}...`);
-      }
-      
-      if (!generatedQuestions || generatedQuestions.length === 0) throw new Error("No questions generated.");
+      const generatedQuestions = allGeneratedQuestions;
+      if (!generatedQuestions || generatedQuestions.length === 0) throw new Error("No questions generated overall.");
 
       // 1. Auto Archive
       await autoArchivePreviousTests(testBatch);
@@ -842,6 +821,7 @@ Make sure the JSON output is perfectly formatted and valid.`;
       alert("Error generating test: " + err.message);
     }
     setIsGenerating(false);
+    setGenerateProgress('');
   };
 
   const handleGeneratePDF = async () => {
@@ -1286,7 +1266,7 @@ Make sure the JSON output is perfectly formatted and valid.`;
               </div>
 
               <button type="button" onClick={handleGenerateAI} disabled={isGenerating} className="btn-primary" style={{ background: 'var(--gradient-brand)', padding: '1rem', fontSize: '1.1rem', marginTop: '1rem' }}>
-                {isGenerating ? '⏳ Generating AI Test...' : '✨ Generate & Schedule Test'}
+                {isGenerating ? (generateProgress || '⏳ Generating AI Test...') : '✨ Generate & Schedule Test'}
               </button>
             </form>
           </div>
