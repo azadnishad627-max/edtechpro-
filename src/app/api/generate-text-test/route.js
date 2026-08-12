@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
 
+export const maxDuration = 60; // Set maximum duration for Vercel Serverless Function
+
 export async function POST(req) {
   try {
     const { rawText, questionCount } = await req.json();

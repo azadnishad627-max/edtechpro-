@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
 import PDFParser from 'pdf2json';
 
+export const maxDuration = 60; // Set maximum duration for Vercel Serverless Function
+
 export async function POST(req) {
   try {
     const formData = await req.formData();

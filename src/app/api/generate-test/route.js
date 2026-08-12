@@ -1,9 +1,11 @@
 import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
 
+export const maxDuration = 60; // Set maximum duration for Vercel Serverless Function
+
 export async function POST(req) {
   try {
-    const { topic, questionCount } = await req.json();
+    const { topic, questionCount, language = 'English' } = await req.json();
     const apiKey = process.env.NVIDIA_API_KEY || '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';
 
     if (!apiKey) {
@@ -15,17 +17,19 @@ export async function POST(req) {
       baseURL: 'https://integrate.api.nvidia.com/v1',
     });
 
-    const systemPrompt = `You are an expert educational test generator. Generate ${questionCount} multiple choice questions about "${topic}".
+    const systemPrompt = `You are an expert educational test generator. Generate exactly ${questionCount} multiple choice questions about "${topic}".
+The questions, options, and explanations MUST be written in ${language}.
 Return ONLY a valid JSON array of objects. Do not include markdown blocks like \`\`\`json.
 Each object must have exactly these keys: "question_text", "option_a", "option_b", "option_c", "option_d", "correct_answer", "explanation".
 The "correct_answer" MUST be the exact full text of the correct option (not just A/B/C/D).
-The "explanation" MUST be a detailed step-by-step solution or reason explaining how to arrive at the correct answer.`;
+The "explanation" MUST be a detailed step-by-step solution or reason explaining how to arrive at the correct answer.
+Make sure the JSON output is perfectly formatted and valid.`;
 
     const completion = await openai.chat.completions.create({
       model: "nvidia/nemotron-3.5-lightning-30b-a3b",
       messages: [
         {"role": "system", "content": systemPrompt},
-        {"role": "user", "content": `Generate ${questionCount} questions on ${topic}`}
+        {"role": "user", "content": `Generate ${questionCount} questions on ${topic} in ${language}.`}
       ],
       temperature: 0.7,
       top_p: 0.95,
@@ -51,7 +55,7 @@ The "explanation" MUST be a detailed step-by-step solution or reason explaining 
       questions = JSON.parse(aiResponse);
     } catch (e) {
       console.error("Failed to parse JSON:", aiResponse);
-      throw new Error("Failed to parse AI JSON response");
+      throw new Error(`Failed to parse AI JSON response. AI output snippet: ${aiResponse.substring(0, 100)}...`);
     }
 
     return NextResponse.json({ questions });

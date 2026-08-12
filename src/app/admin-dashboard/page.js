@@ -76,6 +76,7 @@ export default function AdminDashboard() {
   const [csvFile, setCsvFile] = useState(null);
   const [showLegacyOptions, setShowLegacyOptions] = useState(false);
   const [isReasoning, setIsReasoning] = useState(false);
+  const [testLanguage, setTestLanguage] = useState('English');
   
   // Edit Questions Modal State
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -755,9 +756,16 @@ export default function AdminDashboard() {
       const res = await fetch('/api/generate-test', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ topic: testTopic, questionCount: totalQuestions })
+        body: JSON.stringify({ topic: testTopic, questionCount: totalQuestions, language: testLanguage })
       });
-      const data = await res.json();
+      
+      const textResponse = await res.text();
+      let data;
+      try {
+        data = JSON.parse(textResponse);
+      } catch (parseError) {
+        throw new Error(`Server returned invalid response (Timeout or Error). Snippet: ${textResponse.substring(0, 50)}...`);
+      }
       
       if (data.error) throw new Error(data.error);
       if (!data.questions || data.questions.length === 0) throw new Error("No questions generated.");
@@ -986,6 +994,7 @@ export default function AdminDashboard() {
         <button className={activeTab === 'content' ? 'btn-primary' : 'btn-outline'} onClick={() => switchTab('content')} style={{ padding: '0.5rem 1rem' }}>Content Manager</button>
         <button className={activeTab === 'test' ? 'btn-primary' : 'btn-outline'} onClick={() => switchTab('test')} style={{ padding: '0.5rem 1rem' }}>Test Manager</button>
         <button className={activeTab === 'test_history' ? 'btn-primary' : 'btn-outline'} onClick={() => switchTab('test_history')} style={{ padding: '0.5rem 1rem' }}>Test History</button>
+        <button className={activeTab === 'ai_test' ? 'btn-primary' : 'btn-outline'} onClick={() => switchTab('ai_test')} style={{ padding: '0.5rem 1rem' }}>🤖 AI Test</button>
         <button className={activeTab === 'live' ? 'btn-primary' : 'btn-outline'} onClick={() => switchTab('live')} style={{ padding: '0.5rem 1rem' }}>Live Classes</button>
         <button className={activeTab === 'announcements' ? 'btn-primary' : 'btn-outline'} onClick={() => switchTab('announcements')} style={{ padding: '0.5rem 1rem' }}>Announcements</button>
         <button className={activeTab === 'feedback' ? 'btn-primary' : 'btn-outline'} onClick={() => switchTab('feedback')} style={{ padding: '0.5rem 1rem' }}>Student Feedback</button>
@@ -1174,6 +1183,73 @@ export default function AdminDashboard() {
                 </tbody>
               </table>
             </div>
+          </div>
+        </div>
+      )}
+      {activeTab === 'ai_test' && (
+        <div className="animate-tab-enter" style={{ alignItems: 'flex-start' }}>
+          <div className="glass-card mb-4" style={{ maxWidth: '800px', margin: '0 auto' }}>
+            <h3 className="mb-4 text-accent" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              🤖 AI Test Generator
+            </h3>
+            <p className="text-muted mb-4">Select options below to instantly generate and schedule a test using Nvidia AI.</p>
+            
+            <form style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                <label className="text-light" style={{ fontSize: '0.9rem' }}>Select Batch / Class</label>
+                <select value={testBatch} onChange={(e) => setTestBatch(e.target.value)} style={{ padding: '1rem', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'rgba(0,0,0,0.2)', color: 'white' }} required>
+                  <option value="">Select Batch...</option>
+                  {batches.map(b => <option key={b.id} value={b.id}>{b.title}</option>)}
+                </select>
+              </div>
+
+              <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+                <div style={{ flex: 1, minWidth: '200px', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  <label className="text-light" style={{ fontSize: '0.9rem' }}>Test Name</label>
+                  <input type="text" placeholder="e.g. Science Chapter 1 Mock" value={testTitle} onChange={(e) => setTestTitle(e.target.value)} style={{ width: '100%', padding: '1rem', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'rgba(0,0,0,0.2)', color: 'white' }} required />
+                </div>
+                <div style={{ flex: 1, minWidth: '200px', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  <label className="text-light" style={{ fontSize: '0.9rem' }}>AI Generation Topic</label>
+                  <input type="text" placeholder="e.g. Photosynthesis Class 10" value={testTopic} onChange={(e) => setTestTopic(e.target.value)} style={{ width: '100%', padding: '1rem', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'rgba(0,0,0,0.2)', color: 'white' }} required />
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+                <div style={{ flex: 1, minWidth: '150px', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  <label className="text-light" style={{ fontSize: '0.9rem' }}>Duration (Mins)</label>
+                  <input type="number" placeholder="Duration" value={duration} onChange={(e) => setDuration(e.target.value)} style={{ width: '100%', padding: '1rem', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'rgba(0,0,0,0.2)', color: 'white' }} required />
+                </div>
+                <div style={{ flex: 1, minWidth: '150px', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  <label className="text-light" style={{ fontSize: '0.9rem' }}>Total Questions</label>
+                  <input type="number" placeholder="Count" value={totalQuestions} onChange={(e) => setTotalQuestions(e.target.value)} style={{ width: '100%', padding: '1rem', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'rgba(0,0,0,0.2)', color: 'white' }} required />
+                </div>
+                <div style={{ flex: 1, minWidth: '150px', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  <label className="text-light" style={{ fontSize: '0.9rem' }}>Language</label>
+                  <select value={testLanguage} onChange={(e) => setTestLanguage(e.target.value)} style={{ width: '100%', padding: '1rem', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'rgba(0,0,0,0.2)', color: 'white' }}>
+                    <option value="English">English</option>
+                    <option value="Hindi">Hindi</option>
+                    <option value="Hinglish">Hinglish</option>
+                    <option value="Spanish">Spanish</option>
+                    <option value="French">French</option>
+                  </select>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+                <div style={{ flex: 1, minWidth: '200px', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  <label className="text-light" style={{ fontSize: '0.9rem' }}>Start Time (Optional)</label>
+                  <input type="datetime-local" value={testStartTime} onChange={(e) => setTestStartTime(e.target.value)} style={{ width: '100%', padding: '1rem', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'rgba(0,0,0,0.2)', color: 'white' }} />
+                </div>
+                <div style={{ flex: 1, minWidth: '200px', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  <label className="text-light" style={{ fontSize: '0.9rem' }}>End Time (Optional)</label>
+                  <input type="datetime-local" value={testEndTime} onChange={(e) => setTestEndTime(e.target.value)} style={{ width: '100%', padding: '1rem', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'rgba(0,0,0,0.2)', color: 'white' }} />
+                </div>
+              </div>
+
+              <button type="button" onClick={handleGenerateAI} disabled={isGenerating} className="btn-primary" style={{ background: 'var(--gradient-brand)', padding: '1rem', fontSize: '1.1rem', marginTop: '1rem' }}>
+                {isGenerating ? '⏳ Generating AI Test...' : '✨ Generate & Schedule Test'}
+              </button>
+            </form>
           </div>
         </div>
       )}
