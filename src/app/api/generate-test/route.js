@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
 
-export const maxDuration = 60; // Set maximum duration for Vercel Serverless Function
+export const runtime = 'edge'; // Use Edge Runtime to increase timeout limit on Hobby
+export const maxDuration = 60; // Has no effect on hobby edge, but good for pro
 
 export async function POST(req) {
   try {
