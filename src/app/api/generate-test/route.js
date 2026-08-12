@@ -27,7 +27,7 @@ The "correct_answer" MUST be the exact full text of the correct option (not just
 The "explanation" MUST be a detailed step-by-step solution or reason explaining how to arrive at the correct answer.
 Make sure the JSON output is perfectly formatted and valid.`;
 
-    let completionStream = null;
+    let completion = null;
     let lastError = null;
 
     for (const config of API_CONFIGS) {
@@ -37,7 +37,7 @@ Make sure the JSON output is perfectly formatted and valid.`;
           baseURL: 'https://integrate.api.nvidia.com/v1',
         });
         
-        completionStream = await openai.chat.completions.create({
+        completion = await openai.chat.completions.create({
           model: config.model,
           messages: [
             {"role": "system", "content": systemPrompt},
@@ -45,8 +45,7 @@ Make sure the JSON output is perfectly formatted and valid.`;
           ],
           temperature: 0.7,
           top_p: 0.95,
-          max_tokens: 16384,
-          stream: true // Enable streaming to bypass Vercel timeout!
+          max_tokens: 16384
         });
         
         break; // Success! Break the fallback loop
@@ -56,32 +55,32 @@ Make sure the JSON output is perfectly formatted and valid.`;
       }
     }
     
-    if (!completionStream) {
+    if (!completion) {
       throw new Error(`All fallback APIs failed. Last error: ${lastError?.message}`);
     }
 
-    const readableStream = new ReadableStream({
-      async start(controller) {
-        try {
-          for await (const chunk of completionStream) {
-            const content = chunk.choices[0]?.delta?.content || "";
-            if (content) {
-              controller.enqueue(new TextEncoder().encode(content));
-            }
-          }
-        } catch (err) {
-          controller.error(err);
-        } finally {
-          controller.close();
-        }
-      }
-    });
+    let aiResponse = completion.choices[0]?.message?.content || "";
 
-    return new Response(readableStream, {
-      headers: {
-        'Content-Type': 'text/plain; charset=utf-8',
-      }
-    });
+    if (!aiResponse) throw new Error("AI returned empty response");
+
+    // Clean up markdown blocks if the AI disobeyed
+    aiResponse = aiResponse.replace(/```json/gi, "").replace(/```/g, "").trim();
+    
+    // Attempt to extract json array if there is conversational text
+    const jsonMatch = aiResponse.match(/\[\s*\{[\s\S]*\}\s*\]/);
+    if (jsonMatch) {
+      aiResponse = jsonMatch[0];
+    }
+
+    let questions;
+    try {
+      questions = JSON.parse(aiResponse);
+    } catch (e) {
+      console.error("Failed to parse JSON:", aiResponse);
+      throw new Error(`Failed to parse AI JSON response. AI output snippet: ${aiResponse.substring(0, 100)}...`);
+    }
+
+    return NextResponse.json({ questions });
     
   } catch (err) {
     return NextResponse.json({ error: err.message }, { status: 500 });

@@ -756,12 +756,12 @@ export default function AdminDashboard() {
     setGenerateProgress(`Initializing generation...`);
     try {
       const total = parseInt(totalQuestions, 10);
-      const batchSize = 10; // Streaming bypasses Vercel limits, so we can use bigger batches
+      const batchSize = 1; // 1 Question per batch completely guarantees NO VERCEL TIMEOUT
       let allGeneratedQuestions = [];
 
       for (let i = 0; i < total; i += batchSize) {
         const count = Math.min(batchSize, total - i);
-        setGenerateProgress(`Generating ${i + 1} to ${i + count} of ${total} (Streaming)...`);
+        setGenerateProgress(`Generating question ${i + 1} of ${total}...`);
         
         const res = await fetch('/api/generate-test', {
           method: 'POST',
@@ -774,29 +774,12 @@ export default function AdminDashboard() {
            throw new Error(`Server returned ${res.status}: ${errText.substring(0, 50)}...`);
         }
 
-        const reader = res.body.getReader();
-        const decoder = new TextDecoder();
-        let aiResponse = '';
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          aiResponse += decoder.decode(value, { stream: true });
-        }
+        const data = await res.json();
         
-        aiResponse = aiResponse.replace(/```json/gi, "").replace(/```/g, "").trim();
-        const jsonMatch = aiResponse.match(/\[\s*\{[\s\S]*\}\s*\]/);
-        if (jsonMatch) aiResponse = jsonMatch[0];
-
-        let parsedQuestions;
-        try {
-          parsedQuestions = JSON.parse(aiResponse);
-        } catch (parseError) {
-          throw new Error(`Failed to parse AI JSON response. Snippet: ${aiResponse.substring(0, 50)}...`);
-        }
+        if (data.error) throw new Error(data.error);
+        if (!data.questions || data.questions.length === 0) throw new Error(`No questions generated for batch ${i}-${i+count}.`);
         
-        if (!parsedQuestions || parsedQuestions.length === 0) throw new Error(`No questions generated for batch ${i}-${i+count}.`);
-        
-        allGeneratedQuestions = allGeneratedQuestions.concat(parsedQuestions);
+        allGeneratedQuestions = allGeneratedQuestions.concat(data.questions);
       }
       
       setGenerateProgress(`Saving ${allGeneratedQuestions.length} questions to database...`);
