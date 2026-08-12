@@ -1,22 +1,23 @@
 import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
 
-export const runtime = 'edge'; // Use Edge Runtime to increase timeout limit on Hobby
-export const maxDuration = 60; // Has no effect on hobby edge, but good for pro
+export const runtime = 'edge';
+export const maxDuration = 60;
+
+const API_CONFIGS = [
+  {
+    key: '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',
+    model: 'google/gemma-4-31b-it'
+  },
+  {
+    key: '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',
+    model: 'nvidia/nemotron-3.5-lightning-30b-a3b'
+  }
+];
 
 export async function POST(req) {
   try {
     const { topic, questionCount, language = 'English' } = await req.json();
-    const apiKey = process.env.NVIDIA_API_KEY || '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';
-
-    if (!apiKey) {
-      return NextResponse.json({ error: "Missing API Key" }, { status: 401 });
-    }
-
-    const openai = new OpenAI({
-      apiKey: apiKey,
-      baseURL: 'https://integrate.api.nvidia.com/v1',
-    });
 
     const systemPrompt = `You are an expert educational test generator. Generate exactly ${questionCount} multiple choice questions about "${topic}".
 The questions, options, and explanations MUST be written in ${language}.
@@ -26,47 +27,63 @@ The "correct_answer" MUST be the exact full text of the correct option (not just
 The "explanation" MUST be a detailed step-by-step solution or reason explaining how to arrive at the correct answer.
 Make sure the JSON output is perfectly formatted and valid.`;
 
-    const completion = await openai.chat.completions.create({
-      model: "nvidia/nemotron-3.5-lightning-30b-a3b",
-      messages: [
-        {"role": "system", "content": systemPrompt},
-        {"role": "user", "content": `Generate ${questionCount} questions on ${topic} in ${language}.`}
-      ],
-      temperature: 0.7,
-      top_p: 0.95,
-      max_tokens: 16384
-    }, {
-      extra_body: {
-        chat_template_kwargs: { "enable_thinking": false }
+    let completionStream = null;
+    let lastError = null;
+
+    for (const config of API_CONFIGS) {
+      try {
+        const openai = new OpenAI({
+          apiKey: config.key,
+          baseURL: 'https://integrate.api.nvidia.com/v1',
+        });
+        
+        completionStream = await openai.chat.completions.create({
+          model: config.model,
+          messages: [
+            {"role": "system", "content": systemPrompt},
+            {"role": "user", "content": `Generate ${questionCount} questions on ${topic} in ${language}.`}
+          ],
+          temperature: 0.7,
+          top_p: 0.95,
+          max_tokens: 16384,
+          stream: true // Enable streaming to bypass Vercel timeout!
+        });
+        
+        break; // Success! Break the fallback loop
+      } catch (err) {
+        console.error(`Error with model ${config.model}:`, err.message);
+        lastError = err;
+      }
+    }
+    
+    if (!completionStream) {
+      throw new Error(`All fallback APIs failed. Last error: ${lastError?.message}`);
+    }
+
+    const readableStream = new ReadableStream({
+      async start(controller) {
+        try {
+          for await (const chunk of completionStream) {
+            const content = chunk.choices[0]?.delta?.content || "";
+            if (content) {
+              controller.enqueue(new TextEncoder().encode(content));
+            }
+          }
+        } catch (err) {
+          controller.error(err);
+        } finally {
+          controller.close();
+        }
+      }
+    });
+
+    return new Response(readableStream, {
+      headers: {
+        'Content-Type': 'text/plain; charset=utf-8',
       }
     });
     
-    let aiResponse = completion.choices[0]?.message?.content || "";
-
-    if (!aiResponse) throw new Error("AI returned empty response");
-
-    // Clean up markdown blocks if the AI disobeyed
-    aiResponse = aiResponse.replace(/```json/gi, "").replace(/```/g, "").trim();
-    // Sometimes it includes reasoning output if enable_thinking was somehow on, but we didn't enable it for json.
-    
-    // Attempt to extract json array if there is conversational text
-    const jsonMatch = aiResponse.match(/\[\s*\{[\s\S]*\}\s*\]/);
-    if (jsonMatch) {
-      aiResponse = jsonMatch[0];
-    }
-
-    let questions;
-    try {
-      questions = JSON.parse(aiResponse);
-    } catch (e) {
-      console.error("Failed to parse JSON:", aiResponse);
-      throw new Error(`Failed to parse AI JSON response. AI output snippet: ${aiResponse.substring(0, 100)}...`);
-    }
-
-    return NextResponse.json({ questions });
-
-  } catch (error) {
-    console.error("AI Gen Error:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (err) {
+    return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }

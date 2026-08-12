@@ -756,12 +756,12 @@ export default function AdminDashboard() {
     setGenerateProgress(`Initializing generation...`);
     try {
       const total = parseInt(totalQuestions, 10);
-      const batchSize = 2; // Extreme micro-chunks to absolutely guarantee no timeout
+      const batchSize = 10; // Streaming bypasses Vercel limits, so we can use bigger batches
       let allGeneratedQuestions = [];
 
       for (let i = 0; i < total; i += batchSize) {
         const count = Math.min(batchSize, total - i);
-        setGenerateProgress(`Generating ${i + 1} to ${i + count} of ${total}...`);
+        setGenerateProgress(`Generating ${i + 1} to ${i + count} of ${total} (Streaming)...`);
         
         const res = await fetch('/api/generate-test', {
           method: 'POST',
@@ -769,18 +769,34 @@ export default function AdminDashboard() {
           body: JSON.stringify({ topic: testTopic, questionCount: count, language: testLanguage })
         });
         
-        const textResponse = await res.text();
-        let data;
-        try {
-          data = JSON.parse(textResponse);
-        } catch (parseError) {
-          throw new Error(`Server returned invalid response. Snippet: ${textResponse.substring(0, 50)}...`);
+        if (!res.ok) {
+           const errText = await res.text();
+           throw new Error(`Server returned ${res.status}: ${errText.substring(0, 50)}...`);
+        }
+
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let aiResponse = '';
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          aiResponse += decoder.decode(value, { stream: true });
         }
         
-        if (data.error) throw new Error(data.error);
-        if (!data.questions || data.questions.length === 0) throw new Error(`No questions generated for batch ${i}-${i+count}.`);
+        aiResponse = aiResponse.replace(/```json/gi, "").replace(/```/g, "").trim();
+        const jsonMatch = aiResponse.match(/\[\s*\{[\s\S]*\}\s*\]/);
+        if (jsonMatch) aiResponse = jsonMatch[0];
+
+        let parsedQuestions;
+        try {
+          parsedQuestions = JSON.parse(aiResponse);
+        } catch (parseError) {
+          throw new Error(`Failed to parse AI JSON response. Snippet: ${aiResponse.substring(0, 50)}...`);
+        }
         
-        allGeneratedQuestions = allGeneratedQuestions.concat(data.questions);
+        if (!parsedQuestions || parsedQuestions.length === 0) throw new Error(`No questions generated for batch ${i}-${i+count}.`);
+        
+        allGeneratedQuestions = allGeneratedQuestions.concat(parsedQuestions);
       }
       
       setGenerateProgress(`Saving ${allGeneratedQuestions.length} questions to database...`);
