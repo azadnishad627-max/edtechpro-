@@ -98,6 +98,16 @@ export default function AdminDashboard() {
   const [liveTime, setLiveTime] = useState('');
   const [dbLiveClasses, setDbLiveClasses] = useState([]);
 
+  // Telegram Quiz State
+  const [tgBotToken, setTgBotToken] = useState('8054498159:AAHdHB1Z1P479qA5C2C2loMedY7hixGcKJY');
+  const [tgChatId, setTgChatId] = useState('5986243633');
+  const [tgQuestionCount, setTgQuestionCount] = useState('10');
+  const [tgPdfFile, setTgPdfFile] = useState(null);
+  const [tgPdfFileName, setTgPdfFileName] = useState('');
+  const [isTgGenerating, setIsTgGenerating] = useState(false);
+  const [tgGenerateProgress, setTgGenerateProgress] = useState('');
+  const tgHiddenFileInput = useRef(null);
+
   // Admin Chat State
   const [adminChats, setAdminChats] = useState([]);
   const [activeChatStudentId, setActiveChatStudentId] = useState(null);
@@ -932,6 +942,79 @@ export default function AdminDashboard() {
     setIsGenerating(false);
   };
 
+  const handleTgPdfUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setTgPdfFile(file);
+      setTgPdfFileName(file.name);
+    }
+  };
+
+  const handleGenerateTgQuiz = async () => {
+    if (!tgBotToken || !tgChatId || !tgPdfFile || !tgQuestionCount) {
+      alert("Please fill all fields and upload a PDF!");
+      return;
+    }
+    
+    setIsTgGenerating(true);
+    setTgGenerateProgress("Step 1/3: Extracting Text from PDF...");
+    
+    try {
+      const formData = new FormData();
+      formData.append('pdf', tgPdfFile);
+      const pdfRes = await fetch('/api/parse-pdf', { method: 'POST', body: formData });
+      const pdfData = await pdfRes.json();
+      if (pdfData.error) throw new Error("PDF Error: " + pdfData.error);
+      const extractedText = pdfData.text;
+      
+      const total = parseInt(tgQuestionCount, 10);
+      let successCount = 0;
+      
+      for (let i = 0; i < total; i++) {
+         setTgGenerateProgress(`Step 2/3: Generating AI Question ${i + 1} of ${total}...`);
+         
+         const aiRes = await fetch('/api/generate-text-test', {
+           method: 'POST',
+           headers: { 'Content-Type': 'application/json' },
+           body: JSON.stringify({ rawText: extractedText, questionCount: 1 })
+         });
+         const aiData = await aiRes.json();
+         if (aiData.error) throw new Error("AI Error: " + aiData.error);
+         if (!aiData.questions || aiData.questions.length === 0) continue;
+         
+         const q = aiData.questions[0];
+         
+         setTgGenerateProgress(`Step 3/3: Posting Question ${i + 1} to Telegram...`);
+         
+         const tgRes = await fetch('/api/post-telegram-quiz', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+               botToken: tgBotToken.trim(),
+               chatId: tgChatId.trim(),
+               question: q
+            })
+         });
+         const tgData = await tgRes.json();
+         if (tgData.error) throw new Error("Telegram Error: " + tgData.error);
+         
+         successCount++;
+         await new Promise(r => setTimeout(r, 1000));
+      }
+      
+      alert(`Success! Successfully posted ${successCount} questions to Telegram.`);
+      setTgPdfFile(null);
+      setTgPdfFileName('');
+      if (tgHiddenFileInput.current) tgHiddenFileInput.current.value = '';
+    } catch (err) {
+      alert("Error generating Telegram Quiz: " + err.message);
+    }
+    
+    setIsTgGenerating(false);
+    setTgGenerateProgress('');
+  };
+
+
   const openEditModal = async (testId) => {
     setSelectedTestId(testId);
     setTestQuestions([]);
@@ -1013,6 +1096,7 @@ export default function AdminDashboard() {
         <button className={activeTab === 'test' ? 'btn-primary' : 'btn-outline'} onClick={() => switchTab('test')} style={{ padding: '0.5rem 1rem' }}>Test Manager</button>
         <button className={activeTab === 'test_history' ? 'btn-primary' : 'btn-outline'} onClick={() => switchTab('test_history')} style={{ padding: '0.5rem 1rem' }}>Test History</button>
         <button className={activeTab === 'ai_test' ? 'btn-primary' : 'btn-outline'} onClick={() => switchTab('ai_test')} style={{ padding: '0.5rem 1rem' }}>🤖 AI Test</button>
+        <button className={activeTab === 'tg_test' ? 'btn-primary' : 'btn-outline'} onClick={() => switchTab('tg_test')} style={{ padding: '0.5rem 1rem' }}>📲 Telegram Test</button>
         <button className={activeTab === 'live' ? 'btn-primary' : 'btn-outline'} onClick={() => switchTab('live')} style={{ padding: '0.5rem 1rem' }}>Live Classes</button>
         <button className={activeTab === 'announcements' ? 'btn-primary' : 'btn-outline'} onClick={() => switchTab('announcements')} style={{ padding: '0.5rem 1rem' }}>Announcements</button>
         <button className={activeTab === 'feedback' ? 'btn-primary' : 'btn-outline'} onClick={() => switchTab('feedback')} style={{ padding: '0.5rem 1rem' }}>Student Feedback</button>
@@ -1374,6 +1458,55 @@ export default function AdminDashboard() {
                 </div>
               ))}
             </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {activeTab === 'tg_test' && (
+        <div className="animate-tab-enter" style={{ alignItems: 'flex-start' }}>
+          <div className="glass-card mb-4" style={{ maxWidth: '800px', margin: '0 auto' }}>
+            <h3 className="mb-4 text-accent" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              📲 Telegram Quiz Auto-Poster
+            </h3>
+            <p className="text-muted mb-4">Upload a PDF chapter or question paper. The AI will generate multiple-choice questions and post them as interactive Quiz Polls directly to your Telegram channel.</p>
+            
+            <form style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+              
+              <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+                <div style={{ flex: 1, minWidth: '200px', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  <label className="text-light" style={{ fontSize: '0.9rem' }}>Telegram Bot Token</label>
+                  <input type="text" placeholder="e.g. 8054498159:AAHdHB..." value={tgBotToken} onChange={(e) => setTgBotToken(e.target.value)} style={{ width: '100%', padding: '1rem', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'rgba(0,0,0,0.2)', color: 'white' }} required />
+                </div>
+                <div style={{ flex: 1, minWidth: '200px', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  <label className="text-light" style={{ fontSize: '0.9rem' }}>Telegram Chat/Channel ID</label>
+                  <input type="text" placeholder="e.g. 5986243633 or @mychannel" value={tgChatId} onChange={(e) => setTgChatId(e.target.value)} style={{ width: '100%', padding: '1rem', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'rgba(0,0,0,0.2)', color: 'white' }} required />
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                <label className="text-light" style={{ fontSize: '0.9rem' }}>Upload PDF (Chapter / Question Paper)</label>
+                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                    <button type="button" onClick={() => tgHiddenFileInput.current.click()} className="btn-outline" style={{ flexShrink: 0 }}>Select PDF File</button>
+                    <span style={{ color: 'var(--text-muted)' }}>{tgPdfFileName || 'No file selected'}</span>
+                    <input type="file" accept="application/pdf" ref={tgHiddenFileInput} onChange={handleTgPdfUpload} style={{ display: 'none' }} />
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                <label className="text-light" style={{ fontSize: '0.9rem' }}>Number of Questions to Post</label>
+                <input type="number" placeholder="e.g. 10" value={tgQuestionCount} onChange={(e) => setTgQuestionCount(e.target.value)} style={{ width: '100%', padding: '1rem', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'rgba(0,0,0,0.2)', color: 'white' }} required />
+              </div>
+
+              {tgGenerateProgress && (
+                <div style={{ padding: '1rem', background: 'rgba(33, 150, 243, 0.1)', border: '1px solid #2196F3', borderRadius: '8px', color: '#2196F3', fontWeight: 'bold', textAlign: 'center' }}>
+                  {tgGenerateProgress}
+                </div>
+              )}
+
+              <button type="button" onClick={handleGenerateTgQuiz} disabled={isTgGenerating} className="btn-primary mt-2" style={{ background: 'var(--gradient-brand)', width: '100%', fontSize: '1.1rem', padding: '1rem' }}>
+                {isTgGenerating ? 'Processing...' : '🚀 Generate & Post to Telegram'}
+              </button>
+            </form>
           </div>
         </div>
       )}
