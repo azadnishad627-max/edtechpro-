@@ -100,8 +100,9 @@ export default function AdminDashboard() {
 
   // Telegram Quiz State
   const [tgBotToken, setTgBotToken] = useState('8054498159:AAHdHB1Z1P479qA5C2C2loMedY7hixGcKJY');
-  const [tgChatId, setTgChatId] = useState('5986243633');
+  const [tgChatId, setTgChatId] = useState('-100'); // changed placeholder to start with -100
   const [tgQuestionCount, setTgQuestionCount] = useState('10');
+  const [tgLanguage, setTgLanguage] = useState('Hindi');
   const [tgPdfFile, setTgPdfFile] = useState(null);
   const [tgPdfFileName, setTgPdfFileName] = useState('');
   const [isTgGenerating, setIsTgGenerating] = useState(false);
@@ -976,7 +977,7 @@ export default function AdminDashboard() {
          const aiRes = await fetch('/api/generate-text-test', {
            method: 'POST',
            headers: { 'Content-Type': 'application/json' },
-           body: JSON.stringify({ rawText: extractedText, questionCount: 1 })
+           body: JSON.stringify({ rawText: extractedText, questionCount: 1, language: tgLanguage })
          });
          const aiData = await aiRes.json();
          if (aiData.error) throw new Error("AI Error: " + aiData.error);
@@ -1491,9 +1492,20 @@ export default function AdminDashboard() {
                 </div>
               </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                <label className="text-light" style={{ fontSize: '0.9rem' }}>Number of Questions to Post</label>
-                <input type="number" placeholder="e.g. 10" value={tgQuestionCount} onChange={(e) => setTgQuestionCount(e.target.value)} style={{ width: '100%', padding: '1rem', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'rgba(0,0,0,0.2)', color: 'white' }} required />
+              <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+                <div style={{ flex: 1, minWidth: '150px', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  <label className="text-light" style={{ fontSize: '0.9rem' }}>Number of Questions to Post</label>
+                  <input type="number" placeholder="e.g. 10" value={tgQuestionCount} onChange={(e) => setTgQuestionCount(e.target.value)} style={{ width: '100%', padding: '1rem', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'rgba(0,0,0,0.2)', color: 'white' }} required />
+                </div>
+                <div style={{ flex: 1, minWidth: '150px', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  <label className="text-light" style={{ fontSize: '0.9rem' }}>Quiz Language</label>
+                  <select value={tgLanguage} onChange={(e) => setTgLanguage(e.target.value)} style={{ width: '100%', padding: '1rem', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'rgba(0,0,0,0.2)', color: 'white' }}>
+                    <option value="English">English</option>
+                    <option value="Hindi">Hindi (Hinglish/Devanagari)</option>
+                    <option value="Spanish">Spanish</option>
+                    <option value="French">French</option>
+                  </select>
+                </div>
               </div>
 
               {tgGenerateProgress && (

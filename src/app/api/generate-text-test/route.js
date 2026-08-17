@@ -20,19 +20,19 @@ const API_CONFIGS = [
 
 export async function POST(req) {
   try {
-    const { rawText, questionCount } = await req.json();
+    const { rawText, questionCount, language = 'English' } = await req.json();
 
     if (!rawText || rawText.trim().length === 0) {
       return NextResponse.json({ error: "No text provided" }, { status: 400 });
     }
 
-    const systemPrompt = `You are an expert educational test generator. The user has provided raw text containing questions and an answer key.
-Your task is to extract exactly ${questionCount} multiple choice questions from this text.
+    const systemPrompt = `You are an expert educational test generator. The user has provided raw text extracted from a PDF.
+Your task is to extract or generate exactly ${questionCount} multiple choice questions based STRICTLY and ONLY on the provided text. Do NOT invent general knowledge questions outside the text.
+The questions, options, and explanations MUST be written in ${language}.
 Return ONLY a valid JSON array of objects. Do not include markdown blocks like \`\`\`json.
 Each object must have exactly these keys: "question_text", "option_a", "option_b", "option_c", "option_d", "correct_answer", "explanation".
 The "correct_answer" MUST be the exact full text of the correct option (not just A/B/C/D).
-The "explanation" MUST be a detailed step-by-step solution or reason explaining how to arrive at the correct answer.
-If the text doesn't contain exactly ${questionCount} questions, extract as many as you can up to that number.`;
+The "explanation" MUST be a detailed step-by-step solution or reason explaining how to arrive at the correct answer based on the text.`;
 
     let completion = null;
     let lastError = null;
