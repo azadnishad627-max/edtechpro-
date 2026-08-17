@@ -3,23 +3,28 @@ import OpenAI from 'openai';
 
 export const maxDuration = 60; // Set maximum duration for Vercel Serverless Function
 
+const API_CONFIGS = [
+  {
+    key: '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',
+    model: 'nvidia/ising-calibration-1.5-31b'
+  },
+  {
+    key: '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',
+    model: 'google/gemma-4-31b-it'
+  },
+  {
+    key: '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',
+    model: 'nvidia/nemotron-3.5-lightning-30b-a3b'
+  }
+];
+
 export async function POST(req) {
   try {
     const { rawText, questionCount } = await req.json();
-    const apiKey = process.env.NVIDIA_API_KEY || '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';
-
-    if (!apiKey) {
-      return NextResponse.json({ error: "Missing API Key" }, { status: 401 });
-    }
 
     if (!rawText || rawText.trim().length === 0) {
       return NextResponse.json({ error: "No text provided" }, { status: 400 });
     }
-
-    const openai = new OpenAI({
-      apiKey: apiKey,
-      baseURL: 'https://integrate.api.nvidia.com/v1',
-    });
 
     const systemPrompt = `You are an expert educational test generator. The user has provided raw text containing questions and an answer key.
 Your task is to extract exactly ${questionCount} multiple choice questions from this text.
@@ -29,18 +34,37 @@ The "correct_answer" MUST be the exact full text of the correct option (not just
 The "explanation" MUST be a detailed step-by-step solution or reason explaining how to arrive at the correct answer.
 If the text doesn't contain exactly ${questionCount} questions, extract as many as you can up to that number.`;
 
-    const userPrompt = `Here is the raw text:\n====================\n${rawText}\n====================`;
+    let completion = null;
+    let lastError = null;
 
-    const completion = await openai.chat.completions.create({
-      model: "nvidia/nemotron-3.5-lightning-30b-a3b",
-      messages: [
-        {"role": "system", "content": systemPrompt},
-        {"role": "user", "content": userPrompt}
-      ],
-      temperature: 0.3,
-      top_p: 0.95,
-      max_tokens: 16384,
-    });
+    for (const config of API_CONFIGS) {
+      try {
+        const openai = new OpenAI({
+          apiKey: config.key,
+          baseURL: 'https://integrate.api.nvidia.com/v1',
+        });
+        
+        completion = await openai.chat.completions.create({
+          model: config.model,
+          messages: [
+            {"role": "system", "content": systemPrompt},
+            {"role": "user", "content": `Here is the raw text:\n\n${rawText}`}
+          ],
+          temperature: 0.7,
+          top_p: 0.95,
+          max_tokens: 16384
+        });
+        
+        break; // Success! Break the fallback loop
+      } catch (err) {
+        console.error(`Error with model ${config.model}:`, err.message);
+        lastError = err;
+      }
+    }
+    
+    if (!completion) {
+      throw new Error(`All fallback APIs failed. Last error: ${lastError?.message}`);
+    }
     
     let aiResponse = completion.choices[0]?.message?.content || "";
 

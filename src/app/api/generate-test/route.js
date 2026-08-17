@@ -6,6 +6,10 @@ export const maxDuration = 60;
 
 const API_CONFIGS = [
   {
+    key: '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',
+    model: 'nvidia/ising-calibration-1.5-31b'
+  },
+  {
     key: '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',
     model: 'google/gemma-4-31b-it'
   },
