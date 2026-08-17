@@ -6,13 +6,19 @@ export async function POST(req) {
   try {
     const { botToken, chatId, question } = await req.json();
     
+    // Telegram Limits: Question max 300 chars, Options max 100 chars, Explanation max 200 chars.
+    let questionText = question.question_text || "Question";
+    if (questionText.length > 300) questionText = questionText.substring(0, 297) + "...";
+    
+    let explanationText = question.explanation || "";
+    if (explanationText.length > 200) explanationText = explanationText.substring(0, 197) + "...";
+
     // question has { question_text, option_a, option_b, option_c, option_d, correct_answer, explanation }
-    const options = [question.option_a, question.option_b, question.option_c, question.option_d];
+    let rawOptions = [question.option_a, question.option_b, question.option_c, question.option_d];
     
     let correctIndex = -1;
-    for (let i = 0; i < options.length; i++) {
-        // use includes or exact match, AI sometimes includes letters
-        if (options[i] === question.correct_answer || options[i].includes(question.correct_answer)) {
+    for (let i = 0; i < rawOptions.length; i++) {
+        if (rawOptions[i] === question.correct_answer || rawOptions[i].includes(question.correct_answer)) {
             correctIndex = i;
             break;
         }
@@ -22,13 +28,20 @@ export async function POST(req) {
        correctIndex = 0; // fallback just in case AI messes up the format
     }
     
+    // Truncate options AFTER finding the correct index, so the match doesn't break
+    const options = rawOptions.map(opt => {
+        let text = opt || "Empty Option";
+        if (text.length > 100) text = text.substring(0, 97) + "...";
+        return text;
+    });
+    
     const payload = {
       chat_id: chatId,
-      question: question.question_text,
+      question: questionText,
       options: JSON.stringify(options),
       type: "quiz",
       correct_option_id: correctIndex,
-      explanation: question.explanation || ""
+      explanation: explanationText
     };
 
     const url = `https://api.telegram.org/bot${botToken}/sendPoll`;
