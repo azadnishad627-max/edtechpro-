@@ -1021,10 +1021,26 @@ export default function AdminDashboard() {
              });
              
              const tgData = await tgRes.json();
-             if (tgData.error) throw new Error("Telegram Error: " + tgData.error);
+             
+             // Handle Telegram rate limiting (429)
+             if (tgData.error && tgData.error.includes('retry after')) {
+               const retryMatch = tgData.error.match(/retry after (\d+)/);
+               const waitSec = retryMatch ? parseInt(retryMatch[1]) + 2 : 35;
+               setTgGenerateProgress(`⏳ Rate limit! Waiting ${waitSec}s... (${i + 1}/${rows.length})`);
+               await new Promise(res => setTimeout(res, waitSec * 1000));
+               const retryRes = await fetch('/api/post-telegram-quiz', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ botToken: tgBotToken.trim(), chatId: tgChatId.trim(), question: q })
+               });
+               const retryData = await retryRes.json();
+               if (retryData.error) throw new Error("Telegram Retry Error: " + retryData.error);
+             } else if (tgData.error) {
+               throw new Error("Telegram Error: " + tgData.error);
+             }
              
              successCount++;
-             await new Promise(res => setTimeout(res, 1000));
+             await new Promise(res => setTimeout(res, 3000));
           }
           
           alert(`Success! Successfully posted ${successCount} questions from CSV to Telegram.`);
@@ -1166,10 +1182,27 @@ export default function AdminDashboard() {
            })
         });
         const tgData = await tgRes.json();
-        if (tgData.error) throw new Error("Telegram Error: " + tgData.error);
+        
+        // Handle Telegram rate limiting (429)
+        if (tgData.error && tgData.error.includes('retry after')) {
+          const retryMatch = tgData.error.match(/retry after (\d+)/);
+          const waitSec = retryMatch ? parseInt(retryMatch[1]) + 2 : 35;
+          setTgGenerateProgress(`⏳ Telegram rate limit! Waiting ${waitSec}s before continuing... (${i + 1}/${questionsToPost.length})`);
+          await new Promise(r => setTimeout(r, waitSec * 1000));
+          // Retry this question
+          const retryRes = await fetch('/api/post-telegram-quiz', {
+             method: 'POST',
+             headers: { 'Content-Type': 'application/json' },
+             body: JSON.stringify({ botToken: tgBotToken.trim(), chatId: tgChatId.trim(), question: q })
+          });
+          const retryData = await retryRes.json();
+          if (retryData.error) throw new Error("Telegram Retry Error: " + retryData.error);
+        } else if (tgData.error) {
+          throw new Error("Telegram Error: " + tgData.error);
+        }
         
         successCount++;
-        await new Promise(r => setTimeout(r, 1000));
+        await new Promise(r => setTimeout(r, 3000)); // 3 second delay to avoid rate limits
       }
       
       alert(`Success! ${successCount} questions posted to Telegram from PDF.`);
