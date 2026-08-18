@@ -1072,12 +1072,24 @@ export default function AdminDashboard() {
     setTgGenerateProgress("Step 1/2: Extracting Text from PDF...");
     
     try {
-      const formData = new FormData();
-      formData.append('pdf', tgPdfFile);
-      const pdfRes = await fetch('/api/parse-pdf', { method: 'POST', body: formData });
-      const pdfData = await pdfRes.json();
-      if (pdfData.error) throw new Error("PDF Error: " + pdfData.error);
-      const extractedText = pdfData.text;
+      // Client-side PDF parsing using pdfjs-dist for proper Hindi/Unicode support
+      const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs');
+      pdfjsLib.GlobalWorkerOptions.workerSrc = '';
+      
+      const arrayBuffer = await tgPdfFile.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+      
+      let extractedText = '';
+      for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+        const page = await pdf.getPage(pageNum);
+        const textContent = await page.getTextContent();
+        const pageText = textContent.items.map(item => item.str).join(' ');
+        extractedText += pageText + '\n';
+      }
+      
+      if (!extractedText || extractedText.trim().length === 0) {
+        throw new Error("PDF se koi text extract nahi ho saka.");
+      }
       
       // --- Direct Text Parser: Extract questions from PDF text ---
       setTgGenerateProgress("Step 1/2: Parsing questions from PDF...");
