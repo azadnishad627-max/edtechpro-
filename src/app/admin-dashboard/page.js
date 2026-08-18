@@ -1166,8 +1166,8 @@ export default function AdminDashboard() {
         .from('tests')
         .insert([{
           title: pasteTestTitle.trim(),
-          batch: pasteBatch.trim(),
-          duration: parseInt(pasteDuration) || 30,
+          batch_id: pasteBatch.trim(),
+          duration_mins: parseInt(pasteDuration) || 30,
           total_questions: parsed.length,
           start_time: new Date().toISOString(),
           end_time: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString()
