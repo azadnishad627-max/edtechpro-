@@ -105,9 +105,12 @@ export default function AdminDashboard() {
   const [tgLanguage, setTgLanguage] = useState('Hindi');
   const [tgPdfFile, setTgPdfFile] = useState(null);
   const [tgPdfFileName, setTgPdfFileName] = useState('');
+  const [tgCsvFile, setTgCsvFile] = useState(null);
+  const [tgCsvFileName, setTgCsvFileName] = useState('');
   const [isTgGenerating, setIsTgGenerating] = useState(false);
   const [tgGenerateProgress, setTgGenerateProgress] = useState('');
   const tgHiddenFileInput = useRef(null);
+  const tgHiddenCsvInput = useRef(null);
 
   // Admin Chat State
   const [adminChats, setAdminChats] = useState([]);
@@ -1015,6 +1018,91 @@ export default function AdminDashboard() {
     setTgGenerateProgress('');
   };
 
+  const handleTgCsvUpload = (e) => {
+    if (e.target.files && e.target.files[0]) {
+      setTgCsvFile(e.target.files[0]);
+      setTgCsvFileName(e.target.files[0].name);
+    }
+  };
+
+  const handleGenerateTgCsvQuiz = async () => {
+    if (!tgBotToken || !tgChatId || !tgCsvFile) {
+      alert("Please fill all fields and select a CSV file!");
+      return;
+    }
+    
+    setIsTgGenerating(true);
+    
+    Papa.parse(tgCsvFile, {
+      header: true,
+      skipEmptyLines: true,
+      complete: async function(results) {
+        try {
+          const rows = results.data;
+          if(rows.length === 0) throw new Error("CSV is empty");
+          
+          let successCount = 0;
+          for (let i = 0; i < rows.length; i++) {
+             setTgGenerateProgress(`Posting CSV Question ${i + 1} of ${rows.length} to Telegram...`);
+             const r = rows[i];
+             
+             const optA = r.option_a || r.A || '';
+             const optB = r.option_b || r.B || '';
+             const optC = r.option_c || r.C || '';
+             const optD = r.option_d || r.D || '';
+             let correct = (r.correct_answer || r.Answer || '').trim();
+             
+             if (correct.toUpperCase() === 'A') correct = optA;
+             else if (correct.toUpperCase() === 'B') correct = optB;
+             else if (correct.toUpperCase() === 'C') correct = optC;
+             else if (correct.toUpperCase() === 'D') correct = optD;
+             
+             const q = {
+               question_text: r.question_text || r.Question || r.Q || '',
+               option_a: optA,
+               option_b: optB,
+               option_c: optC,
+               option_d: optD,
+               correct_answer: correct,
+               explanation: r.explanation || r.Explanation || ''
+             };
+             
+             const tgRes = await fetch('/api/post-telegram-quiz', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                   botToken: tgBotToken.trim(),
+                   chatId: tgChatId.trim(),
+                   question: q
+                })
+             });
+             
+             const tgData = await tgRes.json();
+             if (tgData.error) throw new Error("Telegram Error: " + tgData.error);
+             
+             successCount++;
+             await new Promise(res => setTimeout(res, 1000));
+          }
+          
+          alert(`Success! Successfully posted ${successCount} questions from CSV to Telegram.`);
+          setTgCsvFile(null);
+          setTgCsvFileName('');
+          if (tgHiddenCsvInput.current) tgHiddenCsvInput.current.value = '';
+        } catch (err) {
+          alert("Error posting CSV to Telegram: " + err.message);
+        }
+        
+        setIsTgGenerating(false);
+        setTgGenerateProgress('');
+      },
+      error: function(err) {
+        alert("Error parsing CSV: " + err.message);
+        setIsTgGenerating(false);
+        setTgGenerateProgress('');
+      }
+    });
+  };
+
 
   const openEditModal = async (testId) => {
     setSelectedTestId(testId);
@@ -1483,29 +1571,46 @@ export default function AdminDashboard() {
                 </div>
               </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                <label className="text-light" style={{ fontSize: '0.9rem' }}>Upload PDF (Chapter / Question Paper)</label>
+              <h4 className="mt-4 text-accent" style={{ color: '#2196F3' }}>Option 1: Upload CSV (Direct Posting, No AI limit)</h4>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', background: 'rgba(33, 150, 243, 0.1)', padding: '1rem', borderRadius: '8px', border: '1px solid rgba(33, 150, 243, 0.3)' }}>
+                <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-light)' }}>Upload a CSV file with columns: <b>Question, A, B, C, D, Answer, Explanation (Optional)</b></p>
                 <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                    <button type="button" onClick={() => tgHiddenFileInput.current.click()} className="btn-outline" style={{ flexShrink: 0 }}>Select PDF File</button>
+                    <button type="button" onClick={() => tgHiddenCsvInput.current.click()} className="btn-outline" style={{ flexShrink: 0, border: '1px solid #2196F3', color: '#2196F3' }}>Select CSV File</button>
+                    <span style={{ color: 'var(--text-muted)' }}>{tgCsvFileName || 'No file selected'}</span>
+                    <input type="file" accept=".csv" ref={tgHiddenCsvInput} onChange={handleTgCsvUpload} style={{ display: 'none' }} />
+                </div>
+                <button type="button" onClick={handleGenerateTgCsvQuiz} disabled={isTgGenerating} className="btn-primary mt-2" style={{ background: '#2196F3', width: '100%', fontSize: '1.1rem', padding: '1rem' }}>
+                  {isTgGenerating ? 'Processing...' : '📊 Post CSV to Telegram'}
+                </button>
+              </div>
+
+              <h4 className="mt-4 text-accent" style={{ color: '#9c27b0' }}>Option 2: Upload PDF (AI Generates Questions)</h4>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', background: 'rgba(156, 39, 176, 0.1)', padding: '1rem', borderRadius: '8px', border: '1px solid rgba(156, 39, 176, 0.3)' }}>
+                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                    <button type="button" onClick={() => tgHiddenFileInput.current.click()} className="btn-outline" style={{ flexShrink: 0, border: '1px solid #9c27b0', color: '#9c27b0' }}>Select PDF File</button>
                     <span style={{ color: 'var(--text-muted)' }}>{tgPdfFileName || 'No file selected'}</span>
                     <input type="file" accept="application/pdf" ref={tgHiddenFileInput} onChange={handleTgPdfUpload} style={{ display: 'none' }} />
                 </div>
-              </div>
 
-              <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-                <div style={{ flex: 1, minWidth: '150px', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                  <label className="text-light" style={{ fontSize: '0.9rem' }}>Number of Questions to Post</label>
-                  <input type="number" placeholder="e.g. 10" value={tgQuestionCount} onChange={(e) => setTgQuestionCount(e.target.value)} style={{ width: '100%', padding: '1rem', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'rgba(0,0,0,0.2)', color: 'white' }} required />
+                <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+                  <div style={{ flex: 1, minWidth: '150px', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    <label className="text-light" style={{ fontSize: '0.9rem' }}>Number of Questions to Post</label>
+                    <input type="number" placeholder="e.g. 10" value={tgQuestionCount} onChange={(e) => setTgQuestionCount(e.target.value)} style={{ width: '100%', padding: '1rem', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'rgba(0,0,0,0.2)', color: 'white' }} />
+                  </div>
+                  <div style={{ flex: 1, minWidth: '150px', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    <label className="text-light" style={{ fontSize: '0.9rem' }}>Quiz Language</label>
+                    <select value={tgLanguage} onChange={(e) => setTgLanguage(e.target.value)} style={{ width: '100%', padding: '1rem', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'rgba(0,0,0,0.2)', color: 'white' }}>
+                      <option value="English">English</option>
+                      <option value="Hindi">Hindi (Hinglish/Devanagari)</option>
+                      <option value="Spanish">Spanish</option>
+                      <option value="French">French</option>
+                    </select>
+                  </div>
                 </div>
-                <div style={{ flex: 1, minWidth: '150px', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                  <label className="text-light" style={{ fontSize: '0.9rem' }}>Quiz Language</label>
-                  <select value={tgLanguage} onChange={(e) => setTgLanguage(e.target.value)} style={{ width: '100%', padding: '1rem', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'rgba(0,0,0,0.2)', color: 'white' }}>
-                    <option value="English">English</option>
-                    <option value="Hindi">Hindi (Hinglish/Devanagari)</option>
-                    <option value="Spanish">Spanish</option>
-                    <option value="French">French</option>
-                  </select>
-                </div>
+
+                <button type="button" onClick={handleGenerateTgQuiz} disabled={isTgGenerating} className="btn-primary mt-2" style={{ background: '#9c27b0', width: '100%', fontSize: '1.1rem', padding: '1rem' }}>
+                  {isTgGenerating ? 'Processing...' : '🚀 AI Generate & Post to Telegram'}
+                </button>
               </div>
 
               {tgGenerateProgress && (
@@ -1513,10 +1618,6 @@ export default function AdminDashboard() {
                   {tgGenerateProgress}
                 </div>
               )}
-
-              <button type="button" onClick={handleGenerateTgQuiz} disabled={isTgGenerating} className="btn-primary mt-2" style={{ background: 'var(--gradient-brand)', width: '100%', fontSize: '1.1rem', padding: '1rem' }}>
-                {isTgGenerating ? 'Processing...' : '🚀 Generate & Post to Telegram'}
-              </button>
             </form>
           </div>
         </div>
