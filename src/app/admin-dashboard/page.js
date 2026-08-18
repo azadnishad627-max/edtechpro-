@@ -1932,7 +1932,7 @@ export default function AdminDashboard() {
                   <select value={pasteBatch} onChange={(e) => setPasteBatch(e.target.value)} 
                     style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'rgba(0,0,0,0.2)', color: 'white', marginTop: '0.25rem' }}>
                     <option value="">Select Batch</option>
-                    {batches.map((b, i) => <option key={i} value={b}>{b}</option>)}
+                    {batches.map((b) => <option key={b.id} value={b.id}>{b.title}</option>)}
                   </select>
                 </div>
                 <div style={{ flex: 1, minWidth: '100px' }}>
