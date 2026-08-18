@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
 
-export const maxDuration = 60; // Set maximum duration for Vercel Serverless Function
+export const runtime = "edge";
 
 const API_CONFIGS = [
   {
@@ -34,17 +34,12 @@ Each object must have exactly these keys: "question_text", "option_a", "option_b
 The "correct_answer" MUST be the exact full text of the correct option (not just A/B/C/D).
 The "explanation" MUST be a detailed step-by-step solution or reason explaining how to arrive at the correct answer based on the text.`;
 
-    let completion = null;
+    let aiResponse = "";
     let lastError = null;
 
     for (const config of API_CONFIGS) {
       try {
-        const openai = new OpenAI({
-          apiKey: config.key,
-          baseURL: 'https://integrate.api.nvidia.com/v1',
-        });
-        
-        completion = await openai.chat.completions.create({
+        const payload = {
           model: config.model,
           messages: [
             {"role": "system", "content": systemPrompt},
@@ -53,22 +48,34 @@ The "explanation" MUST be a detailed step-by-step solution or reason explaining 
           temperature: 0.7,
           top_p: 0.95,
           max_tokens: 16384
+        };
+
+        const res = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${config.key}`,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(payload)
         });
-        
-        break; // Success! Break the fallback loop
+
+        if (!res.ok) {
+           const errText = await res.text();
+           throw new Error(`API Error: ${res.status} ${errText}`);
+        }
+
+        const data = await res.json();
+        aiResponse = data.choices?.[0]?.message?.content || "";
+        if (aiResponse) break; // Success! Break the fallback loop
       } catch (err) {
         console.error(`Error with model ${config.model}:`, err.message);
         lastError = err;
       }
     }
     
-    if (!completion) {
+    if (!aiResponse) {
       throw new Error(`All fallback APIs failed. Last error: ${lastError?.message}`);
     }
-    
-    let aiResponse = completion.choices[0]?.message?.content || "";
-
-    if (!aiResponse) throw new Error("AI returned empty response");
 
     // Clean up markdown blocks if the AI disobeyed
     aiResponse = aiResponse.replace(/```json/gi, "").replace(/```/g, "").trim();

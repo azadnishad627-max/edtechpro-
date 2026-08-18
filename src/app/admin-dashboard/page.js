@@ -1074,6 +1074,12 @@ export default function AdminDashboard() {
            headers: { 'Content-Type': 'application/json' },
            body: JSON.stringify({ rawText: extractedText, questionCount: 1, language: tgLanguage })
          });
+         
+         if (!aiRes.ok) {
+            const errText = await aiRes.text();
+            throw new Error(`AI API Error ${aiRes.status}: ${errText.substring(0, 100)}`);
+         }
+         
          const aiData = await aiRes.json();
          if (aiData.error) throw new Error("AI Error: " + aiData.error);
          if (!aiData.questions || aiData.questions.length === 0) continue;
