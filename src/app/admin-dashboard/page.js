@@ -1047,13 +1047,13 @@ export default function AdminDashboard() {
   };
 
   const handleGenerateTgQuiz = async () => {
-    if (!tgBotToken || !tgChatId || !tgPdfFile || !tgQuestionCount) {
+    if (!tgBotToken || !tgChatId || !tgPdfFile) {
       alert("Please fill all fields and upload a PDF!");
       return;
     }
     
     setIsTgGenerating(true);
-    setTgGenerateProgress("Step 1/3: Extracting Text from PDF...");
+    setTgGenerateProgress("Step 1/2: Extracting Text from PDF...");
     
     try {
       const formData = new FormData();
@@ -1063,83 +1063,121 @@ export default function AdminDashboard() {
       if (pdfData.error) throw new Error("PDF Error: " + pdfData.error);
       const extractedText = pdfData.text;
       
-      const total = parseInt(tgQuestionCount, 10);
-      let successCount = 0;
+      // --- Direct Text Parser: Extract questions from PDF text ---
+      setTgGenerateProgress("Step 1/2: Parsing questions from PDF...");
       
-      for (let i = 0; i < total; i++) {
-         setTgGenerateProgress(`Step 2/3: Generating AI Question ${i + 1} of ${total}...`);
-         
-         const aiRes = await fetch('/api/generate-text-test', {
-           method: 'POST',
-           headers: { 'Content-Type': 'application/json' },
-           body: JSON.stringify({ rawText: extractedText, questionCount: 1, language: tgLanguage })
-         });
-         
-         if (!aiRes.ok) {
-            const errText = await aiRes.text();
-            throw new Error(`AI API Error ${aiRes.status}: ${errText.substring(0, 100)}`);
-         }
-         
-         const aiData = await aiRes.json();
-         if (aiData.error) throw new Error("AI Error: " + aiData.error);
-         if (!aiData.questions || aiData.questions.length === 0) continue;
-         
-         let aiQ = aiData.questions[0];
-         if (!aiQ) continue;
-         
-         // Format with Q number and A/B/C/D
-         const optA = aiQ.option_a || '';
-         const optB = aiQ.option_b || '';
-         const optC = aiQ.option_c || '';
-         const optD = aiQ.option_d || '';
-         let correct = (aiQ.correct_answer || '').trim();
-         
-         let finalOptA = optA ? `A) ${optA}` : '';
-         let finalOptB = optB ? `B) ${optB}` : '';
-         let finalOptC = optC ? `C) ${optC}` : '';
-         let finalOptD = optD ? `D) ${optD}` : '';
-         
-         let finalCorrect = "";
-         if (correct.toUpperCase() === 'A' || correct === optA) finalCorrect = finalOptA;
-         else if (correct.toUpperCase() === 'B' || correct === optB) finalCorrect = finalOptB;
-         else if (correct.toUpperCase() === 'C' || correct === optC) finalCorrect = finalOptC;
-         else if (correct.toUpperCase() === 'D' || correct === optD) finalCorrect = finalOptD;
-         else finalCorrect = finalOptA;
-         
-         const q = {
-           question_text: `Q${i + 1}. ${aiQ.question_text || ''}`,
-           option_a: finalOptA,
-           option_b: finalOptB,
-           option_c: finalOptC,
-           option_d: finalOptD,
-           correct_answer: finalCorrect,
-           explanation: aiQ.explanation || ''
-         };
-         
-         setTgGenerateProgress(`Step 3/3: Posting Question ${i + 1} to Telegram...`);
-         
-         const tgRes = await fetch('/api/post-telegram-quiz', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-               botToken: tgBotToken.trim(),
-               chatId: tgChatId.trim(),
-               question: q
-            })
-         });
-         const tgData = await tgRes.json();
-         if (tgData.error) throw new Error("Telegram Error: " + tgData.error);
-         
-         successCount++;
-         await new Promise(r => setTimeout(r, 1000));
+      const parsedQuestions = [];
+      const lines = extractedText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+      
+      let currentQ = null;
+      
+      for (let idx = 0; idx < lines.length; idx++) {
+        const line = lines[idx];
+        
+        // Detect question line: starts with number followed by . or )
+        const qMatch = line.match(/^(\d+)\s*[.)]\s*(.+)/);
+        if (qMatch) {
+          // Save previous question if exists
+          if (currentQ && currentQ.question_text && currentQ.option_a) {
+            parsedQuestions.push({...currentQ});
+          }
+          currentQ = { question_text: qMatch[2].trim(), option_a: '', option_b: '', option_c: '', option_d: '', correct_answer: '', explanation: '' };
+          continue;
+        }
+        
+        if (!currentQ) continue;
+        
+        // Detect options: A) or A. or (A)
+        const optAMatch = line.match(/^[(\s]*A\s*[.)]\s*(.+)/i);
+        const optBMatch = line.match(/^[(\s]*B\s*[.)]\s*(.+)/i);
+        const optCMatch = line.match(/^[(\s]*C\s*[.)]\s*(.+)/i);
+        const optDMatch = line.match(/^[(\s]*D\s*[.)]\s*(.+)/i);
+        
+        if (optAMatch) { currentQ.option_a = optAMatch[1].trim(); continue; }
+        if (optBMatch) { currentQ.option_b = optBMatch[1].trim(); continue; }
+        if (optCMatch) { currentQ.option_c = optCMatch[1].trim(); continue; }
+        if (optDMatch) { currentQ.option_d = optDMatch[1].trim(); continue; }
+        
+        // Detect answer line
+        const ansMatch = line.match(/^(Answer|उत्तर|Ans|ans|ANSWER|सही उत्तर)\s*[:=]\s*(.+)/i);
+        if (ansMatch) { currentQ.correct_answer = ansMatch[2].trim(); continue; }
+        
+        // Detect explanation line
+        const expMatch = line.match(/^(Explanation|व्याख्या|Reason)\s*[:=]\s*(.+)/i);
+        if (expMatch) { currentQ.explanation = expMatch[2].trim(); continue; }
+      }
+      // Push last question
+      if (currentQ && currentQ.question_text && currentQ.option_a) {
+        parsedQuestions.push({...currentQ});
       }
       
-      alert(`Success! Successfully posted ${successCount} questions to Telegram.`);
+      if (parsedQuestions.length === 0) {
+        throw new Error("PDF se koi question parse nahi ho saka. PDF me questions is format me hone chahiye:\n1. Question text\nA) Option\nB) Option\nC) Option\nD) Option\nAnswer: Correct Option");
+      }
+      
+      // Limit to requested count
+      const total = parseInt(tgQuestionCount, 10) || parsedQuestions.length;
+      const questionsToPost = parsedQuestions.slice(0, total);
+      let successCount = 0;
+      
+      for (let i = 0; i < questionsToPost.length; i++) {
+        setTgGenerateProgress(`Step 2/2: Posting Question ${i + 1} of ${questionsToPost.length} to Telegram...`);
+        
+        const pq = questionsToPost[i];
+        
+        // Format with Q number and A/B/C/D
+        const finalOptA = pq.option_a ? `A) ${pq.option_a}` : '';
+        const finalOptB = pq.option_b ? `B) ${pq.option_b}` : '';
+        const finalOptC = pq.option_c ? `C) ${pq.option_c}` : '';
+        const finalOptD = pq.option_d ? `D) ${pq.option_d}` : '';
+        
+        let finalCorrect = "";
+        const correctText = pq.correct_answer || '';
+        if (correctText === pq.option_a || correctText.toUpperCase() === 'A') finalCorrect = finalOptA;
+        else if (correctText === pq.option_b || correctText.toUpperCase() === 'B') finalCorrect = finalOptB;
+        else if (correctText === pq.option_c || correctText.toUpperCase() === 'C') finalCorrect = finalOptC;
+        else if (correctText === pq.option_d || correctText.toUpperCase() === 'D') finalCorrect = finalOptD;
+        else {
+          // Try partial match
+          if (finalOptA.includes(correctText)) finalCorrect = finalOptA;
+          else if (finalOptB.includes(correctText)) finalCorrect = finalOptB;
+          else if (finalOptC.includes(correctText)) finalCorrect = finalOptC;
+          else if (finalOptD.includes(correctText)) finalCorrect = finalOptD;
+          else finalCorrect = finalOptA;
+        }
+        
+        const q = {
+          question_text: `Q${i + 1}. ${pq.question_text}`,
+          option_a: finalOptA,
+          option_b: finalOptB,
+          option_c: finalOptC,
+          option_d: finalOptD,
+          correct_answer: finalCorrect,
+          explanation: pq.explanation || ''
+        };
+        
+        const tgRes = await fetch('/api/post-telegram-quiz', {
+           method: 'POST',
+           headers: { 'Content-Type': 'application/json' },
+           body: JSON.stringify({
+              botToken: tgBotToken.trim(),
+              chatId: tgChatId.trim(),
+              question: q
+           })
+        });
+        const tgData = await tgRes.json();
+        if (tgData.error) throw new Error("Telegram Error: " + tgData.error);
+        
+        successCount++;
+        await new Promise(r => setTimeout(r, 1000));
+      }
+      
+      alert(`Success! ${successCount} questions posted to Telegram from PDF.`);
       setTgPdfFile(null);
       setTgPdfFileName('');
       if (tgHiddenFileInput.current) tgHiddenFileInput.current.value = '';
     } catch (err) {
-      alert("Error generating Telegram Quiz: " + err.message);
+      alert("Error: " + err.message);
     }
     
     setIsTgGenerating(false);
