@@ -112,6 +112,14 @@ export default function AdminDashboard() {
   const tgHiddenFileInput = useRef(null);
   const tgHiddenCsvInput = useRef(null);
 
+  // Paste Text MCQ State
+  const [pasteText, setPasteText] = useState('');
+  const [pasteTestTitle, setPasteTestTitle] = useState('');
+  const [pasteBatch, setPasteBatch] = useState('');
+  const [pasteDuration, setPasteDuration] = useState('30');
+  const [isPasteProcessing, setIsPasteProcessing] = useState(false);
+  const [pasteProgress, setPasteProgress] = useState('');
+
   // Admin Chat State
   const [adminChats, setAdminChats] = useState([]);
   const [activeChatStudentId, setActiveChatStudentId] = useState(null);
@@ -1062,6 +1070,212 @@ export default function AdminDashboard() {
     });
   };
 
+  // --- Paste Text MCQ Parser ---
+  const parseTextMCQ = (text) => {
+    const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+    const questions = [];
+    const answerKey = {};
+    let currentQ = null;
+    let inAnswerKey = false;
+    
+    for (const line of lines) {
+      // Detect answer key section
+      if (/^(उत्तरमाला|answer\s*key|उत्तर\s*कुंजी|answers)/i.test(line)) {
+        inAnswerKey = true;
+        // Save last question before answer key
+        if (currentQ && currentQ.question_text) questions.push({...currentQ});
+        currentQ = null;
+        continue;
+      }
+      
+      // Parse answer key entries: "1. B" or "1. (B)" or "1) B"
+      if (inAnswerKey) {
+        const akMatch = line.match(/^(\d+)\s*[.)]\s*\(?([A-Da-d])\)?/);
+        if (akMatch) {
+          answerKey[parseInt(akMatch[1])] = akMatch[2].toUpperCase();
+        }
+        continue;
+      }
+      
+      // Detect question line
+      const qMatch = line.match(/^(\d+)\s*[.)]\s*(.+)/);
+      if (qMatch && !/^\s*\(?\s*[A-Da-d]\s*\)/.test(line)) {
+        if (currentQ && currentQ.question_text) questions.push({...currentQ});
+        currentQ = { 
+          num: parseInt(qMatch[1]),
+          question_text: qMatch[2].trim(), 
+          option_a: '', option_b: '', option_c: '', option_d: '', 
+          correct_answer: '', explanation: '' 
+        };
+        continue;
+      }
+      
+      if (!currentQ) continue;
+      
+      // Detect options
+      const optMatch = line.match(/^\s*\(?([A-Da-d])\)\s*(.+)/);
+      if (optMatch) {
+        const letter = optMatch[1].toUpperCase();
+        const optText = optMatch[2].trim();
+        if (letter === 'A') currentQ.option_a = optText;
+        else if (letter === 'B') currentQ.option_b = optText;
+        else if (letter === 'C') currentQ.option_c = optText;
+        else if (letter === 'D') currentQ.option_d = optText;
+        continue;
+      }
+      
+      // Detect inline answer
+      const ansMatch = line.match(/^(Answer|उत्तर|Ans|सही उत्तर)\s*[:=]\s*(.+)/i);
+      if (ansMatch) { currentQ.correct_answer = ansMatch[2].trim(); continue; }
+    }
+    
+    // Save last question
+    if (currentQ && currentQ.question_text) questions.push({...currentQ});
+    
+    // Apply answer key to questions
+    for (const q of questions) {
+      if (!q.correct_answer && answerKey[q.num]) {
+        const letter = answerKey[q.num];
+        if (letter === 'A') q.correct_answer = q.option_a;
+        else if (letter === 'B') q.correct_answer = q.option_b;
+        else if (letter === 'C') q.correct_answer = q.option_c;
+        else if (letter === 'D') q.correct_answer = q.option_d;
+      }
+    }
+    
+    return questions;
+  };
+
+  // --- Paste Text: Post to App (Live Test) ---
+  const handlePasteToApp = async () => {
+    if (!pasteText.trim()) { alert("Pehle text paste karein!"); return; }
+    if (!pasteTestTitle.trim()) { alert("Test ka title daalein!"); return; }
+    if (!pasteBatch.trim()) { alert("Batch select karein!"); return; }
+    
+    setIsPasteProcessing(true);
+    setPasteProgress("Parsing questions...");
+    
+    try {
+      const parsed = parseTextMCQ(pasteText);
+      if (parsed.length === 0) throw new Error("Koi question parse nahi ho saka. Sahi format me paste karein.");
+      
+      setPasteProgress(`${parsed.length} questions found. Creating test...`);
+      
+      // Create test in Supabase
+      const { data: testData, error: testError } = await supabase
+        .from('tests')
+        .insert([{
+          title: pasteTestTitle.trim(),
+          batch: pasteBatch.trim(),
+          duration: parseInt(pasteDuration) || 30,
+          total_questions: parsed.length,
+          start_time: new Date().toISOString(),
+          end_time: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString()
+        }])
+        .select();
+      
+      if (testError) throw new Error("Test create error: " + testError.message);
+      const testId = testData[0].id;
+      
+      // Insert questions
+      const questionsToInsert = parsed.map((q, i) => ({
+        test_id: testId,
+        question_text: q.question_text,
+        option_a: q.option_a,
+        option_b: q.option_b,
+        option_c: q.option_c,
+        option_d: q.option_d,
+        correct_answer: q.correct_answer || q.option_a,
+        explanation: q.explanation || ''
+      }));
+      
+      const { error: qError } = await supabase.from('questions').insert(questionsToInsert);
+      if (qError) throw new Error("Questions insert error: " + qError.message);
+      
+      setPasteProgress('');
+      alert(`✅ Success! ${parsed.length} questions ke sath "${pasteTestTitle}" test App pe LIVE ho gaya!`);
+      setPasteText('');
+      setPasteTestTitle('');
+      fetchTests();
+    } catch (err) {
+      alert("Error: " + err.message);
+    }
+    
+    setIsPasteProcessing(false);
+    setPasteProgress('');
+  };
+
+  // --- Paste Text: Post to Telegram ---
+  const handlePasteToTelegram = async () => {
+    if (!pasteText.trim()) { alert("Pehle text paste karein!"); return; }
+    if (!tgBotToken || !tgChatId) { alert("Telegram Bot Token aur Channel ID required hai!"); return; }
+    
+    setIsPasteProcessing(true);
+    setPasteProgress("Parsing questions...");
+    
+    try {
+      const parsed = parseTextMCQ(pasteText);
+      if (parsed.length === 0) throw new Error("Koi question parse nahi ho saka.");
+      
+      let successCount = 0;
+      
+      for (let i = 0; i < parsed.length; i++) {
+        setPasteProgress(`Posting Q${i + 1} of ${parsed.length} to Telegram...`);
+        
+        const pq = parsed[i];
+        const finalOptA = pq.option_a ? `A) ${pq.option_a}` : '';
+        const finalOptB = pq.option_b ? `B) ${pq.option_b}` : '';
+        const finalOptC = pq.option_c ? `C) ${pq.option_c}` : '';
+        const finalOptD = pq.option_d ? `D) ${pq.option_d}` : '';
+        
+        let finalCorrect = finalOptA;
+        const ct = pq.correct_answer || '';
+        if (ct === pq.option_a) finalCorrect = finalOptA;
+        else if (ct === pq.option_b) finalCorrect = finalOptB;
+        else if (ct === pq.option_c) finalCorrect = finalOptC;
+        else if (ct === pq.option_d) finalCorrect = finalOptD;
+        
+        const q = {
+          question_text: `Q${i + 1}. ${pq.question_text}`,
+          option_a: finalOptA, option_b: finalOptB, option_c: finalOptC, option_d: finalOptD,
+          correct_answer: finalCorrect, explanation: pq.explanation || ''
+        };
+        
+        const tgRes = await fetch('/api/post-telegram-quiz', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ botToken: tgBotToken.trim(), chatId: tgChatId.trim(), question: q })
+        });
+        const tgData = await tgRes.json();
+        
+        if (tgData.error && tgData.error.includes('retry after')) {
+          const retryMatch = tgData.error.match(/retry after (\d+)/);
+          const waitSec = retryMatch ? parseInt(retryMatch[1]) + 2 : 35;
+          setPasteProgress(`⏳ Rate limit! Waiting ${waitSec}s... (${i + 1}/${parsed.length})`);
+          await new Promise(r => setTimeout(r, waitSec * 1000));
+          const retryRes = await fetch('/api/post-telegram-quiz', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ botToken: tgBotToken.trim(), chatId: tgChatId.trim(), question: q })
+          });
+          const retryData = await retryRes.json();
+          if (retryData.error) throw new Error("Telegram Retry Error: " + retryData.error);
+        } else if (tgData.error) {
+          throw new Error("Telegram Error: " + tgData.error);
+        }
+        
+        successCount++;
+        await new Promise(r => setTimeout(r, 3000));
+      }
+      
+      alert(`✅ ${successCount} questions Telegram channel pe post ho gaye!`);
+      setPasteText('');
+    } catch (err) {
+      alert("Error: " + err.message);
+    }
+    
+    setIsPasteProcessing(false);
+    setPasteProgress('');
+  };
+
   const handleGenerateTgQuiz = async () => {
     if (!tgBotToken || !tgChatId || !tgPdfFile) {
       alert("Please fill all fields and upload a PDF!");
@@ -1310,6 +1524,7 @@ export default function AdminDashboard() {
         <button className={activeTab === 'test' ? 'btn-primary' : 'btn-outline'} onClick={() => switchTab('test')} style={{ padding: '0.5rem 1rem' }}>Test Manager</button>
         <button className={activeTab === 'test_history' ? 'btn-primary' : 'btn-outline'} onClick={() => switchTab('test_history')} style={{ padding: '0.5rem 1rem' }}>Test History</button>
         <button className={activeTab === 'ai_test' ? 'btn-primary' : 'btn-outline'} onClick={() => switchTab('ai_test')} style={{ padding: '0.5rem 1rem' }}>🤖 AI Test</button>
+        <button className={activeTab === 'paste_mcq' ? 'btn-primary' : 'btn-outline'} onClick={() => switchTab('paste_mcq')} style={{ padding: '0.5rem 1rem' }}>📋 Paste MCQ</button>
         <button className={activeTab === 'tg_test' ? 'btn-primary' : 'btn-outline'} onClick={() => switchTab('tg_test')} style={{ padding: '0.5rem 1rem' }}>📲 Telegram Test</button>
         <button className={activeTab === 'live' ? 'btn-primary' : 'btn-outline'} onClick={() => switchTab('live')} style={{ padding: '0.5rem 1rem' }}>Live Classes</button>
         <button className={activeTab === 'announcements' ? 'btn-primary' : 'btn-outline'} onClick={() => switchTab('announcements')} style={{ padding: '0.5rem 1rem' }}>Announcements</button>
@@ -1675,6 +1890,83 @@ export default function AdminDashboard() {
           </div>
         </div>
       )}
+
+      {activeTab === 'paste_mcq' && (
+        <div className="animate-tab-enter" style={{ alignItems: 'flex-start' }}>
+          <div className="glass-card mb-4" style={{ maxWidth: '900px', margin: '0 auto' }}>
+            <h3 className="mb-4 text-accent" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              📋 Paste MCQ Text — Instant Quiz
+            </h3>
+            <p style={{ color: 'var(--text-muted)', marginBottom: '1rem', fontSize: '0.9rem' }}>
+              MCQ questions ko neeche paste karein (Answer Key ke sath). Phir choose karein — <b>App pe Live</b> karna hai ya <b>Telegram Channel</b> pe post karna hai.
+            </p>
+
+            <textarea 
+              value={pasteText} 
+              onChange={(e) => setPasteText(e.target.value)} 
+              placeholder={`Example format:\n\n1. भारत की राजधानी क्या है?\n(A) मुंबई\n(B) दिल्ली\n(C) कोलकाता\n(D) चेन्नई\n\n2. सबसे बड़ा ग्रह?\n(A) पृथ्वी\n(B) मंगल\n(C) शनि\n(D) बृहस्पति\n\nउत्तरमाला (Answer Key)\n1. B\n2. D`}
+              style={{ 
+                width: '100%', minHeight: '300px', padding: '1rem', borderRadius: '8px', 
+                border: '1px solid var(--glass-border)', background: 'rgba(0,0,0,0.2)', 
+                color: 'white', fontSize: '0.95rem', fontFamily: 'monospace', resize: 'vertical'
+              }} 
+            />
+
+            <div style={{ marginTop: '1rem', padding: '0.75rem', background: 'rgba(76, 175, 80, 0.1)', borderRadius: '8px', border: '1px solid rgba(76, 175, 80, 0.3)' }}>
+              <p style={{ margin: 0, fontSize: '0.85rem', color: '#4caf50' }}>
+                ✅ Parsed: <b>{pasteText.trim() ? parseTextMCQ(pasteText).length : 0} questions</b> detected
+              </p>
+            </div>
+
+            {/* --- Option 1: App pe Live --- */}
+            <h4 className="mt-4 text-accent" style={{ color: '#4caf50' }}>🟢 Option 1: App pe Live Test Banao</h4>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', background: 'rgba(76, 175, 80, 0.1)', padding: '1rem', borderRadius: '8px', border: '1px solid rgba(76, 175, 80, 0.3)' }}>
+              <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+                <div style={{ flex: 2, minWidth: '200px' }}>
+                  <label style={{ fontSize: '0.85rem', color: 'var(--text-light)' }}>Test Title</label>
+                  <input type="text" placeholder="e.g. Class 8 Science Chapter 1" value={pasteTestTitle} onChange={(e) => setPasteTestTitle(e.target.value)} 
+                    style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'rgba(0,0,0,0.2)', color: 'white', marginTop: '0.25rem' }} />
+                </div>
+                <div style={{ flex: 1, minWidth: '120px' }}>
+                  <label style={{ fontSize: '0.85rem', color: 'var(--text-light)' }}>Batch</label>
+                  <select value={pasteBatch} onChange={(e) => setPasteBatch(e.target.value)} 
+                    style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'rgba(0,0,0,0.2)', color: 'white', marginTop: '0.25rem' }}>
+                    <option value="">Select Batch</option>
+                    {batches.map((b, i) => <option key={i} value={b}>{b}</option>)}
+                  </select>
+                </div>
+                <div style={{ flex: 1, minWidth: '100px' }}>
+                  <label style={{ fontSize: '0.85rem', color: 'var(--text-light)' }}>Duration (min)</label>
+                  <input type="number" value={pasteDuration} onChange={(e) => setPasteDuration(e.target.value)} 
+                    style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'rgba(0,0,0,0.2)', color: 'white', marginTop: '0.25rem' }} />
+                </div>
+              </div>
+              <button type="button" onClick={handlePasteToApp} disabled={isPasteProcessing} className="btn-primary" 
+                style={{ background: '#4caf50', width: '100%', fontSize: '1.1rem', padding: '1rem' }}>
+                {isPasteProcessing ? 'Processing...' : '🟢 App pe LIVE karo'}
+              </button>
+            </div>
+
+            {/* --- Option 2: Telegram pe Post --- */}
+            <h4 className="mt-4 text-accent" style={{ color: '#2196F3' }}>🔵 Option 2: Telegram Channel pe Post karo</h4>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', background: 'rgba(33, 150, 243, 0.1)', padding: '1rem', borderRadius: '8px', border: '1px solid rgba(33, 150, 243, 0.3)' }}>
+              <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>Channel ID: <b>{tgChatId || 'Not set'}</b> (Telegram Test tab se change karein)</p>
+              <button type="button" onClick={handlePasteToTelegram} disabled={isPasteProcessing} className="btn-primary" 
+                style={{ background: '#2196F3', width: '100%', fontSize: '1.1rem', padding: '1rem' }}>
+                {isPasteProcessing ? 'Processing...' : '🔵 Telegram pe Post karo'}
+              </button>
+            </div>
+
+            {pasteProgress && (
+              <div style={{ marginTop: '1rem', padding: '1rem', background: 'rgba(255, 193, 7, 0.15)', borderRadius: '8px', border: '1px solid rgba(255, 193, 7, 0.4)', textAlign: 'center' }}>
+                <p style={{ margin: 0, color: '#ffc107', fontWeight: 'bold' }}>{pasteProgress}</p>
+              </div>
+            )}
+
+          </div>
+        </div>
+      )}
+
       {activeTab === 'tg_test' && (
         <div className="animate-tab-enter" style={{ alignItems: 'flex-start' }}>
           <div className="glass-card mb-4" style={{ maxWidth: '800px', margin: '0 auto' }}>
