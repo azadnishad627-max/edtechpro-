@@ -100,7 +100,7 @@ export default function AdminDashboard() {
 
   // Telegram Quiz State
   const [tgBotToken, setTgBotToken] = useState('8054498159:AAHdHB1Z1P479qA5C2C2loMedY7hixGcKJY');
-  const [tgChatId, setTgChatId] = useState('-100'); // changed placeholder to start with -100
+  const [tgChatId, setTgChatId] = useState('@azadkumar3229011');
   const [tgQuestionCount, setTgQuestionCount] = useState('10');
   const [tgLanguage, setTgLanguage] = useState('Hindi');
   const [tgPdfFile, setTgPdfFile] = useState(null);

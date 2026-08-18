@@ -16,6 +16,13 @@ export async function POST(req) {
     // question has { question_text, option_a, option_b, option_c, option_d, correct_answer, explanation }
     let rawOptions = [question.option_a, question.option_b, question.option_c, question.option_d];
     
+    // Filter out null/undefined/empty string options
+    rawOptions = rawOptions.filter(opt => opt && opt.trim() !== "");
+    
+    // Fallback if less than 2 options (Telegram requires at least 2)
+    if (rawOptions.length === 0) rawOptions = ["Option A", "Option B"];
+    if (rawOptions.length === 1) rawOptions.push("Option B");
+    
     let correctIndex = -1;
     for (let i = 0; i < rawOptions.length; i++) {
         if (rawOptions[i] === question.correct_answer || rawOptions[i].includes(question.correct_answer)) {
