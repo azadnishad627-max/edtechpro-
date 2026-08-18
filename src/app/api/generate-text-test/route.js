@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server';
-import OpenAI from 'openai';
 
 export const runtime = "edge";
 
@@ -77,30 +76,67 @@ The "explanation" MUST be a detailed step-by-step solution or reason explaining 
       throw new Error(`All fallback APIs failed. Last error: ${lastError?.message}`);
     }
 
-    // Clean up markdown blocks if the AI disobeyed
+    // Clean up markdown blocks, thinking tags, and any non-JSON text
     aiResponse = aiResponse.replace(/```json/gi, "").replace(/```/g, "").trim();
+    // Remove <think>...</think> or <thinking>...</thinking> tags (some models add these)
+    aiResponse = aiResponse.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
+    aiResponse = aiResponse.replace(/<thinking>[\s\S]*?<\/thinking>/gi, "").trim();
+    // Remove any leading text before the first [ or {
+    aiResponse = aiResponse.replace(/^[^[{]*/, "").trim();
+    // Remove any trailing text after the last ] or }
+    aiResponse = aiResponse.replace(/[^}\]]*$/, "").trim();
 
-    // Attempt to extract json array if there is conversational text
-    const jsonMatch = aiResponse.match(/\[\s*\{[\s\S]*\}\s*\]/);
-    if (jsonMatch) {
-      aiResponse = jsonMatch[0];
+    // Strategy 1: Try to extract a JSON array [...] 
+    let jsonStr = null;
+    const arrayMatch = aiResponse.match(/\[\s*\{[\s\S]*\}\s*\]/);
+    if (arrayMatch) {
+      jsonStr = arrayMatch[0];
+    }
+    
+    // Strategy 2: Try to extract a JSON object {...}
+    if (!jsonStr) {
+      const objMatch = aiResponse.match(/\{[\s\S]*\}/);
+      if (objMatch) {
+        jsonStr = objMatch[0];
+      }
+    }
+    
+    // Strategy 3: Use the full cleaned response
+    if (!jsonStr) {
+      jsonStr = aiResponse;
     }
 
     let questions;
     try {
-      questions = JSON.parse(aiResponse);
+      questions = JSON.parse(jsonStr);
       if (!Array.isArray(questions)) {
          if (questions.questions && Array.isArray(questions.questions)) {
              questions = questions.questions;
          } else if (questions.data && Array.isArray(questions.data)) {
              questions = questions.data;
          } else {
-             questions = [questions]; // Wrap it in an array if it returned a single question object
+             questions = [questions];
          }
       }
     } catch (e) {
-      console.error("Failed to parse JSON:", aiResponse);
-      throw new Error("Failed to parse AI JSON response");
+      // Last resort: try to fix common JSON issues (trailing commas, etc.)
+      try {
+        const fixed = jsonStr
+          .replace(/,\s*\]/g, ']')   // trailing comma in array
+          .replace(/,\s*\}/g, '}')   // trailing comma in object
+          .replace(/'/g, '"');        // single quotes to double quotes
+        questions = JSON.parse(fixed);
+        if (!Array.isArray(questions)) {
+          if (questions.questions && Array.isArray(questions.questions)) {
+            questions = questions.questions;
+          } else {
+            questions = [questions];
+          }
+        }
+      } catch (e2) {
+        console.error("Failed to parse JSON after all strategies. Raw:", aiResponse.substring(0, 500));
+        throw new Error("Failed to parse AI JSON response. AI returned non-JSON text.");
+      }
     }
 
     return NextResponse.json({ questions });
