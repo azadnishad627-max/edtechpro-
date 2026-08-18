@@ -1571,7 +1571,7 @@ export default function AdminDashboard() {
                 </div>
               </div>
 
-              <h4 className="mt-4 text-accent" style={{ color: '#2196F3' }}>Option 1: Upload CSV (Direct Posting, No AI limit)</h4>
+              <h4 className="mt-4 text-accent" style={{ color: '#2196F3' }}>Upload CSV (Direct Posting, No AI limit)</h4>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', background: 'rgba(33, 150, 243, 0.1)', padding: '1rem', borderRadius: '8px', border: '1px solid rgba(33, 150, 243, 0.3)' }}>
                 <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-light)' }}>Upload a CSV file with columns: <b>Question, A, B, C, D, Answer, Explanation (Optional)</b></p>
                 <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
@@ -1584,34 +1584,7 @@ export default function AdminDashboard() {
                 </button>
               </div>
 
-              <h4 className="mt-4 text-accent" style={{ color: '#9c27b0' }}>Option 2: Upload PDF (AI Generates Questions)</h4>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', background: 'rgba(156, 39, 176, 0.1)', padding: '1rem', borderRadius: '8px', border: '1px solid rgba(156, 39, 176, 0.3)' }}>
-                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                    <button type="button" onClick={() => tgHiddenFileInput.current.click()} className="btn-outline" style={{ flexShrink: 0, border: '1px solid #9c27b0', color: '#9c27b0' }}>Select PDF File</button>
-                    <span style={{ color: 'var(--text-muted)' }}>{tgPdfFileName || 'No file selected'}</span>
-                    <input type="file" accept="application/pdf" ref={tgHiddenFileInput} onChange={handleTgPdfUpload} style={{ display: 'none' }} />
-                </div>
 
-                <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-                  <div style={{ flex: 1, minWidth: '150px', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                    <label className="text-light" style={{ fontSize: '0.9rem' }}>Number of Questions to Post</label>
-                    <input type="number" placeholder="e.g. 10" value={tgQuestionCount} onChange={(e) => setTgQuestionCount(e.target.value)} style={{ width: '100%', padding: '1rem', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'rgba(0,0,0,0.2)', color: 'white' }} />
-                  </div>
-                  <div style={{ flex: 1, minWidth: '150px', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                    <label className="text-light" style={{ fontSize: '0.9rem' }}>Quiz Language</label>
-                    <select value={tgLanguage} onChange={(e) => setTgLanguage(e.target.value)} style={{ width: '100%', padding: '1rem', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'rgba(0,0,0,0.2)', color: 'white' }}>
-                      <option value="English">English</option>
-                      <option value="Hindi">Hindi (Hinglish/Devanagari)</option>
-                      <option value="Spanish">Spanish</option>
-                      <option value="French">French</option>
-                    </select>
-                  </div>
-                </div>
-
-                <button type="button" onClick={handleGenerateTgQuiz} disabled={isTgGenerating} className="btn-primary mt-2" style={{ background: '#9c27b0', width: '100%', fontSize: '1.1rem', padding: '1rem' }}>
-                  {isTgGenerating ? 'Processing...' : '🚀 AI Generate & Post to Telegram'}
-                </button>
-              </div>
 
               {tgGenerateProgress && (
                 <div style={{ padding: '1rem', background: 'rgba(33, 150, 243, 0.1)', border: '1px solid #2196F3', borderRadius: '8px', color: '#2196F3', fontWeight: 'bold', textAlign: 'center' }}>
