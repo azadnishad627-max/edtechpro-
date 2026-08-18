@@ -1079,6 +1079,7 @@ export default function AdminDashboard() {
          if (!aiData.questions || aiData.questions.length === 0) continue;
          
          let aiQ = aiData.questions[0];
+         if (!aiQ) continue;
          
          // Format with Q number and A/B/C/D
          const optA = aiQ.option_a || '';

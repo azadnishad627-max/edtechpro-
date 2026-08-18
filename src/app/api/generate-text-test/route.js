@@ -82,6 +82,15 @@ The "explanation" MUST be a detailed step-by-step solution or reason explaining 
     let questions;
     try {
       questions = JSON.parse(aiResponse);
+      if (!Array.isArray(questions)) {
+         if (questions.questions && Array.isArray(questions.questions)) {
+             questions = questions.questions;
+         } else if (questions.data && Array.isArray(questions.data)) {
+             questions = questions.data;
+         } else {
+             questions = [questions]; // Wrap it in an array if it returned a single question object
+         }
+      }
     } catch (e) {
       console.error("Failed to parse JSON:", aiResponse);
       throw new Error("Failed to parse AI JSON response");
