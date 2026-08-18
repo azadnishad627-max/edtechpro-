@@ -1052,18 +1052,25 @@ export default function AdminDashboard() {
              const optD = r.option_d || r.D || '';
              let correct = (r.correct_answer || r.Answer || '').trim();
              
-             if (correct.toUpperCase() === 'A') correct = optA;
-             else if (correct.toUpperCase() === 'B') correct = optB;
-             else if (correct.toUpperCase() === 'C') correct = optC;
-             else if (correct.toUpperCase() === 'D') correct = optD;
+             let finalOptA = optA ? `A) ${optA}` : '';
+             let finalOptB = optB ? `B) ${optB}` : '';
+             let finalOptC = optC ? `C) ${optC}` : '';
+             let finalOptD = optD ? `D) ${optD}` : '';
+             
+             let finalCorrect = "";
+             if (correct.toUpperCase() === 'A' || correct === optA) finalCorrect = finalOptA;
+             else if (correct.toUpperCase() === 'B' || correct === optB) finalCorrect = finalOptB;
+             else if (correct.toUpperCase() === 'C' || correct === optC) finalCorrect = finalOptC;
+             else if (correct.toUpperCase() === 'D' || correct === optD) finalCorrect = finalOptD;
+             else finalCorrect = finalOptA;
              
              const q = {
-               question_text: r.question_text || r.Question || r.Q || '',
-               option_a: optA,
-               option_b: optB,
-               option_c: optC,
-               option_d: optD,
-               correct_answer: correct,
+               question_text: `Q${i + 1}. ${r.question_text || r.Question || r.Q || ''}`,
+               option_a: finalOptA,
+               option_b: finalOptB,
+               option_c: finalOptC,
+               option_d: finalOptD,
+               correct_answer: finalCorrect,
                explanation: r.explanation || r.Explanation || ''
              };
              
@@ -1103,6 +1110,98 @@ export default function AdminDashboard() {
     });
   };
 
+  const handleGenerateTgQuiz = async () => {
+    if (!tgBotToken || !tgChatId || !tgPdfFile || !tgQuestionCount) {
+      alert("Please fill all fields and upload a PDF!");
+      return;
+    }
+    
+    setIsTgGenerating(true);
+    setTgGenerateProgress("Step 1/3: Extracting Text from PDF...");
+    
+    try {
+      const formData = new FormData();
+      formData.append('pdf', tgPdfFile);
+      const pdfRes = await fetch('/api/parse-pdf', { method: 'POST', body: formData });
+      const pdfData = await pdfRes.json();
+      if (pdfData.error) throw new Error("PDF Error: " + pdfData.error);
+      const extractedText = pdfData.text;
+      
+      const total = parseInt(tgQuestionCount, 10);
+      let successCount = 0;
+      
+      for (let i = 0; i < total; i++) {
+         setTgGenerateProgress(`Step 2/3: Generating AI Question ${i + 1} of ${total}...`);
+         
+         const aiRes = await fetch('/api/generate-text-test', {
+           method: 'POST',
+           headers: { 'Content-Type': 'application/json' },
+           body: JSON.stringify({ rawText: extractedText, questionCount: 1, language: tgLanguage })
+         });
+         const aiData = await aiRes.json();
+         if (aiData.error) throw new Error("AI Error: " + aiData.error);
+         if (!aiData.questions || aiData.questions.length === 0) continue;
+         
+         let aiQ = aiData.questions[0];
+         
+         // Format with Q number and A/B/C/D
+         const optA = aiQ.option_a || '';
+         const optB = aiQ.option_b || '';
+         const optC = aiQ.option_c || '';
+         const optD = aiQ.option_d || '';
+         let correct = (aiQ.correct_answer || '').trim();
+         
+         let finalOptA = optA ? `A) ${optA}` : '';
+         let finalOptB = optB ? `B) ${optB}` : '';
+         let finalOptC = optC ? `C) ${optC}` : '';
+         let finalOptD = optD ? `D) ${optD}` : '';
+         
+         let finalCorrect = "";
+         if (correct.toUpperCase() === 'A' || correct === optA) finalCorrect = finalOptA;
+         else if (correct.toUpperCase() === 'B' || correct === optB) finalCorrect = finalOptB;
+         else if (correct.toUpperCase() === 'C' || correct === optC) finalCorrect = finalOptC;
+         else if (correct.toUpperCase() === 'D' || correct === optD) finalCorrect = finalOptD;
+         else finalCorrect = finalOptA;
+         
+         const q = {
+           question_text: `Q${i + 1}. ${aiQ.question_text || ''}`,
+           option_a: finalOptA,
+           option_b: finalOptB,
+           option_c: finalOptC,
+           option_d: finalOptD,
+           correct_answer: finalCorrect,
+           explanation: aiQ.explanation || ''
+         };
+         
+         setTgGenerateProgress(`Step 3/3: Posting Question ${i + 1} to Telegram...`);
+         
+         const tgRes = await fetch('/api/post-telegram-quiz', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+               botToken: tgBotToken.trim(),
+               chatId: tgChatId.trim(),
+               question: q
+            })
+         });
+         const tgData = await tgRes.json();
+         if (tgData.error) throw new Error("Telegram Error: " + tgData.error);
+         
+         successCount++;
+         await new Promise(r => setTimeout(r, 1000));
+      }
+      
+      alert(`Success! Successfully posted ${successCount} questions to Telegram.`);
+      setTgPdfFile(null);
+      setTgPdfFileName('');
+      if (tgHiddenFileInput.current) tgHiddenFileInput.current.value = '';
+    } catch (err) {
+      alert("Error generating Telegram Quiz: " + err.message);
+    }
+    
+    setIsTgGenerating(false);
+    setTgGenerateProgress('');
+  };
 
   const openEditModal = async (testId) => {
     setSelectedTestId(testId);
@@ -1571,7 +1670,7 @@ export default function AdminDashboard() {
                 </div>
               </div>
 
-              <h4 className="mt-4 text-accent" style={{ color: '#2196F3' }}>Upload CSV (Direct Posting, No AI limit)</h4>
+              <h4 className="mt-4 text-accent" style={{ color: '#2196F3' }}>Option 1: Upload CSV (Direct Posting, No AI limit)</h4>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', background: 'rgba(33, 150, 243, 0.1)', padding: '1rem', borderRadius: '8px', border: '1px solid rgba(33, 150, 243, 0.3)' }}>
                 <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-light)' }}>Upload a CSV file with columns: <b>Question, A, B, C, D, Answer, Explanation (Optional)</b></p>
                 <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
@@ -1581,6 +1680,35 @@ export default function AdminDashboard() {
                 </div>
                 <button type="button" onClick={handleGenerateTgCsvQuiz} disabled={isTgGenerating} className="btn-primary mt-2" style={{ background: '#2196F3', width: '100%', fontSize: '1.1rem', padding: '1rem' }}>
                   {isTgGenerating ? 'Processing...' : '📊 Post CSV to Telegram'}
+                </button>
+              </div>
+
+              <h4 className="mt-4 text-accent" style={{ color: '#9c27b0' }}>Option 2: Upload PDF (AI Generates Questions)</h4>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', background: 'rgba(156, 39, 176, 0.1)', padding: '1rem', borderRadius: '8px', border: '1px solid rgba(156, 39, 176, 0.3)' }}>
+                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                    <button type="button" onClick={() => tgHiddenFileInput.current.click()} className="btn-outline" style={{ flexShrink: 0, border: '1px solid #9c27b0', color: '#9c27b0' }}>Select PDF File</button>
+                    <span style={{ color: 'var(--text-muted)' }}>{tgPdfFileName || 'No file selected'}</span>
+                    <input type="file" accept="application/pdf" ref={tgHiddenFileInput} onChange={handleTgPdfUpload} style={{ display: 'none' }} />
+                </div>
+
+                <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+                  <div style={{ flex: 1, minWidth: '150px', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    <label className="text-light" style={{ fontSize: '0.9rem' }}>Number of Questions to Post</label>
+                    <input type="number" placeholder="e.g. 10" value={tgQuestionCount} onChange={(e) => setTgQuestionCount(e.target.value)} style={{ width: '100%', padding: '1rem', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'rgba(0,0,0,0.2)', color: 'white' }} />
+                  </div>
+                  <div style={{ flex: 1, minWidth: '150px', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    <label className="text-light" style={{ fontSize: '0.9rem' }}>Quiz Language</label>
+                    <select value={tgLanguage} onChange={(e) => setTgLanguage(e.target.value)} style={{ width: '100%', padding: '1rem', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'rgba(0,0,0,0.2)', color: 'white' }}>
+                      <option value="English">English</option>
+                      <option value="Hindi">Hindi (Hinglish/Devanagari)</option>
+                      <option value="Spanish">Spanish</option>
+                      <option value="French">French</option>
+                    </select>
+                  </div>
+                </div>
+
+                <button type="button" onClick={handleGenerateTgQuiz} disabled={isTgGenerating} className="btn-primary mt-2" style={{ background: '#9c27b0', width: '100%', fontSize: '1.1rem', padding: '1rem' }}>
+                  {isTgGenerating ? 'Processing...' : '🚀 AI Generate & Post to Telegram'}
                 </button>
               </div>
 
