@@ -124,6 +124,7 @@ export default function AdminDashboard() {
   const [pasteProgress, setPasteProgress] = useState('');
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
   const [pdfDownloadProgress, setPdfDownloadProgress] = useState('');
+  const [pdfModalInfo, setPdfModalInfo] = useState(null);
 
   // Admin Chat State
   const [adminChats, setAdminChats] = useState([]);
@@ -1526,12 +1527,35 @@ export default function AdminDashboard() {
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
       };
 
-      await html2pdf().from(tempDiv).set(opt).save();
+      // Generate both Blob and trigger direct download
+      const worker = html2pdf().from(tempDiv).set(opt);
+      const pdfBlob = await worker.output('blob');
+      await worker.save(); // Direct browser download trigger
+
+      const blobUrl = URL.createObjectURL(pdfBlob);
+
+      // Create fallback download anchor for mobile WebViews
+      const dlLink = document.createElement('a');
+      dlLink.href = blobUrl;
+      dlLink.download = cleanFileName;
+      dlLink.target = '_blank';
+      document.body.appendChild(dlLink);
+      dlLink.click();
+      setTimeout(() => document.body.removeChild(dlLink), 500);
 
       document.body.removeChild(tempDiv);
       setPdfDownloadProgress('');
       setIsDownloadingPdf(false);
-      alert(`✅ Success! "${cleanFileName}" aapke phone/device me download ho gaya hai!`);
+
+      // Show PDF Action Modal on screen
+      setPdfModalInfo({
+        fileName: cleanFileName,
+        blobUrl: blobUrl,
+        pdfBlob: pdfBlob,
+        title: title,
+        coaching: coaching
+      });
+
     } catch (err) {
       console.error("PDF generation error:", err);
       setIsDownloadingPdf(false);
@@ -2990,6 +3014,97 @@ export default function AdminDashboard() {
                   </div>
                 ))
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* PDF Ready & Phone Location Action Modal */}
+      {pdfModalInfo && (
+        <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.85)', zIndex: 10000, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '1rem' }}>
+          <div className="glass-card" style={{ width: '100%', maxWidth: '520px', background: '#18181b', border: '1px solid #3f3f46', borderRadius: '16px', padding: '1.5rem', boxShadow: '0 20px 40px rgba(0,0,0,0.6)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+              <h3 style={{ margin: 0, color: '#4caf50', fontSize: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                ✅ PDF Download Ready!
+              </h3>
+              <button onClick={() => setPdfModalInfo(null)} style={{ background: 'none', border: 'none', color: '#aaa', fontSize: '1.4rem', cursor: 'pointer' }}>✖</button>
+            </div>
+
+            <div style={{ background: 'rgba(255,255,255,0.04)', padding: '1rem', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.08)', marginBottom: '1.2rem' }}>
+              <p style={{ margin: '0 0 0.4rem 0', fontWeight: 'bold', color: '#fff', fontSize: '0.95rem' }}>
+                📄 {pdfModalInfo.fileName}
+              </p>
+              <p style={{ margin: 0, fontSize: '0.82rem', color: '#a1a1aa' }}>
+                Coaching: {pdfModalInfo.coaching} • 2-Column Exam Format (No Answer Key)
+              </p>
+            </div>
+
+            {/* Exact Phone Location Notice */}
+            <div style={{ background: 'rgba(33, 150, 243, 0.12)', border: '1px solid rgba(33, 150, 243, 0.35)', padding: '0.9rem', borderRadius: '10px', marginBottom: '1.2rem' }}>
+              <p style={{ margin: '0 0 0.3rem 0', color: '#60a5fa', fontWeight: 'bold', fontSize: '0.88rem' }}>
+                📁 Phone me kaha milegi ye file?
+              </p>
+              <p style={{ margin: 0, color: '#e2e8f0', fontSize: '0.82rem', lineHeight: '1.4' }}>
+                Aapke phone ke <b>"Files" / "File Manager"</b> app me jaakar <b>"Downloads"</b> folder check karein. Wahan sabse upar yeh PDF mil jayegi!
+              </p>
+            </div>
+
+            {/* Action Buttons */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              {/* WhatsApp / Direct Share Button */}
+              {typeof navigator !== 'undefined' && navigator.canShare && (
+                <button 
+                  type="button" 
+                  onClick={async () => {
+                    try {
+                      const file = new File([pdfModalInfo.pdfBlob], pdfModalInfo.fileName, { type: 'application/pdf' });
+                      if (navigator.canShare({ files: [file] })) {
+                        await navigator.share({
+                          files: [file],
+                          title: pdfModalInfo.title,
+                          text: `Question Paper: ${pdfModalInfo.title}`
+                        });
+                      }
+                    } catch (err) {
+                      console.log("Share cancelled:", err);
+                    }
+                  }} 
+                  className="btn-primary" 
+                  style={{ background: '#25D366', color: '#000', fontWeight: 'bold', padding: '0.85rem', fontSize: '0.95rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem' }}
+                >
+                  📲 WhatsApp / Drive par Share ya Save karein
+                </button>
+              )}
+
+              {/* Open in Browser / Phone Viewer */}
+              <a 
+                href={pdfModalInfo.blobUrl} 
+                target="_blank" 
+                rel="noreferrer" 
+                className="btn-outline" 
+                style={{ textAlign: 'center', padding: '0.85rem', border: '1px solid #4caf50', color: '#4caf50', fontWeight: 'bold', textDecoration: 'none', display: 'block', borderRadius: '8px', fontSize: '0.95rem' }}
+              >
+                👁️ PDF Kholkar Dekhein (Open in Phone)
+              </a>
+
+              {/* Download Again Button */}
+              <a 
+                href={pdfModalInfo.blobUrl} 
+                download={pdfModalInfo.fileName} 
+                className="btn-outline" 
+                style={{ textAlign: 'center', padding: '0.75rem', border: '1px solid #71717a', color: '#d4d4d8', textDecoration: 'none', display: 'block', borderRadius: '8px', fontSize: '0.85rem' }}
+              >
+                📥 Fir se Download karein (Save to Downloads)
+              </a>
+
+              <button 
+                type="button" 
+                onClick={() => setPdfModalInfo(null)} 
+                className="btn-outline" 
+                style={{ border: 'none', color: '#71717a', fontSize: '0.85rem', padding: '0.5rem', cursor: 'pointer' }}
+              >
+                ✕ Close
+              </button>
             </div>
           </div>
         </div>
