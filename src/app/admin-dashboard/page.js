@@ -1437,11 +1437,12 @@ export default function AdminDashboard() {
       <html lang="hi">
       <head>
         <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>${title} - ${coaching}</title>
         <style>
           @page {
             size: A4 portrait;
-            margin: 10mm 12mm 10mm 12mm;
+            margin: 8mm 10mm 8mm 10mm;
           }
           * {
             box-sizing: border-box;
@@ -1450,20 +1451,25 @@ export default function AdminDashboard() {
           }
           body {
             font-family: 'Nirmala UI', 'Mangal', 'Segoe UI', Arial, sans-serif;
-            color: #111;
+            color: #000;
             background: #fff;
             line-height: 1.35;
-            font-size: 12.5px;
+            font-size: 12px;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
           }
           .paper-container {
             width: 100%;
             max-width: 100%;
+            margin: 0 auto;
           }
           .header-box {
             text-align: center;
             border-bottom: 2px solid #000;
-            padding-bottom: 6px;
+            padding-bottom: 5px;
             margin-bottom: 8px;
+            page-break-inside: avoid;
+            break-inside: avoid;
           }
           .coaching-title {
             font-size: 22px;
@@ -1471,28 +1477,29 @@ export default function AdminDashboard() {
             letter-spacing: 0.5px;
             text-transform: uppercase;
             color: #000;
-            margin-bottom: 2px;
+            margin-bottom: 1px;
+            line-height: 1.2;
           }
           .coaching-sub {
-            font-size: 11.5px;
+            font-size: 11px;
             font-weight: 600;
-            color: #444;
+            color: #333;
             margin-bottom: 4px;
           }
           .test-title-badge {
-            font-size: 14px;
+            font-size: 13.5px;
             font-weight: 700;
-            background: #f4f4f4;
+            background: #f0f0f0;
             display: inline-block;
             padding: 2px 14px;
             border-radius: 4px;
-            border: 1px solid #bbb;
-            margin-bottom: 6px;
+            border: 1px solid #aaa;
+            margin-bottom: 5px;
           }
           .meta-table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 11.5px;
+            font-size: 11px;
             font-weight: 600;
             margin-top: 2px;
           }
@@ -1502,42 +1509,47 @@ export default function AdminDashboard() {
           .instructions-bar {
             font-size: 10.5px;
             font-style: italic;
-            border-bottom: 1px dashed #666;
-            padding-bottom: 4px;
-            margin-bottom: 10px;
+            border-bottom: 1px dashed #555;
+            padding-bottom: 3px;
+            margin-bottom: 8px;
             display: flex;
             justify-content: space-between;
+            page-break-inside: avoid;
+            break-inside: avoid;
           }
           /* TWO COLUMN LAYOUT WITH CENTER DIVIDER LINE */
           .columns-wrapper {
             column-count: 2;
-            column-gap: 24px;
-            column-rule: 1.2px solid #222;
+            column-gap: 22px;
+            column-rule: 1px solid #222;
             text-align: left;
+            width: 100%;
           }
           .question-item {
-            break-inside: avoid;
-            page-break-inside: avoid;
-            margin-bottom: 10px;
-            padding-bottom: 6px;
-            border-bottom: 0.5px dotted #ccc;
+            break-inside: avoid !important;
+            page-break-inside: avoid !important;
+            -webkit-column-break-inside: avoid !important;
+            margin-bottom: 8px;
+            padding-bottom: 5px;
+            border-bottom: 0.5px dotted #bbb;
           }
           .q-text {
             font-weight: 700;
-            font-size: 12.5px;
+            font-size: 12px;
             color: #000;
-            margin-bottom: 4px;
+            margin-bottom: 3px;
             line-height: 1.35;
+            word-break: break-word;
           }
           .options-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 2px 6px;
-            font-size: 11.5px;
+            font-size: 11px;
             padding-left: 2px;
           }
           .opt-cell {
-            line-height: 1.3;
+            line-height: 1.28;
             word-break: break-word;
           }
           .opt-label {
@@ -1545,12 +1557,39 @@ export default function AdminDashboard() {
             margin-right: 3px;
           }
           .footer-bar {
-            margin-top: 15px;
+            margin-top: 10px;
             text-align: center;
-            font-size: 9.5px;
-            color: #666;
-            border-top: 1px solid #ccc;
+            font-size: 9px;
+            color: #555;
+            border-top: 1px solid #aaa;
             padding-top: 3px;
+            page-break-inside: avoid;
+            break-inside: avoid;
+          }
+          /* Toolbar for quick adjustments */
+          .no-print {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            z-index: 10000;
+            background: #1e1e1e;
+            color: #fff;
+            padding: 8px 14px;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            font-size: 12px;
+            border: 1px solid #444;
+          }
+          .no-print button {
+            cursor: pointer;
+            padding: 6px 12px;
+            border-radius: 5px;
+            border: none;
+            font-weight: bold;
+            font-size: 12px;
           }
           @media print {
             .no-print { display: none !important; }
@@ -1559,13 +1598,15 @@ export default function AdminDashboard() {
         </style>
       </head>
       <body>
-        <div class="no-print" style="position: fixed; top: 12px; right: 12px; z-index: 10000; background: #1a1a1a; padding: 10px 16px; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.4); display: flex; gap: 10px; align-items: center; border: 1px solid #444;">
-          <span style="color: #fff; font-size: 13px; font-weight: bold;">📄 2-Column Question Paper Ready</span>
-          <button onclick="window.print()" style="background: #4caf50; color: white; border: none; padding: 8px 16px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 13px;">🖨️ Print / Save as PDF</button>
-          <button onclick="window.close()" style="background: #e53935; color: white; border: none; padding: 8px 12px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 13px;">✕ Close</button>
+        <div class="no-print">
+          <span>📄 A4 Exam Paper</span>
+          <button onclick="setDensity('compact')" style="background: #333; color: #fff; border: 1px solid #555;">Compact (Fit)</button>
+          <button onclick="setDensity('normal')" style="background: #333; color: #fff; border: 1px solid #555;">Normal</button>
+          <button onclick="window.print()" style="background: #4caf50; color: white;">🖨️ Print / Save as PDF</button>
+          <button onclick="window.close()" style="background: #e53935; color: white;">✕ Close</button>
         </div>
 
-        <div class="paper-container">
+        <div class="paper-container" id="paperContainer">
           <div class="header-box">
             <div class="coaching-title">${coaching}</div>
             <div class="coaching-sub">${subHeader}</div>
@@ -1589,7 +1630,7 @@ export default function AdminDashboard() {
             <span><b>Negative Marking:</b> No</span>
           </div>
 
-          <div class="columns-wrapper">
+          <div class="columns-wrapper" id="columnsWrapper">
             ${parsed.map((q, idx) => `
               <div class="question-item">
                 <div class="q-text">Q${idx + 1}. ${q.question_text}</div>
@@ -1609,6 +1650,21 @@ export default function AdminDashboard() {
         </div>
 
         <script>
+          function setDensity(type) {
+            const body = document.body;
+            if (type === 'compact') {
+              body.style.fontSize = '10.5px';
+              document.querySelectorAll('.q-text').forEach(el => el.style.fontSize = '10.5px');
+              document.querySelectorAll('.options-grid').forEach(el => el.style.fontSize = '9.8px');
+              document.querySelectorAll('.question-item').forEach(el => { el.style.marginBottom = '5px'; el.style.paddingBottom = '3px'; });
+            } else {
+              body.style.fontSize = '12px';
+              document.querySelectorAll('.q-text').forEach(el => el.style.fontSize = '12px');
+              document.querySelectorAll('.options-grid').forEach(el => el.style.fontSize = '11px');
+              document.querySelectorAll('.question-item').forEach(el => { el.style.marginBottom = '8px'; el.style.paddingBottom = '5px'; });
+            }
+          }
+
           window.onload = function() {
             setTimeout(() => {
               window.print();
