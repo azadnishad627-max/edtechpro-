@@ -125,6 +125,8 @@ export default function AdminDashboard() {
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
   const [pdfDownloadProgress, setPdfDownloadProgress] = useState('');
   const [pdfModalInfo, setPdfModalInfo] = useState(null);
+  const [chromeOpenLink, setChromeOpenLink] = useState('');
+  const [isOpeningChrome, setIsOpeningChrome] = useState(false);
 
   // Admin Chat State
   const [adminChats, setAdminChats] = useState([]);
@@ -1421,11 +1423,14 @@ export default function AdminDashboard() {
     setPasteProgress('');
   };
 
-  // --- Open Dedicated 2-Column Exam Paper Page (/print-paper) ---
-  const handleOpenPrintPaper = () => {
+  // --- Open Dedicated 2-Column Exam Paper in Chrome / External Browser ---
+  const handleOpenPrintPaper = async () => {
     if (!pasteText.trim()) { alert("Pehle MCQ text paste karein!"); return; }
     const parsed = parseTextMCQ(pasteText);
     if (parsed.length === 0) { alert("Koi question parse nahi ho saka. Sahi format me text paste karein."); return; }
+
+    setIsOpeningChrome(true);
+    setChromeOpenLink('');
 
     const coaching = pasteCoachingName.trim() || "RK EDUCATION";
     const subHeader = pasteCoachingSub.trim() || "Competitive Exam & Coaching Center";
@@ -1452,7 +1457,34 @@ export default function AdminDashboard() {
       console.error(e);
     }
 
-    window.location.href = '/print-paper';
+    try {
+      // 1. Generate server link
+      const res = await fetch('/api/paper-link', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ paperData })
+      });
+      const data = await res.json();
+
+      if (data.id) {
+        const fullUrl = `${window.location.origin}/api/view-paper?id=${data.id}`;
+        setChromeOpenLink(fullUrl);
+
+        // Try opening in external browser / Chrome tab
+        const win = window.open(fullUrl, '_blank');
+        if (!win) {
+          // If popup is blocked in WebView, navigate
+          window.location.href = fullUrl;
+        }
+      } else {
+        window.location.href = '/print-paper';
+      }
+    } catch (err) {
+      console.error("Link error:", err);
+      window.location.href = '/print-paper';
+    } finally {
+      setIsOpeningChrome(false);
+    }
   };
 
   // --- Download Standalone Offline HTML Question Paper ---
@@ -2248,15 +2280,48 @@ export default function AdminDashboard() {
                 </div>
               </div>
               <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginTop: '0.5rem' }}>
-                <button type="button" onClick={handleOpenPrintPaper} className="btn-primary" 
+                <button type="button" onClick={handleOpenPrintPaper} disabled={isOpeningChrome} className="btn-primary" 
                   style={{ flex: 2, minWidth: '220px', background: '#ff9800', fontSize: '1.05rem', padding: '1rem', color: '#111', fontWeight: 'bold' }}>
-                  📄 🖨️ Open & Print / Save PDF Paper (A4 2-Column)
+                  {isOpeningChrome ? '⏳ Opening in Chrome...' : '🌐 📱 Chrome me Paper Open & Download karo'}
                 </button>
                 <button type="button" onClick={handleDownloadStandaloneHtml} className="btn-outline" 
                   style={{ flex: 1, minWidth: '160px', border: '1px solid #ff9800', color: '#ff9800', fontSize: '0.95rem', padding: '1rem' }}>
                   ⬇️ 📱 Download Offline Paper
                 </button>
               </div>
+
+              {chromeOpenLink && (
+                <div style={{ marginTop: '0.75rem', padding: '1rem', background: 'rgba(76, 175, 80, 0.15)', border: '1px solid #4caf50', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
+                  <div>
+                    <p style={{ margin: '0 0 0.25rem 0', color: '#4caf50', fontWeight: 'bold', fontSize: '0.95rem' }}>
+                      ✅ Paper Link Ready!
+                    </p>
+                    <p style={{ margin: 0, color: '#e2e8f0', fontSize: '0.85rem' }}>
+                      Agar Chrome auto-open nahi hua toh niche button dabayein:
+                    </p>
+                  </div>
+                  <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                    <a 
+                      href={chromeOpenLink} 
+                      target="_blank" 
+                      rel="noopener noreferrer" 
+                      style={{ background: '#4caf50', color: '#fff', padding: '0.6rem 1.2rem', borderRadius: '6px', fontWeight: 'bold', textDecoration: 'none', fontSize: '0.9rem' }}
+                    >
+                      🚀 Open in Chrome Now
+                    </a>
+                    <button 
+                      type="button" 
+                      onClick={() => {
+                        navigator.clipboard.writeText(chromeOpenLink);
+                        alert("Link copied! Aap isko kisi bhi browser ya WhatsApp par paste kar sakte hain.");
+                      }} 
+                      style={{ background: '#333', color: '#fff', border: '1px solid #555', padding: '0.6rem 1rem', borderRadius: '6px', fontSize: '0.9rem', cursor: 'pointer' }}
+                    >
+                      📋 Copy Link
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
 
             {pasteProgress && (
