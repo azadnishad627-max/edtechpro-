@@ -117,6 +117,9 @@ export default function AdminDashboard() {
   const [pasteTestTitle, setPasteTestTitle] = useState('');
   const [pasteBatch, setPasteBatch] = useState('');
   const [pasteDuration, setPasteDuration] = useState('30');
+  const [pasteCoachingName, setPasteCoachingName] = useState('RK Education');
+  const [pasteCoachingSub, setPasteCoachingSub] = useState('NMMS & Competitive Exam Center');
+  const [pasteMaxMarks, setPasteMaxMarks] = useState('');
   const [isPasteProcessing, setIsPasteProcessing] = useState(false);
   const [pasteProgress, setPasteProgress] = useState('');
 
@@ -1415,6 +1418,217 @@ export default function AdminDashboard() {
     setPasteProgress('');
   };
 
+  // --- Paste Text: Download 2-Column Question Paper PDF (No Answer Key) ---
+  const handleDownloadPaperPDF = () => {
+    if (!pasteText.trim()) { alert("Pehle MCQ text paste karein!"); return; }
+    const parsed = parseTextMCQ(pasteText);
+    if (parsed.length === 0) { alert("Koi question parse nahi ho saka. Sahi format me text paste karein."); return; }
+
+    const coaching = pasteCoachingName.trim() || "RK EDUCATION";
+    const subHeader = pasteCoachingSub.trim() || "Competitive Exam & Coaching Center";
+    const title = pasteTestTitle.trim() || "MODEL QUESTION PAPER";
+    const duration = pasteDuration ? `${pasteDuration} Mins` : "45 Mins";
+    const marks = pasteMaxMarks.trim() || `${parsed.length} Marks`;
+    const batchName = pasteBatch ? (batches.find(b => b.id === pasteBatch)?.title || pasteBatch) : 'All Batches';
+    const dateStr = new Date().toLocaleDateString('hi-IN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+
+    const printHtml = `
+      <!DOCTYPE html>
+      <html lang="hi">
+      <head>
+        <meta charset="UTF-8">
+        <title>${title} - ${coaching}</title>
+        <style>
+          @page {
+            size: A4 portrait;
+            margin: 10mm 12mm 10mm 12mm;
+          }
+          * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+          }
+          body {
+            font-family: 'Nirmala UI', 'Mangal', 'Segoe UI', Arial, sans-serif;
+            color: #111;
+            background: #fff;
+            line-height: 1.35;
+            font-size: 12.5px;
+          }
+          .paper-container {
+            width: 100%;
+            max-width: 100%;
+          }
+          .header-box {
+            text-align: center;
+            border-bottom: 2px solid #000;
+            padding-bottom: 6px;
+            margin-bottom: 8px;
+          }
+          .coaching-title {
+            font-size: 22px;
+            font-weight: 900;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            color: #000;
+            margin-bottom: 2px;
+          }
+          .coaching-sub {
+            font-size: 11.5px;
+            font-weight: 600;
+            color: #444;
+            margin-bottom: 4px;
+          }
+          .test-title-badge {
+            font-size: 14px;
+            font-weight: 700;
+            background: #f4f4f4;
+            display: inline-block;
+            padding: 2px 14px;
+            border-radius: 4px;
+            border: 1px solid #bbb;
+            margin-bottom: 6px;
+          }
+          .meta-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 11.5px;
+            font-weight: 600;
+            margin-top: 2px;
+          }
+          .meta-table td {
+            padding: 1px 4px;
+          }
+          .instructions-bar {
+            font-size: 10.5px;
+            font-style: italic;
+            border-bottom: 1px dashed #666;
+            padding-bottom: 4px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+          }
+          /* TWO COLUMN LAYOUT WITH CENTER DIVIDER LINE */
+          .columns-wrapper {
+            column-count: 2;
+            column-gap: 24px;
+            column-rule: 1.2px solid #222;
+            text-align: left;
+          }
+          .question-item {
+            break-inside: avoid;
+            page-break-inside: avoid;
+            margin-bottom: 10px;
+            padding-bottom: 6px;
+            border-bottom: 0.5px dotted #ccc;
+          }
+          .q-text {
+            font-weight: 700;
+            font-size: 12.5px;
+            color: #000;
+            margin-bottom: 4px;
+            line-height: 1.35;
+          }
+          .options-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2px 6px;
+            font-size: 11.5px;
+            padding-left: 2px;
+          }
+          .opt-cell {
+            line-height: 1.3;
+            word-break: break-word;
+          }
+          .opt-label {
+            font-weight: 700;
+            margin-right: 3px;
+          }
+          .footer-bar {
+            margin-top: 15px;
+            text-align: center;
+            font-size: 9.5px;
+            color: #666;
+            border-top: 1px solid #ccc;
+            padding-top: 3px;
+          }
+          @media print {
+            .no-print { display: none !important; }
+            body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="no-print" style="position: fixed; top: 12px; right: 12px; z-index: 10000; background: #1a1a1a; padding: 10px 16px; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.4); display: flex; gap: 10px; align-items: center; border: 1px solid #444;">
+          <span style="color: #fff; font-size: 13px; font-weight: bold;">📄 2-Column Question Paper Ready</span>
+          <button onclick="window.print()" style="background: #4caf50; color: white; border: none; padding: 8px 16px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 13px;">🖨️ Print / Save as PDF</button>
+          <button onclick="window.close()" style="background: #e53935; color: white; border: none; padding: 8px 12px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 13px;">✕ Close</button>
+        </div>
+
+        <div class="paper-container">
+          <div class="header-box">
+            <div class="coaching-title">${coaching}</div>
+            <div class="coaching-sub">${subHeader}</div>
+            <div class="test-title-badge">${title}</div>
+            <table class="meta-table">
+              <tr>
+                <td style="text-align: left;"><b>Batch:</b> ${batchName}</td>
+                <td style="text-align: center;"><b>Time:</b> ${duration}</td>
+                <td style="text-align: right;"><b>Max Marks:</b> ${marks}</td>
+              </tr>
+              <tr>
+                <td style="text-align: left;"><b>Date:</b> ${dateStr}</td>
+                <td style="text-align: center;"><b>Total Qs:</b> ${parsed.length}</td>
+                <td style="text-align: right;"><b>Roll No:</b> ____________</td>
+              </tr>
+            </table>
+          </div>
+
+          <div class="instructions-bar">
+            <span><b>निर्देश:</b> सभी प्रश्न अनिवार्य हैं। सही विकल्प का चयन करें।</span>
+            <span><b>Negative Marking:</b> No</span>
+          </div>
+
+          <div class="columns-wrapper">
+            ${parsed.map((q, idx) => `
+              <div class="question-item">
+                <div class="q-text">Q${idx + 1}. ${q.question_text}</div>
+                <div class="options-grid">
+                  <div class="opt-cell"><span class="opt-label">(A)</span> ${q.option_a || '-'}</div>
+                  <div class="opt-cell"><span class="opt-label">(B)</span> ${q.option_b || '-'}</div>
+                  <div class="opt-cell"><span class="opt-label">(C)</span> ${q.option_c || '-'}</div>
+                  <div class="opt-cell"><span class="opt-label">(D)</span> ${q.option_d || '-'}</div>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+
+          <div class="footer-bar">
+            *** Best of Luck • ${coaching} ***
+          </div>
+        </div>
+
+        <script>
+          window.onload = function() {
+            setTimeout(() => {
+              window.print();
+            }, 400);
+          };
+        </script>
+      </body>
+      </html>
+    `;
+
+    const printWin = window.open('', '_blank');
+    if (!printWin) {
+      alert("Popup blocker active hai. Please allow popups to download/print the Question Paper PDF.");
+      return;
+    }
+    printWin.document.open();
+    printWin.document.write(printHtml);
+    printWin.document.close();
+  };
+
   const handleGenerateTgQuiz = async () => {
     if (!tgBotToken || !tgChatId || !tgPdfFile) {
       alert("Please fill all fields and upload a PDF!");
@@ -2079,6 +2293,35 @@ export default function AdminDashboard() {
               <button type="button" onClick={handlePasteToTelegram} disabled={isPasteProcessing} className="btn-primary" 
                 style={{ background: '#2196F3', width: '100%', fontSize: '1.1rem', padding: '1rem' }}>
                 {isPasteProcessing ? 'Processing...' : '🔵 Telegram pe Post karo'}
+              </button>
+            </div>
+
+            {/* --- Option 3: Download Question Paper PDF (2-Column Exam Format) --- */}
+            <h4 className="mt-4 text-accent" style={{ color: '#ff9800' }}>📄 Option 3: Download Question Paper PDF (2-Column Exam Format)</h4>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', background: 'rgba(255, 152, 0, 0.08)', padding: '1rem', borderRadius: '8px', border: '1px solid rgba(255, 152, 0, 0.3)' }}>
+              <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-light)' }}>
+                Apne coaching name ke sath <b>2-Column Side-by-Side Exam Question Paper</b> download karein (bich me divider line ke sath, bina answer key ke).
+              </p>
+              <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+                <div style={{ flex: 1, minWidth: '180px' }}>
+                  <label style={{ fontSize: '0.85rem', color: 'var(--text-light)' }}>Coaching Name</label>
+                  <input type="text" placeholder="e.g. RK Education" value={pasteCoachingName} onChange={(e) => setPasteCoachingName(e.target.value)} 
+                    style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'rgba(0,0,0,0.2)', color: 'white', marginTop: '0.25rem' }} />
+                </div>
+                <div style={{ flex: 1, minWidth: '180px' }}>
+                  <label style={{ fontSize: '0.85rem', color: 'var(--text-light)' }}>Tagline / Subtitle</label>
+                  <input type="text" placeholder="e.g. NMMS & Competitive Exam Center" value={pasteCoachingSub} onChange={(e) => setPasteCoachingSub(e.target.value)} 
+                    style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'rgba(0,0,0,0.2)', color: 'white', marginTop: '0.25rem' }} />
+                </div>
+                <div style={{ flex: 1, minWidth: '120px' }}>
+                  <label style={{ fontSize: '0.85rem', color: 'var(--text-light)' }}>Total Marks (Optional)</label>
+                  <input type="text" placeholder="e.g. 20" value={pasteMaxMarks} onChange={(e) => setPasteMaxMarks(e.target.value)} 
+                    style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'rgba(0,0,0,0.2)', color: 'white', marginTop: '0.25rem' }} />
+                </div>
+              </div>
+              <button type="button" onClick={handleDownloadPaperPDF} className="btn-primary" 
+                style={{ background: '#ff9800', width: '100%', fontSize: '1.1rem', padding: '1rem', color: '#111', fontWeight: 'bold' }}>
+                📄 🖨️ Download / Print Exam Paper PDF (2-Column)
               </button>
             </div>
 
