@@ -24,15 +24,60 @@ export async function POST(req) {
     if (rawOptions.length === 1) rawOptions.push("Option B");
     
     let correctIndex = -1;
-    for (let i = 0; i < rawOptions.length; i++) {
-        if (rawOptions[i] === question.correct_answer || rawOptions[i].includes(question.correct_answer)) {
+
+    // 1. Direct correct_option_id passed (0, 1, 2, 3)
+    if (typeof question.correct_option_id === 'number' && question.correct_option_id >= 0 && question.correct_option_id < rawOptions.length) {
+      correctIndex = question.correct_option_id;
+    }
+
+    // 2. Letter check (A, B, C, D)
+    if (correctIndex === -1 && question.correct_letter) {
+      const letUpper = String(question.correct_letter).trim().toUpperCase();
+      if (letUpper === 'A' && rawOptions.length > 0) correctIndex = 0;
+      else if (letUpper === 'B' && rawOptions.length > 1) correctIndex = 1;
+      else if (letUpper === 'C' && rawOptions.length > 2) correctIndex = 2;
+      else if (letUpper === 'D' && rawOptions.length > 3) correctIndex = 3;
+    }
+
+    // 3. Check correct_answer string
+    if (correctIndex === -1 && question.correct_answer) {
+      const ca = String(question.correct_answer).trim();
+      const caUpper = ca.toUpperCase();
+      
+      // If correct_answer is just "A", "B", "C", "D" or "(A)", "(B)", etc.
+      if ((caUpper === 'A' || caUpper === '(A)' || caUpper === 'A)' || caUpper === 'OPTION A') && rawOptions.length > 0) correctIndex = 0;
+      else if ((caUpper === 'B' || caUpper === '(B)' || caUpper === 'B)' || caUpper === 'OPTION B') && rawOptions.length > 1) correctIndex = 1;
+      else if ((caUpper === 'C' || caUpper === '(C)' || caUpper === 'C)' || caUpper === 'OPTION C') && rawOptions.length > 2) correctIndex = 2;
+      else if ((caUpper === 'D' || caUpper === '(D)' || caUpper === 'D)' || caUpper === 'OPTION D') && rawOptions.length > 3) correctIndex = 3;
+      
+      if (correctIndex === -1) {
+        // Exact match with raw option
+        for (let i = 0; i < rawOptions.length; i++) {
+          if (rawOptions[i].trim() === ca) {
             correctIndex = i;
             break;
+          }
         }
+      }
+
+      if (correctIndex === -1) {
+        // Clean prefixes like "A) ", "(A) ", "A. " from both sides and compare
+        const cleanStr = (s) => s.replace(/^[\s(\[]*([A-Da-d]|[0-9]+)[\s)\]:.-]+/, '').trim().toLowerCase();
+        const cleanCa = cleanStr(ca);
+        if (cleanCa.length > 0) {
+          for (let i = 0; i < rawOptions.length; i++) {
+            const cleanOpt = cleanStr(rawOptions[i]);
+            if (cleanOpt === cleanCa || (cleanCa.length > 3 && cleanOpt.includes(cleanCa)) || (cleanOpt.length > 3 && cleanCa.includes(cleanOpt))) {
+              correctIndex = i;
+              break;
+            }
+          }
+        }
+      }
     }
-    
-    if (correctIndex === -1) {
-       correctIndex = 0; // fallback just in case AI messes up the format
+
+    if (correctIndex === -1 || correctIndex >= rawOptions.length) {
+      correctIndex = 0; // fallback if completely unresolvable
     }
     
     // Truncate options AFTER finding the correct index, so the match doesn't break

@@ -21,15 +21,39 @@ export async function POST(req) {
     }
 
     let score = 0;
+    const cleanStr = (s) => (s || '').toString().replace(/^[\s(\[]*([A-Da-d]|[0-9]+)[\s)\]:.-]+/, '').trim().toLowerCase();
+
     const evaluatedResults = questions.map((q) => {
       let actualCorrect = (q.correct_answer || '').trim();
-      if (actualCorrect.toUpperCase() === 'A') actualCorrect = q.option_a;
-      else if (actualCorrect.toUpperCase() === 'B') actualCorrect = q.option_b;
-      else if (actualCorrect.toUpperCase() === 'C') actualCorrect = q.option_c;
-      else if (actualCorrect.toUpperCase() === 'D') actualCorrect = q.option_d;
+      const rawAnsUpper = actualCorrect.toUpperCase();
+      
+      if (rawAnsUpper === 'A' || rawAnsUpper === '(A)' || rawAnsUpper === 'A)') actualCorrect = q.option_a || '';
+      else if (rawAnsUpper === 'B' || rawAnsUpper === '(B)' || rawAnsUpper === 'B)') actualCorrect = q.option_b || '';
+      else if (rawAnsUpper === 'C' || rawAnsUpper === '(C)' || rawAnsUpper === 'C)') actualCorrect = q.option_c || '';
+      else if (rawAnsUpper === 'D' || rawAnsUpper === '(D)' || rawAnsUpper === 'D)') actualCorrect = q.option_d || '';
 
       const userAnswer = answers[q.id] || null;
-      const isCorrect = userAnswer === actualCorrect;
+      let isCorrect = false;
+
+      if (userAnswer && actualCorrect) {
+        const uTrim = userAnswer.toString().trim();
+        const aTrim = actualCorrect.toString().trim();
+        const uUpper = uTrim.toUpperCase();
+
+        if (uTrim.toLowerCase() === aTrim.toLowerCase()) {
+          isCorrect = true;
+        } else if (uUpper === 'A' && (aTrim === q.option_a || cleanStr(aTrim) === cleanStr(q.option_a))) {
+          isCorrect = true;
+        } else if (uUpper === 'B' && (aTrim === q.option_b || cleanStr(aTrim) === cleanStr(q.option_b))) {
+          isCorrect = true;
+        } else if (uUpper === 'C' && (aTrim === q.option_c || cleanStr(aTrim) === cleanStr(q.option_c))) {
+          isCorrect = true;
+        } else if (uUpper === 'D' && (aTrim === q.option_d || cleanStr(aTrim) === cleanStr(q.option_d))) {
+          isCorrect = true;
+        } else if (cleanStr(uTrim) === cleanStr(aTrim) && cleanStr(uTrim).length > 0) {
+          isCorrect = true;
+        }
+      }
       
       if (isCorrect) {
         score++;
