@@ -1466,8 +1466,8 @@ export default function AdminDashboard() {
       });
       const data = await res.json();
 
-      if (data.id) {
-        const fullUrl = `${window.location.origin}/api/view-paper?id=${data.id}`;
+      if (data.token || data.id) {
+        const fullUrl = `${window.location.origin}/api/view-paper?d=${data.token || data.id}`;
         setChromeOpenLink(fullUrl);
 
         // Try opening in external browser / Chrome tab
