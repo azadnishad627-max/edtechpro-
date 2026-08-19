@@ -1421,151 +1421,8 @@ export default function AdminDashboard() {
     setPasteProgress('');
   };
 
-  // Helper to load html2pdf.js dynamically (works on mobile phones, Android WebViews, PWA, Chrome)
-  const loadHtml2Pdf = () => {
-    return new Promise((resolve, reject) => {
-      if (typeof window === 'undefined') return reject(new Error("Window not available"));
-      if (window.html2pdf) return resolve(window.html2pdf);
-      
-      const script = document.createElement('script');
-      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
-      script.onload = () => {
-        if (window.html2pdf) resolve(window.html2pdf);
-        else reject(new Error("html2pdf failed to initialize"));
-      };
-      script.onerror = () => reject(new Error("Failed to load PDF engine"));
-      document.head.appendChild(script);
-    });
-  };
-
-  // --- Direct PDF Download for Mobile Phones & PCs (Saves .pdf file directly to phone storage) ---
-  const handleDirectDownloadPDF = async () => {
-    if (!pasteText.trim()) { alert("Pehle MCQ text paste karein!"); return; }
-    const parsed = parseTextMCQ(pasteText);
-    if (parsed.length === 0) { alert("Koi question parse nahi ho saka. Sahi format me text paste karein."); return; }
-
-    setIsDownloadingPdf(true);
-    setPdfDownloadProgress("📄 Phone ke liye PDF banayi ja rahi hai...");
-
-    try {
-      const html2pdf = await loadHtml2Pdf();
-
-      const coaching = pasteCoachingName.trim() || "RK EDUCATION";
-      const subHeader = pasteCoachingSub.trim() || "Competitive Exam & Coaching Center";
-      const title = pasteTestTitle.trim() || "MODEL QUESTION PAPER";
-      const duration = pasteDuration ? `${pasteDuration} Mins` : "45 Mins";
-      const marks = pasteMaxMarks.trim() || `${parsed.length} Marks`;
-      const batchName = pasteBatch ? (batches.find(b => b.id === pasteBatch)?.title || pasteBatch) : 'All Batches';
-      const dateStr = new Date().toLocaleDateString('hi-IN', { day: '2-digit', month: '2-digit', year: 'numeric' });
-
-      // Create a temporary styled container in the DOM
-      const tempDiv = document.createElement('div');
-      tempDiv.style.position = 'fixed';
-      tempDiv.style.left = '-9999px';
-      tempDiv.style.top = '0';
-      tempDiv.style.width = '794px'; // Standard A4 pixel width at 96 DPI
-      tempDiv.style.background = '#ffffff';
-      tempDiv.style.color = '#000000';
-      tempDiv.style.fontFamily = "'Nirmala UI', 'Mangal', 'Segoe UI', Arial, sans-serif";
-      tempDiv.style.fontSize = '12px';
-      tempDiv.style.lineHeight = '1.35';
-      tempDiv.style.padding = '20px 24px';
-      tempDiv.style.boxSizing = 'border-box';
-
-      tempDiv.innerHTML = `
-        <div style="text-align: center; border-bottom: 2px solid #000; padding-bottom: 6px; margin-bottom: 8px;">
-          <div style="font-size: 22px; font-weight: 900; letter-spacing: 0.5px; text-transform: uppercase; color: #000; margin-bottom: 1px; line-height: 1.2;">${coaching}</div>
-          <div style="font-size: 11px; font-weight: 600; color: #333; margin-bottom: 4px;">${subHeader}</div>
-          <div style="font-size: 13.5px; font-weight: 700; background: #f0f0f0; display: inline-block; padding: 2px 14px; border-radius: 4px; border: 1px solid #aaa; margin-bottom: 5px;">${title}</div>
-          <table style="width: 100%; border-collapse: collapse; font-size: 11px; font-weight: 600; margin-top: 2px;">
-            <tr>
-              <td style="text-align: left; padding: 1px 4px;"><b>Batch:</b> ${batchName}</td>
-              <td style="text-align: center; padding: 1px 4px;"><b>Time:</b> ${duration}</td>
-              <td style="text-align: right; padding: 1px 4px;"><b>Max Marks:</b> ${marks}</td>
-            </tr>
-            <tr>
-              <td style="text-align: left; padding: 1px 4px;"><b>Date:</b> ${dateStr}</td>
-              <td style="text-align: center; padding: 1px 4px;"><b>Total Qs:</b> ${parsed.length}</td>
-              <td style="text-align: right; padding: 1px 4px;"><b>Roll No:</b> ____________</td>
-            </tr>
-          </table>
-        </div>
-
-        <div style="font-size: 10.5px; font-style: italic; border-bottom: 1px dashed #555; padding-bottom: 3px; margin-bottom: 8px; display: flex; justify-content: space-between;">
-          <span><b>निर्देश:</b> सभी प्रश्न अनिवार्य हैं। सही विकल्प का चयन करें।</span>
-          <span><b>Negative Marking:</b> No</span>
-        </div>
-
-        <div style="column-count: 2; column-gap: 24px; column-rule: 1px solid #222; text-align: left; width: 100%;">
-          ${parsed.map((q, idx) => `
-            <div style="break-inside: avoid !important; page-break-inside: avoid !important; margin-bottom: 8px; padding-bottom: 5px; border-bottom: 0.5px dotted #bbb;">
-              <div style="font-weight: 700; font-size: 12px; color: #000; margin-bottom: 3px; line-height: 1.35; word-break: break-word;">Q${idx + 1}. ${q.question_text}</div>
-              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2px 6px; font-size: 11px; padding-left: 2px;">
-                <div style="line-height: 1.28; word-break: break-word;"><span style="font-weight: 700; margin-right: 3px;">(A)</span> ${q.option_a || '-'}</div>
-                <div style="line-height: 1.28; word-break: break-word;"><span style="font-weight: 700; margin-right: 3px;">(B)</span> ${q.option_b || '-'}</div>
-                <div style="line-height: 1.28; word-break: break-word;"><span style="font-weight: 700; margin-right: 3px;">(C)</span> ${q.option_c || '-'}</div>
-                <div style="line-height: 1.28; word-break: break-word;"><span style="font-weight: 700; margin-right: 3px;">(D)</span> ${q.option_d || '-'}</div>
-              </div>
-            </div>
-          `).join('')}
-        </div>
-
-        <div style="margin-top: 10px; text-align: center; font-size: 9px; color: #555; border-top: 1px solid #aaa; padding-top: 3px;">
-          *** Best of Luck • ${coaching} ***
-        </div>
-      `;
-
-      document.body.appendChild(tempDiv);
-
-      const cleanFileName = (title + '_' + coaching).replace(/[^a-zA-Z0-9_\u0900-\u097F]/g, '_').substring(0, 30) + '_QuestionPaper.pdf';
-
-      const opt = {
-        margin: [8, 10, 8, 10],
-        filename: cleanFileName,
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true, letterRendering: true, backgroundColor: '#ffffff' },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-      };
-
-      // Generate both Blob and trigger direct download
-      const worker = html2pdf().from(tempDiv).set(opt);
-      const pdfBlob = await worker.output('blob');
-      await worker.save(); // Direct browser download trigger
-
-      const blobUrl = URL.createObjectURL(pdfBlob);
-
-      // Create fallback download anchor for mobile WebViews
-      const dlLink = document.createElement('a');
-      dlLink.href = blobUrl;
-      dlLink.download = cleanFileName;
-      dlLink.target = '_blank';
-      document.body.appendChild(dlLink);
-      dlLink.click();
-      setTimeout(() => document.body.removeChild(dlLink), 500);
-
-      document.body.removeChild(tempDiv);
-      setPdfDownloadProgress('');
-      setIsDownloadingPdf(false);
-
-      // Show PDF Action Modal on screen
-      setPdfModalInfo({
-        fileName: cleanFileName,
-        blobUrl: blobUrl,
-        pdfBlob: pdfBlob,
-        title: title,
-        coaching: coaching
-      });
-
-    } catch (err) {
-      console.error("PDF generation error:", err);
-      setIsDownloadingPdf(false);
-      setPdfDownloadProgress('');
-      handleDownloadPaperPDF();
-    }
-  };
-
-  // --- Paste Text: Download 2-Column Question Paper PDF (No Answer Key) ---
-  const handleDownloadPaperPDF = () => {
+  // --- Open Dedicated 2-Column Exam Paper Page (/print-paper) ---
+  const handleOpenPrintPaper = () => {
     if (!pasteText.trim()) { alert("Pehle MCQ text paste karein!"); return; }
     const parsed = parseTextMCQ(pasteText);
     if (parsed.length === 0) { alert("Koi question parse nahi ho saka. Sahi format me text paste karein."); return; }
@@ -1578,257 +1435,126 @@ export default function AdminDashboard() {
     const batchName = pasteBatch ? (batches.find(b => b.id === pasteBatch)?.title || pasteBatch) : 'All Batches';
     const dateStr = new Date().toLocaleDateString('hi-IN', { day: '2-digit', month: '2-digit', year: 'numeric' });
 
-    const printHtml = `
-      <!DOCTYPE html>
-      <html lang="hi">
-      <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>${title} - ${coaching}</title>
-        <style>
-          @page {
-            size: A4 portrait;
-            margin: 8mm 10mm 8mm 10mm;
-          }
-          * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-          }
-          body {
-            font-family: 'Nirmala UI', 'Mangal', 'Segoe UI', Arial, sans-serif;
-            color: #000;
-            background: #fff;
-            line-height: 1.35;
-            font-size: 12px;
-            -webkit-print-color-adjust: exact;
-            print-color-adjust: exact;
-          }
-          .paper-container {
-            width: 100%;
-            max-width: 100%;
-            margin: 0 auto;
-          }
-          .header-box {
-            text-align: center;
-            border-bottom: 2px solid #000;
-            padding-bottom: 5px;
-            margin-bottom: 8px;
-            page-break-inside: avoid;
-            break-inside: avoid;
-          }
-          .coaching-title {
-            font-size: 22px;
-            font-weight: 900;
-            letter-spacing: 0.5px;
-            text-transform: uppercase;
-            color: #000;
-            margin-bottom: 1px;
-            line-height: 1.2;
-          }
-          .coaching-sub {
-            font-size: 11px;
-            font-weight: 600;
-            color: #333;
-            margin-bottom: 4px;
-          }
-          .test-title-badge {
-            font-size: 13.5px;
-            font-weight: 700;
-            background: #f0f0f0;
-            display: inline-block;
-            padding: 2px 14px;
-            border-radius: 4px;
-            border: 1px solid #aaa;
-            margin-bottom: 5px;
-          }
-          .meta-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 11px;
-            font-weight: 600;
-            margin-top: 2px;
-          }
-          .meta-table td {
-            padding: 1px 4px;
-          }
-          .instructions-bar {
-            font-size: 10.5px;
-            font-style: italic;
-            border-bottom: 1px dashed #555;
-            padding-bottom: 3px;
-            margin-bottom: 8px;
-            display: flex;
-            justify-content: space-between;
-            page-break-inside: avoid;
-            break-inside: avoid;
-          }
-          /* TWO COLUMN LAYOUT WITH CENTER DIVIDER LINE */
-          .columns-wrapper {
-            column-count: 2;
-            column-gap: 22px;
-            column-rule: 1px solid #222;
-            text-align: left;
-            width: 100%;
-          }
-          .question-item {
-            break-inside: avoid !important;
-            page-break-inside: avoid !important;
-            -webkit-column-break-inside: avoid !important;
-            margin-bottom: 8px;
-            padding-bottom: 5px;
-            border-bottom: 0.5px dotted #bbb;
-          }
-          .q-text {
-            font-weight: 700;
-            font-size: 12px;
-            color: #000;
-            margin-bottom: 3px;
-            line-height: 1.35;
-            word-break: break-word;
-          }
-          .options-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 2px 6px;
-            font-size: 11px;
-            padding-left: 2px;
-          }
-          .opt-cell {
-            line-height: 1.28;
-            word-break: break-word;
-          }
-          .opt-label {
-            font-weight: 700;
-            margin-right: 3px;
-          }
-          .footer-bar {
-            margin-top: 10px;
-            text-align: center;
-            font-size: 9px;
-            color: #555;
-            border-top: 1px solid #aaa;
-            padding-top: 3px;
-            page-break-inside: avoid;
-            break-inside: avoid;
-          }
-          /* Toolbar for quick adjustments */
-          .no-print {
-            position: fixed;
-            top: 10px;
-            right: 10px;
-            z-index: 10000;
-            background: #1e1e1e;
-            color: #fff;
-            padding: 8px 14px;
-            border-radius: 8px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.4);
-            display: flex;
-            gap: 8px;
-            align-items: center;
-            font-size: 12px;
-            border: 1px solid #444;
-          }
-          .no-print button {
-            cursor: pointer;
-            padding: 6px 12px;
-            border-radius: 5px;
-            border: none;
-            font-weight: bold;
-            font-size: 12px;
-          }
-          @media print {
-            .no-print { display: none !important; }
-            body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-          }
-        </style>
-      </head>
-      <body>
-        <div class="no-print">
-          <span>📄 A4 Exam Paper</span>
-          <button onclick="setDensity('compact')" style="background: #333; color: #fff; border: 1px solid #555;">Compact (Fit)</button>
-          <button onclick="setDensity('normal')" style="background: #333; color: #fff; border: 1px solid #555;">Normal</button>
-          <button onclick="window.print()" style="background: #4caf50; color: white;">🖨️ Print / Save as PDF</button>
-          <button onclick="window.close()" style="background: #e53935; color: white;">✕ Close</button>
-        </div>
+    const paperData = {
+      coaching,
+      subHeader,
+      title,
+      batchName,
+      duration,
+      marks,
+      dateStr,
+      questions: parsed
+    };
 
-        <div class="paper-container" id="paperContainer">
-          <div class="header-box">
-            <div class="coaching-title">${coaching}</div>
-            <div class="coaching-sub">${subHeader}</div>
-            <div class="test-title-badge">${title}</div>
-            <table class="meta-table">
-              <tr>
-                <td style="text-align: left;"><b>Batch:</b> ${batchName}</td>
-                <td style="text-align: center;"><b>Time:</b> ${duration}</td>
-                <td style="text-align: right;"><b>Max Marks:</b> ${marks}</td>
-              </tr>
-              <tr>
-                <td style="text-align: left;"><b>Date:</b> ${dateStr}</td>
-                <td style="text-align: center;"><b>Total Qs:</b> ${parsed.length}</td>
-                <td style="text-align: right;"><b>Roll No:</b> ____________</td>
-              </tr>
-            </table>
-          </div>
-
-          <div class="instructions-bar">
-            <span><b>निर्देश:</b> सभी प्रश्न अनिवार्य हैं। सही विकल्प का चयन करें।</span>
-            <span><b>Negative Marking:</b> No</span>
-          </div>
-
-          <div class="columns-wrapper" id="columnsWrapper">
-            ${parsed.map((q, idx) => `
-              <div class="question-item">
-                <div class="q-text">Q${idx + 1}. ${q.question_text}</div>
-                <div class="options-grid">
-                  <div class="opt-cell"><span class="opt-label">(A)</span> ${q.option_a || '-'}</div>
-                  <div class="opt-cell"><span class="opt-label">(B)</span> ${q.option_b || '-'}</div>
-                  <div class="opt-cell"><span class="opt-label">(C)</span> ${q.option_c || '-'}</div>
-                  <div class="opt-cell"><span class="opt-label">(D)</span> ${q.option_d || '-'}</div>
-                </div>
-              </div>
-            `).join('')}
-          </div>
-
-          <div class="footer-bar">
-            *** Best of Luck • ${coaching} ***
-          </div>
-        </div>
-
-        <script>
-          function setDensity(type) {
-            const body = document.body;
-            if (type === 'compact') {
-              body.style.fontSize = '10.5px';
-              document.querySelectorAll('.q-text').forEach(el => el.style.fontSize = '10.5px');
-              document.querySelectorAll('.options-grid').forEach(el => el.style.fontSize = '9.8px');
-              document.querySelectorAll('.question-item').forEach(el => { el.style.marginBottom = '5px'; el.style.paddingBottom = '3px'; });
-            } else {
-              body.style.fontSize = '12px';
-              document.querySelectorAll('.q-text').forEach(el => el.style.fontSize = '12px');
-              document.querySelectorAll('.options-grid').forEach(el => el.style.fontSize = '11px');
-              document.querySelectorAll('.question-item').forEach(el => { el.style.marginBottom = '8px'; el.style.paddingBottom = '5px'; });
-            }
-          }
-
-          window.onload = function() {
-            setTimeout(() => {
-              window.print();
-            }, 400);
-          };
-        </script>
-      </body>
-      </html>
-    `;
-
-    const printWin = window.open('', '_blank');
-    if (!printWin) {
-      alert("Popup blocker active hai. Please allow popups to download/print the Question Paper PDF.");
-      return;
+    try {
+      localStorage.setItem('print_paper_data', JSON.stringify(paperData));
+    } catch (e) {
+      console.error(e);
     }
-    printWin.document.open();
-    printWin.document.write(printHtml);
-    printWin.document.close();
+
+    window.location.href = '/print-paper';
+  };
+
+  // --- Download Standalone Offline HTML Question Paper ---
+  const handleDownloadStandaloneHtml = () => {
+    if (!pasteText.trim()) { alert("Pehle MCQ text paste karein!"); return; }
+    const parsed = parseTextMCQ(pasteText);
+    if (parsed.length === 0) { alert("Koi question parse nahi ho saka."); return; }
+
+    const coaching = pasteCoachingName.trim() || "RK EDUCATION";
+    const subHeader = pasteCoachingSub.trim() || "Competitive Exam & Coaching Center";
+    const title = pasteTestTitle.trim() || "MODEL QUESTION PAPER";
+    const duration = pasteDuration ? `${pasteDuration} Mins` : "45 Mins";
+    const marks = pasteMaxMarks.trim() || `${parsed.length} Marks`;
+    const batchName = pasteBatch ? (batches.find(b => b.id === pasteBatch)?.title || pasteBatch) : 'All Batches';
+    const dateStr = new Date().toLocaleDateString('hi-IN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+
+    const cleanFileName = (title + '_' + coaching).replace(/[^a-zA-Z0-9_\u0900-\u097F]/g, '_').substring(0, 30) + '_ExamPaper.html';
+
+    const fullHtml = `<!DOCTYPE html>
+<html lang="hi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${title} - ${coaching}</title>
+  <style>
+    @page { size: A4 portrait; margin: 8mm 10mm 8mm 10mm; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Nirmala UI', 'Mangal', 'Segoe UI', Arial, sans-serif; color: #000; background: #fff; line-height: 1.35; font-size: 12px; }
+    .paper-container { width: 100%; max-width: 800px; margin: 0 auto; padding: 12px; }
+    .header-box { text-align: center; border-bottom: 2px solid #000; padding-bottom: 5px; margin-bottom: 8px; }
+    .coaching-title { font-size: 22px; font-weight: 900; letter-spacing: 0.5px; text-transform: uppercase; margin-bottom: 1px; }
+    .coaching-sub { font-size: 11px; font-weight: 600; color: #333; margin-bottom: 4px; }
+    .test-title-badge { font-size: 13.5px; font-weight: 700; background: #f0f0f0; display: inline-block; padding: 2px 14px; border-radius: 4px; border: 1px solid #aaa; margin-bottom: 5px; }
+    .meta-table { width: 100%; border-collapse: collapse; font-size: 11px; font-weight: 600; margin-top: 2px; }
+    .meta-table td { padding: 1px 4px; }
+    .instructions-bar { font-size: 10.5px; font-style: italic; border-bottom: 1px dashed #555; padding-bottom: 3px; margin-bottom: 8px; display: flex; justify-content: space-between; }
+    .columns-wrapper { column-count: 2; column-gap: 22px; column-rule: 1px solid #222; text-align: left; }
+    .question-item { break-inside: avoid !important; page-break-inside: avoid !important; margin-bottom: 8px; padding-bottom: 5px; border-bottom: 0.5px dotted #bbb; }
+    .q-text { font-weight: 700; font-size: 12px; margin-bottom: 3px; }
+    .options-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 6px; font-size: 11px; }
+    .opt-label { font-weight: 700; margin-right: 3px; }
+    .footer-bar { margin-top: 10px; text-align: center; font-size: 9px; color: #555; border-top: 1px solid #aaa; padding-top: 3px; }
+    .no-print { position: sticky; top: 0; background: #1e1e1e; color: #fff; padding: 10px; display: flex; justify-content: center; gap: 10px; z-index: 1000; margin-bottom: 15px; border-radius: 8px; }
+    .no-print button { background: #4caf50; color: #fff; border: none; padding: 8px 16px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 13px; }
+    @media print { .no-print { display: none !important; } }
+  </style>
+</head>
+<body>
+  <div class="no-print">
+    <button onclick="window.print()">🖨️ Save as PDF / Print</button>
+  </div>
+  <div class="paper-container">
+    <div class="header-box">
+      <div class="coaching-title">${coaching}</div>
+      <div class="coaching-sub">${subHeader}</div>
+      <div class="test-title-badge">${title}</div>
+      <table class="meta-table">
+        <tr>
+          <td style="text-align: left;"><b>Batch:</b> ${batchName}</td>
+          <td style="text-align: center;"><b>Time:</b> ${duration}</td>
+          <td style="text-align: right;"><b>Max Marks:</b> ${marks}</td>
+        </tr>
+        <tr>
+          <td style="text-align: left;"><b>Date:</b> ${dateStr}</td>
+          <td style="text-align: center;"><b>Total Qs:</b> ${parsed.length}</td>
+          <td style="text-align: right;"><b>Roll No:</b> ____________</td>
+        </tr>
+      </table>
+    </div>
+    <div class="instructions-bar">
+      <span><b>निर्देश:</b> सभी प्रश्न अनिवार्य हैं। सही विकल्प का चयन करें।</span>
+      <span><b>Negative Marking:</b> No</span>
+    </div>
+    <div class="columns-wrapper">
+      ${parsed.map((q, idx) => `
+        <div class="question-item">
+          <div class="q-text">Q${idx + 1}. ${q.question_text}</div>
+          <div class="options-grid">
+            <div><span class="opt-label">(A)</span> ${q.option_a || '-'}</div>
+            <div><span class="opt-label">(B)</span> ${q.option_b || '-'}</div>
+            <div><span class="opt-label">(C)</span> ${q.option_c || '-'}</div>
+            <div><span class="opt-label">(D)</span> ${q.option_d || '-'}</div>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+    <div class="footer-bar">*** Best of Luck • ${coaching} ***</div>
+  </div>
+</body>
+</html>`;
+
+    const blob = new Blob([fullHtml], { type: 'text/html;charset=utf-8' });
+    const blobUrl = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = blobUrl;
+    a.download = cleanFileName;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => {
+      document.body.removeChild(a);
+      URL.revokeObjectURL(blobUrl);
+    }, 1000);
   };
 
   const handleGenerateTgQuiz = async () => {
@@ -2522,21 +2248,15 @@ export default function AdminDashboard() {
                 </div>
               </div>
               <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginTop: '0.5rem' }}>
-                <button type="button" onClick={handleDirectDownloadPDF} disabled={isDownloadingPdf} className="btn-primary" 
+                <button type="button" onClick={handleOpenPrintPaper} className="btn-primary" 
                   style={{ flex: 2, minWidth: '220px', background: '#ff9800', fontSize: '1.05rem', padding: '1rem', color: '#111', fontWeight: 'bold' }}>
-                  {isDownloadingPdf ? '⏳ PDF Generating...' : '⬇️ 📱 Phone me Direct PDF Save / Download karo'}
+                  📄 🖨️ Open & Print / Save PDF Paper (A4 2-Column)
                 </button>
-                <button type="button" onClick={handleDownloadPaperPDF} disabled={isDownloadingPdf} className="btn-outline" 
+                <button type="button" onClick={handleDownloadStandaloneHtml} className="btn-outline" 
                   style={{ flex: 1, minWidth: '160px', border: '1px solid #ff9800', color: '#ff9800', fontSize: '0.95rem', padding: '1rem' }}>
-                  🖨️ 💻 PC Print Window
+                  ⬇️ 📱 Download Offline Paper
                 </button>
               </div>
-
-              {pdfDownloadProgress && (
-                <div style={{ marginTop: '0.5rem', padding: '0.75rem', background: 'rgba(255, 152, 0, 0.2)', borderRadius: '6px', textAlign: 'center' }}>
-                  <p style={{ margin: 0, color: '#ffb74d', fontSize: '0.9rem', fontWeight: 'bold' }}>{pdfDownloadProgress}</p>
-                </div>
-              )}
             </div>
 
             {pasteProgress && (
