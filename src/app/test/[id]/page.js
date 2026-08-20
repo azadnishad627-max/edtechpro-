@@ -49,7 +49,8 @@ export default function TakeTest() {
       }
 
       // Only select fields needed for taking the test, DO NOT send correct_answer or explanation to client!
-      const { data: qData } = await supabase.from('questions').select('id, test_id, question_text, option_a, option_b, option_c, option_d, image_url').eq('test_id', id);
+      // IMPORTANT: .order('id') ensures questions display in the EXACT serial order they were pasted/inserted
+      const { data: qData } = await supabase.from('questions').select('id, test_id, question_text, option_a, option_b, option_c, option_d, image_url').eq('test_id', id).order('id', { ascending: true });
       if (qData) setQuestions(qData);
 
       const sData = localStorage.getItem('studentInfo');
