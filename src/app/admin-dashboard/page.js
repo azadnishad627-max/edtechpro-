@@ -1025,27 +1025,17 @@ export default function AdminDashboard() {
                else { correctIndex = 0; correctLetter = 'A'; }
              }
              
-             const finalOptA = optA ? `A) ${optA}` : 'A) Option A';
-             const finalOptB = optB ? `B) ${optB}` : 'B) Option B';
-             const finalOptC = optC ? `C) ${optC}` : 'C) Option C';
-             const finalOptD = optD ? `D) ${optD}` : 'D) Option D';
+             setTgGenerateProgress(`Posting CSV Q${i + 1} of ${rows.length} (Verified Answer: ${correctLetter})...`);
              
-             let finalCorrect = finalOptA;
-             if (correctIndex === 1) finalCorrect = finalOptB;
-             else if (correctIndex === 2) finalCorrect = finalOptC;
-             else if (correctIndex === 3) finalCorrect = finalOptD;
-             
-             setTgGenerateProgress(`Posting CSV Q${i + 1} of ${rows.length} (Answer: Option ${correctLetter})...`);
-             
+             // Send CLEAN options WITHOUT letter prefixes
              const q = {
                question_text: `Q${i + 1}. ${r.question_text || r.Question || r.Q || r.question || ''}`,
-               option_a: finalOptA,
-               option_b: finalOptB,
-               option_c: finalOptC,
-               option_d: finalOptD,
-               correct_option_id: correctIndex,
+               option_a: optA || 'Option A',
+               option_b: optB || 'Option B',
+               option_c: optC || 'Option C',
+               option_d: optD || 'Option D',
+               correct_option_id: correctIndex, // 0-3 ONLY SOURCE OF TRUTH
                correct_letter: correctLetter,
-               correct_answer: finalCorrect,
                explanation: r.explanation || r.Explanation || ''
              };
              
@@ -1361,28 +1351,17 @@ export default function AdminDashboard() {
       
       for (let i = 0; i < parsed.length; i++) {
         const pq = parsed[i];
-        setPasteProgress(`Posting Q${i + 1} of ${parsed.length} to Telegram (Answer: Option ${pq.correct_letter})...`);
+        setPasteProgress(`Posting Q${i + 1} of ${parsed.length} to Telegram (Verified Answer: ${pq.correct_letter})...`);
         
-        const finalOptA = pq.option_a ? `A) ${pq.option_a}` : 'A) Option A';
-        const finalOptB = pq.option_b ? `B) ${pq.option_b}` : 'B) Option B';
-        const finalOptC = pq.option_c ? `C) ${pq.option_c}` : 'C) Option C';
-        const finalOptD = pq.option_d ? `D) ${pq.option_d}` : 'D) Option D';
-        
-        let finalCorrect = finalOptA;
-        if (pq.correct_option_index === 1 || pq.correct_letter === 'B') finalCorrect = finalOptB;
-        else if (pq.correct_option_index === 2 || pq.correct_letter === 'C') finalCorrect = finalOptC;
-        else if (pq.correct_option_index === 3 || pq.correct_letter === 'D') finalCorrect = finalOptD;
-        else finalCorrect = finalOptA;
-        
+        // Send CLEAN options WITHOUT letter prefixes — the API uses correct_option_id (0-3) directly
         const q = {
           question_text: `Q${i + 1}. ${pq.question_text}`,
-          option_a: finalOptA,
-          option_b: finalOptB,
-          option_c: finalOptC,
-          option_d: finalOptD,
-          correct_option_id: pq.correct_option_index, // 0, 1, 2, 3
+          option_a: pq.option_a || 'Option A',
+          option_b: pq.option_b || 'Option B',
+          option_c: pq.option_c || 'Option C',
+          option_d: pq.option_d || 'Option D',
+          correct_option_id: pq.correct_option_index, // 0, 1, 2, 3 — THIS IS THE ONLY SOURCE OF TRUTH
           correct_letter: pq.correct_letter, // 'A', 'B', 'C', 'D'
-          correct_answer: finalCorrect,
           explanation: pq.explanation || ''
         };
         
@@ -1632,28 +1611,17 @@ export default function AdminDashboard() {
       
       for (let i = 0; i < questionsToPost.length; i++) {
         const pq = questionsToPost[i];
-        setTgGenerateProgress(`Step 2/2: Posting Question ${i + 1} of ${questionsToPost.length} to Telegram (Answer: Option ${pq.correct_letter})...`);
+        setTgGenerateProgress(`Step 2/2: Posting Question ${i + 1} of ${questionsToPost.length} to Telegram (Verified Answer: ${pq.correct_letter})...`);
         
-        const finalOptA = pq.option_a ? `A) ${pq.option_a}` : 'A) Option A';
-        const finalOptB = pq.option_b ? `B) ${pq.option_b}` : 'B) Option B';
-        const finalOptC = pq.option_c ? `C) ${pq.option_c}` : 'C) Option C';
-        const finalOptD = pq.option_d ? `D) ${pq.option_d}` : 'D) Option D';
-        
-        let finalCorrect = finalOptA;
-        if (pq.correct_option_index === 1 || pq.correct_letter === 'B') finalCorrect = finalOptB;
-        else if (pq.correct_option_index === 2 || pq.correct_letter === 'C') finalCorrect = finalOptC;
-        else if (pq.correct_option_index === 3 || pq.correct_letter === 'D') finalCorrect = finalOptD;
-        else finalCorrect = finalOptA;
-        
+        // Send CLEAN options WITHOUT letter prefixes — the API uses correct_option_id (0-3) directly
         const q = {
           question_text: `Q${i + 1}. ${pq.question_text}`,
-          option_a: finalOptA,
-          option_b: finalOptB,
-          option_c: finalOptC,
-          option_d: finalOptD,
-          correct_option_id: pq.correct_option_index, // 0, 1, 2, 3
+          option_a: pq.option_a || 'Option A',
+          option_b: pq.option_b || 'Option B',
+          option_c: pq.option_c || 'Option C',
+          option_d: pq.option_d || 'Option D',
+          correct_option_id: pq.correct_option_index, // 0, 1, 2, 3 — ONLY SOURCE OF TRUTH
           correct_letter: pq.correct_letter, // 'A', 'B', 'C', 'D'
-          correct_answer: finalCorrect,
           explanation: pq.explanation || ''
         };
         
