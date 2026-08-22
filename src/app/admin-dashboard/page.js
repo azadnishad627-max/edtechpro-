@@ -2293,12 +2293,23 @@ export default function AdminDashboard() {
                   <input type="text" placeholder="e.g. Class 8 Science Chapter 1" value={pasteTestTitle} onChange={(e) => setPasteTestTitle(e.target.value)} 
                     style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'rgba(0,0,0,0.2)', color: 'white', marginTop: '0.25rem' }} />
                 </div>
-                <div style={{ flex: 1, minWidth: '120px' }}>
-                  <label style={{ fontSize: '0.85rem', color: 'var(--text-light)' }}>Batch</label>
-                  <select value={pasteBatch} onChange={(e) => setPasteBatch(e.target.value)} 
+                <div style={{ flex: 1, minWidth: '180px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <label style={{ fontSize: '0.85rem', color: 'var(--text-light)', fontWeight: 'bold' }}>Batch</label>
+                    {pasteBatch && (
+                      <span style={{ fontSize: '0.75rem', color: '#64b5f6' }}>
+                        📲 {batchTelegramMap[pasteBatch]?.channelId || tgChatId}
+                      </span>
+                    )}
+                  </div>
+                  <select value={pasteBatch} onChange={(e) => handleSelectBatchGlobally(e.target.value)} 
                     style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'rgba(0,0,0,0.2)', color: 'white', marginTop: '0.25rem' }}>
                     <option value="">Select Batch</option>
-                    {batches.map((b) => <option key={b.id} value={b.id}>{b.title}</option>)}
+                    {batches.map((b) => (
+                      <option key={b.id} value={b.id}>
+                        {b.title} {batchTelegramMap[b.id]?.channelId ? `(TG: ${batchTelegramMap[b.id].channelId})` : ''}
+                      </option>
+                    ))}
                   </select>
                 </div>
                 <div style={{ flex: 1, minWidth: '100px' }}>
