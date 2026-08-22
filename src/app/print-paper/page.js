@@ -251,7 +251,7 @@ export default function PrintPaperPage() {
         </div>
       </div>
 
-      <style jsx global>{\`
+      <style>{`
         @media print {
           .no-print {
             display: none !important;
@@ -275,7 +275,7 @@ export default function PrintPaperPage() {
             margin: 8mm 8mm 8mm 8mm;
           }
         }
-      \`}</style>
+      `}</style>
     </div>
   );
 }
