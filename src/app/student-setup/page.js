@@ -244,6 +244,9 @@ export default function StudentSetup() {
           <button type="submit" disabled={isSubmitting} className="btn-primary mt-4" style={{ width: '100%' }}>
             {isSubmitting ? 'Creating Account...' : 'Create Account & Dashboard'}
           </button>
+          <p style={{ textAlign: 'center', fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>
+            By registering, you agree to our <a href="/terms" target="_blank" style={{ color: '#38bdf8' }}>Terms</a> & <a href="/privacy-policy" target="_blank" style={{ color: '#38bdf8' }}>Privacy Policy</a>.
+          </p>
         </form>
         <div className="text-center mt-4">
           <p className="text-muted">Already have an account? <a href="/student-login" className="text-accent" style={{ textDecoration: 'none' }}>Log In</a></p>

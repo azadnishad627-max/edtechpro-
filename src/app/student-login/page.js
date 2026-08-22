@@ -114,6 +114,10 @@ export default function StudentLogin() {
           <p className="text-muted" style={{ marginTop: '1rem' }}>
             Don't have an account? <Link href="/student-setup" className="text-accent" style={{ textDecoration: 'none' }}>Register Here</Link>
           </p>
+          <div style={{ marginTop: '0.5rem', fontSize: '0.8rem', color: 'var(--text-secondary-dark)' }}>
+            <Link href="/privacy-policy" style={{ color: 'var(--text-secondary-dark)', textDecoration: 'underline', marginRight: '0.8rem' }}>Privacy Policy</Link>
+            <Link href="/terms" style={{ color: 'var(--text-secondary-dark)', textDecoration: 'underline' }}>Terms</Link>
+          </div>
           <div style={{ marginTop: '2rem' }}>
             <Link href="/admin-login" style={{ color: 'var(--bg-card-dark)', fontSize: '0.8rem', textDecoration: 'none' }}>Admin</Link>
           </div>

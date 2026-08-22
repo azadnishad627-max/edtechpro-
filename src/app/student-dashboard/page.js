@@ -1445,6 +1445,34 @@ export default function StudentDashboard() {
             </div>
 
             <div className="glass-card">
+              <h2 className="mb-4 text-primary">App Info & Legal</h2>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                <a 
+                  href="/privacy-policy" 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.85rem 1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', border: '1px solid var(--glass-border)', color: 'white', textDecoration: 'none' }}
+                >
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                    📄 <span>Privacy Policy</span>
+                  </span>
+                  <span style={{ color: 'var(--text-muted)' }}>➔</span>
+                </a>
+                <a 
+                  href="/terms" 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.85rem 1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', border: '1px solid var(--glass-border)', color: 'white', textDecoration: 'none' }}
+                >
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                    📜 <span>Terms of Service</span>
+                  </span>
+                  <span style={{ color: 'var(--text-muted)' }}>➔</span>
+                </a>
+              </div>
+            </div>
+
+            <div className="glass-card">
               <h2 className="mb-4 text-accent">3D Anatomy Lab 🫀</h2>
               <div 
                 onClick={() => router.push('/student-dashboard/anatomy')}

@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.rkeducation.app",
+      "sha256_cert_fingerprints": [
+        "14:6D:E9:7C:F5:5A:AB:7A:B4:4D:43:2F:57:9F:8A:2A:62:3B:56:56:88:8C:7D:64:AC:F0:A2:18:6B:4F:2E:8C"
+      ]
+    }
+  }
+]
