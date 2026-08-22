@@ -56,13 +56,25 @@ export default function StudentLogin() {
       return;
     }
 
-    // Success! Save session locally and redirect
+    // Success! Fetch enrolled batch for student
+    let userBatchId = null;
+    let userBatchTitle = null;
+    try {
+      const { data: enrollData } = await supabase.from('enrollments').select('batch_id, batches(title)').eq('student_id', user.id).maybeSingle();
+      if (enrollData) {
+        userBatchId = enrollData.batch_id;
+        userBatchTitle = enrollData.batches?.title;
+      }
+    } catch (e) {}
+
     localStorage.setItem('studentInfo', JSON.stringify({
       id: user.id,
       name: user.name,
       dob: user.dob,
       className: user.class_name,
-      username: user.username
+      username: user.username,
+      batch_id: userBatchId,
+      batch_title: userBatchTitle
     }));
     
     router.push('/student-dashboard');

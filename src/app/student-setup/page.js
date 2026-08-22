@@ -1,11 +1,31 @@
 "use client";
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../../lib/supabaseClient';
 
 export default function StudentSetup() {
-  const [formData, setFormData] = useState({ name: '', dob: '', className: '', username: '', password: '', whatsapp: '' });
+  const [formData, setFormData] = useState({ name: '', dob: '', className: 'Class 8th', batchId: '', username: '', password: '', whatsapp: '' });
   const [profilePhoto, setProfilePhoto] = useState(null);
+  const [availableBatches, setAvailableBatches] = useState([]);
+
+  // Fetch all active batches for student selection
+  useEffect(() => {
+    async function loadBatches() {
+      const { data } = await supabase.from('batches').select('id, title');
+      if (data && data.length > 0) {
+        setAvailableBatches(data);
+        // Default select first batch or NMMS
+        const defaultB = data.find(b => b.title.toUpperCase().includes('NMMS')) || data[0];
+        setFormData(prev => ({ ...prev, batchId: defaultB.id }));
+      } else {
+        setAvailableBatches([
+          { id: 'nmms_default', title: 'NMMS BATCH' },
+          { id: 'tgt_pgt_default', title: 'TGT&PGT BATCH' }
+        ]);
+      }
+    }
+    loadBatches();
+  }, []);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isVerificationStep, setIsVerificationStep] = useState(false);
   const router = useRouter();
@@ -68,6 +88,17 @@ export default function StudentSetup() {
         whatsapp_number: formData.whatsapp
       }
     ]);
+
+    if (!profileError && formData.batchId && formData.batchId !== 'nmms_default' && formData.batchId !== 'tgt_pgt_default') {
+      try {
+        await supabase.from('enrollments').insert([{
+          student_id: studentId,
+          batch_id: formData.batchId
+        }]);
+      } catch (err) {
+        console.error("Enrollment error:", err);
+      }
+    }
 
     if (profileError) {
       alert("Error: " + profileError.message);
@@ -160,14 +191,47 @@ export default function StudentSetup() {
             required
             title="Please enter a valid 10-digit WhatsApp number"
           />
-          <input 
-            type="text" 
-            placeholder="Class / Standard (e.g., 12th Science)"
-            value={formData.className}
-            onChange={(e) => setFormData({...formData, className: e.target.value})}
-            style={{ padding: '1rem', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'var(--bg-dark)', color: 'white' }}
-            required
-          />
+          {/* Class / Standard Dropdown (Class 8th to 12th) */}
+          <div>
+            <label className="text-light mb-1" style={{ display: 'block', fontSize: '0.85rem', fontWeight: 'bold' }}>
+              Select Class / Standard *
+            </label>
+            <select 
+              value={formData.className}
+              onChange={(e) => setFormData({...formData, className: e.target.value})}
+              style={{ width: '100%', padding: '1rem', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'var(--bg-dark)', color: 'white' }}
+              required
+            >
+              <option value="Class 8th">Class 8th</option>
+              <option value="Class 9th">Class 9th</option>
+              <option value="Class 10th">Class 10th</option>
+              <option value="Class 11th">Class 11th</option>
+              <option value="Class 12th">Class 12th</option>
+              <option value="Other / Competitive">Other / Competitive Exam</option>
+            </select>
+          </div>
+
+          {/* Target Batch Dropdown (NMMS BATCH / TGT PGT BATCH) */}
+          <div>
+            <label className="text-light mb-1" style={{ display: 'block', fontSize: '0.85rem', fontWeight: 'bold' }}>
+              Select Batch / Course *
+            </label>
+            <select 
+              value={formData.batchId}
+              onChange={(e) => setFormData({...formData, batchId: e.target.value})}
+              style={{ width: '100%', padding: '1rem', borderRadius: '8px', border: '1px solid #2196F3', background: 'var(--bg-dark)', color: 'white' }}
+              required
+            >
+              {availableBatches.map(b => (
+                <option key={b.id} value={b.id}>
+                  {b.title}
+                </option>
+              ))}
+            </select>
+            <small style={{ color: '#81c784', marginTop: '0.25rem', display: 'block', fontSize: '0.8rem' }}>
+              ✓ Aapko sirf is batch ke test aur notes dikhenge.
+            </small>
+          </div>
           <div>
             <label className="text-muted mb-2" style={{ display: 'block' }}>Profile Photo (Optional)</label>
             <input 

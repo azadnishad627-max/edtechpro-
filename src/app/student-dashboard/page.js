@@ -159,10 +159,13 @@ export default function StudentDashboard() {
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [myTestAttempts, setMyTestAttempts] = useState([]);
 
-  // Profile Edit State
+  // Profile Edit & Batch State
+  const [studentBatchId, setStudentBatchId] = useState(null);
+  const [studentBatchTitle, setStudentBatchTitle] = useState(null);
   const [editName, setEditName] = useState('');
   const [editDob, setEditDob] = useState('');
-  const [editClass, setEditClass] = useState('');
+  const [editClass, setEditClass] = useState('Class 8th');
+  const [editBatchId, setEditBatchId] = useState('');
   const [newPhotoFile, setNewPhotoFile] = useState(null);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
 
@@ -184,8 +187,13 @@ export default function StudentDashboard() {
       setStudent(parsed);
       setEditName(parsed.name || '');
       setEditDob(parsed.dob || '');
-      setEditClass(parsed.className || parsed.class_name || '');
-      // Fetch latest profile from DB to ensure photo is up to date
+      setEditClass(parsed.className || parsed.class_name || 'Class 8th');
+      if (parsed.batch_id) {
+        setStudentBatchId(parsed.batch_id);
+        setStudentBatchTitle(parsed.batch_title);
+        setEditBatchId(parsed.batch_id);
+      }
+      // Fetch latest profile from DB to ensure photo & enrollment is up to date
       fetchLatestProfile(parsed.id);
     } else {
       router.push('/student-setup');
@@ -488,6 +496,22 @@ export default function StudentDashboard() {
   }, [showAdminChatModal]);
 
   async function fetchLatestProfile(id) {
+    // Fetch enrollment for this student
+    try {
+      const { data: enrollData } = await supabase
+        .from('enrollments')
+        .select('batch_id, batches(title)')
+        .eq('student_id', id)
+        .maybeSingle();
+      if (enrollData) {
+        setStudentBatchId(enrollData.batch_id);
+        setStudentBatchTitle(enrollData.batches?.title || null);
+        setEditBatchId(enrollData.batch_id);
+      }
+    } catch (e) {
+      console.error("Error fetching enrollment:", e);
+    }
+
     const { data } = await supabase.from('profiles').select('*').eq('id', id).single();
     if (data) {
       let updatedPoints = data.points || 0;
@@ -613,11 +637,38 @@ export default function StudentDashboard() {
     if (error) {
       alert("Error saving profile: " + error.message);
     } else {
-      const updated = { ...student, name: editName, dob: editDob, className: editClass, photo_url: finalPhotoUrl };
+      // Save / Update batch enrollment
+      let updatedBatchTitle = studentBatchTitle;
+      if (editBatchId) {
+        try {
+          await supabase.from('enrollments').delete().eq('student_id', student.id);
+          await supabase.from('enrollments').insert([{ student_id: student.id, batch_id: editBatchId }]);
+          const foundBatch = dbBatches.find(b => b.id === editBatchId);
+          if (foundBatch) {
+            updatedBatchTitle = foundBatch.title;
+          }
+          setStudentBatchId(editBatchId);
+          setStudentBatchTitle(updatedBatchTitle);
+        } catch (e) {
+          console.error("Error updating enrollment:", e);
+        }
+      }
+
+      const updated = { 
+        ...student, 
+        name: editName, 
+        dob: editDob, 
+        className: editClass, 
+        class_name: editClass,
+        photo_url: finalPhotoUrl,
+        batch_id: editBatchId || studentBatchId,
+        batch_title: updatedBatchTitle
+      };
       setStudent(updated);
       localStorage.setItem('studentInfo', JSON.stringify(updated));
-      alert("Profile updated successfully!");
+      alert("Profile updated successfully! Content & Tests have been updated for your selected batch.");
       setNewPhotoFile(null);
+      setIsEditingProfile(false);
       if (photoInputRef.current) photoInputRef.current.value = '';
     }
     setIsSavingProfile(false);
@@ -779,9 +830,34 @@ export default function StudentDashboard() {
 
         {activeTab === 'tests' && (
             <div>
-              <h2 className="mb-4 text-muted">Available Tests</h2>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem', marginBottom: '1.5rem' }}>
+                <div>
+                  <h2 style={{ margin: 0 }} className="text-muted">Available Tests</h2>
+                  {studentBatchTitle ? (
+                    <p style={{ margin: '0.25rem 0 0 0', color: '#64b5f6', fontSize: '0.9rem' }}>
+                      📚 Showing Tests for: <b>{studentBatchTitle}</b> ({student.className || student.class_name || 'All Classes'})
+                    </p>
+                  ) : (
+                    <p style={{ margin: '0.25rem 0 0 0', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                      Showing all tests. Profile me jakar apna batch select karein.
+                    </p>
+                  )}
+                </div>
+                <button onClick={() => { switchTab('profile'); setIsEditingProfile(true); }} className="btn-outline" style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem', border: '1px solid #64b5f6', color: '#64b5f6' }}>
+                  ✏️ Change Batch
+                </button>
+              </div>
+
               {(() => {
-                const activeTests = dbTests.filter(t => !t.title.startsWith('[ARCHIVED]'));
+                // Filter tests strictly by student's enrolled batch if enrolled
+                const activeTests = dbTests.filter(t => {
+                  if (t.title.startsWith('[ARCHIVED]')) return false;
+                  if (studentBatchId) {
+                    // If test is tagged with a batch, only show if it matches student's batch
+                    if (t.batch_id && t.batch_id !== studentBatchId) return false;
+                  }
+                  return true;
+                });
                 return activeTests.length === 0 ? <p className="text-muted">No tests available right now.</p> : activeTests.map(test => {
                 const now = new Date();
                 const start = test.start_time ? new Date(test.start_time) : null;
@@ -1012,9 +1088,36 @@ export default function StudentDashboard() {
                       <input type="date" value={editDob} onChange={(e) => setEditDob(e.target.value)} style={{ width: '100%', padding: '1rem', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'var(--bg-dark)', color: 'white' }} required />
                     </div>
                     <div style={{ flex: 1, minWidth: '150px' }}>
-                      <label className="text-muted" style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem' }}>Class / Standard</label>
-                      <input type="text" value={editClass} onChange={(e) => setEditClass(e.target.value)} style={{ width: '100%', padding: '1rem', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'var(--bg-dark)', color: 'white' }} required />
+                      <label className="text-muted" style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', fontWeight: 'bold' }}>Class / Standard</label>
+                      <select value={editClass} onChange={(e) => setEditClass(e.target.value)} style={{ width: '100%', padding: '1rem', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'var(--bg-dark)', color: 'white' }} required>
+                        <option value="Class 8th">Class 8th</option>
+                        <option value="Class 9th">Class 9th</option>
+                        <option value="Class 10th">Class 10th</option>
+                        <option value="Class 11th">Class 11th</option>
+                        <option value="Class 12th">Class 12th</option>
+                        <option value="Other / Competitive">Other / Competitive Exam</option>
+                      </select>
                     </div>
+                  </div>
+
+                  <div>
+                    <label className="text-muted" style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', fontWeight: 'bold' }}>
+                      Enrolled Batch / Course
+                    </label>
+                    <select 
+                      value={editBatchId || ''} 
+                      onChange={(e) => setEditBatchId(e.target.value)} 
+                      style={{ width: '100%', padding: '1rem', borderRadius: '8px', border: '1px solid #2196F3', background: 'var(--bg-dark)', color: 'white' }}
+                      required
+                    >
+                      <option value="">-- Select Your Batch --</option>
+                      {dbBatches.map(b => (
+                        <option key={b.id} value={b.id}>{b.title}</option>
+                      ))}
+                    </select>
+                    <small style={{ color: '#81c784', marginTop: '0.25rem', display: 'block', fontSize: '0.8rem' }}>
+                      ✓ Batch change karne par aapko us batch ke sabhi tests aur study notes milenge.
+                    </small>
                   </div>
 
                   <div>

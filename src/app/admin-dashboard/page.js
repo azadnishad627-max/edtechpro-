@@ -2354,70 +2354,19 @@ export default function AdminDashboard() {
             </div>
 
             {/* --- Option 2: Telegram pe Post --- */}
-            <h4 className="mt-4 text-accent" style={{ color: '#2196F3', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              🔵 Option 2: Telegram Channel pe Post karo
-            </h4>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', background: 'rgba(33, 150, 243, 0.08)', padding: '1.25rem', borderRadius: '12px', border: '1px solid rgba(33, 150, 243, 0.3)' }}>
-              
-              <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
-                <div style={{ flex: 1, minWidth: '220px' }}>
-                  <label style={{ fontSize: '0.85rem', color: '#90caf9', fontWeight: 'bold' }}>Target Batch / Course Select Karein</label>
-                  <select 
-                    value={tgSelectedBatch || pasteBatch} 
-                    onChange={(e) => {
-                      const bId = e.target.value;
-                      handleSelectTgBatch(bId);
-                      if (!pasteBatch) setPasteBatch(bId);
-                    }}
-                    style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #2196f3', background: 'rgba(0,0,0,0.3)', color: 'white', marginTop: '0.25rem' }}
-                  >
-                    <option value="">-- All Batches / Custom Channel --</option>
-                    {batches.map((b) => (
-                      <option key={b.id} value={b.id}>
-                        {b.title} {batchTelegramMap[b.id]?.channelId ? `(${batchTelegramMap[b.id].channelId})` : ''}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div style={{ flex: 1, minWidth: '220px' }}>
-                  <label style={{ fontSize: '0.85rem', color: '#90caf9', fontWeight: 'bold' }}>Telegram Channel Username / ID</label>
-                  <input 
-                    type="text" 
-                    placeholder="e.g. @tgt_pgt_batch or @azadkumar3229011" 
-                    value={tgChatId} 
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      setTgChatId(val);
-                      const currentBId = tgSelectedBatch || pasteBatch;
-                      if (currentBId) {
-                        handleUpdateBatchTelegram(currentBId, val);
-                      } else {
-                        try { localStorage.setItem('tg_chat_id', val); } catch(e){}
-                      }
-                    }} 
-                    style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'rgba(0,0,0,0.3)', color: 'white', marginTop: '0.25rem' }} 
-                  />
-                </div>
-              </div>
-
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', background: 'rgba(0,0,0,0.2)', padding: '0.75rem 1rem', borderRadius: '8px' }}>
-                <div style={{ fontSize: '0.85rem', color: 'var(--text-light)' }}>
-                  📡 <b>Posting to Channel:</b> <span style={{ color: '#4caf50', fontWeight: 'bold' }}>{tgChatId || 'Not Set (Enter Channel above)'}</span>
-                  {(tgSelectedBatch || pasteBatch) && batches.find(b => b.id === (tgSelectedBatch || pasteBatch)) && (
-                    <span style={{ marginLeft: '0.5rem', color: '#64b5f6' }}>
-                      • Batch: <b>{batches.find(b => b.id === (tgSelectedBatch || pasteBatch))?.title}</b>
-                    </span>
-                  )}
-                </div>
-                <span style={{ fontSize: '0.75rem', color: '#81c784' }}>
-                  💾 Channel ID is saved automatically
-                </span>
-              </div>
-
+            <h4 className="mt-4 text-accent" style={{ color: '#2196F3' }}>🔵 Option 2: Telegram Channel pe Post karo</h4>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', background: 'rgba(33, 150, 243, 0.1)', padding: '1rem', borderRadius: '8px', border: '1px solid rgba(33, 150, 243, 0.3)' }}>
+              <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-light)' }}>
+                Target Channel: <b style={{ color: '#4caf50' }}>{tgChatId || '@rkedu3229011'}</b>
+                {pasteBatch && batches.find(b => b.id === pasteBatch) && (
+                  <span style={{ marginLeft: '0.5rem', color: '#64b5f6' }}>
+                    (Batch: <b>{batches.find(b => b.id === pasteBatch)?.title}</b>)
+                  </span>
+                )}
+              </p>
               <button type="button" onClick={handlePasteToTelegram} disabled={isPasteProcessing} className="btn-primary" 
-                style={{ background: '#2196F3', width: '100%', fontSize: '1.1rem', padding: '1rem', fontWeight: 'bold' }}>
-                {isPasteProcessing ? '⏳ Posting to Telegram...' : `🔵 ${((tgSelectedBatch || pasteBatch) && batches.find(b => b.id === (tgSelectedBatch || pasteBatch))?.title) || 'Selected'} Telegram Channel pe Post karo`}
+                style={{ background: '#2196F3', width: '100%', fontSize: '1.1rem', padding: '1rem' }}>
+                {isPasteProcessing ? '⏳ Posting to Telegram...' : '🔵 Telegram pe Post karo'}
               </button>
             </div>
 
