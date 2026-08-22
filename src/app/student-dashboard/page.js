@@ -245,56 +245,84 @@ export default function StudentDashboard() {
   };
 
   const fetchLeaderboard = async () => {
-    const { data: profiles } = await supabase.from('profiles').select('*').eq('role', 'student');
-    const { data: attempts } = await supabase.from('test_attempts').select('student_id, test_id, score, created_at').order('created_at', { ascending: true });
-    const { data: activeTests } = await supabase.from('tests').select('id, title');
-    
-      if (profiles && attempts && activeTests) {
-        // Filter out archived tests from the leaderboard calculation
-        const validTestIds = new Set(activeTests.filter(t => !t.title.startsWith('[ARCHIVED]')).map(t => t.id));
-        const firstAttempts = {};
-        
-        attempts.forEach(a => {
-           // Only count attempts for tests that still exist in the database!
-           if (validTestIds.has(a.test_id)) {
-             const key = `${a.student_id}_${a.test_id}`;
-             if (!firstAttempts[key]) firstAttempts[key] = a; // Store the full attempt object to track time
-           }
-        });
-  
-        const studentScores = {};
-        const studentLatestSubmit = {};
-        
-        Object.values(firstAttempts).forEach(a => {
-           const student_id = a.student_id;
-           studentScores[student_id] = (studentScores[student_id] || 0) + a.score;
-           
-           // Track the timestamp of their most recent test submission that contributes to their score
-           const attemptTime = new Date(a.created_at).getTime();
-           if (!studentLatestSubmit[student_id] || attemptTime > studentLatestSubmit[student_id]) {
-               studentLatestSubmit[student_id] = attemptTime;
-           }
-        });
-  
-        // Only include students who have actually taken at least one valid test (score might be 0, but they must be in studentScores)
-        const updatedProfiles = profiles
-          .filter(p => studentScores[p.id] !== undefined)
-          .map(p => ({
-            ...p,
-            total_test_score: studentScores[p.id] || 0,
-            latest_submit_time: studentLatestSubmit[p.id] || 0
-          }));
-  
-        updatedProfiles.sort((a, b) => {
-          if (b.total_test_score !== a.total_test_score) {
-            return b.total_test_score - a.total_test_score; // Highest score first
-          }
-          // Tie-breaker: If scores are equal, the student who submitted EARLIER comes first (smaller timestamp)
-          return a.latest_submit_time - b.latest_submit_time; 
-        });
-        
-        setLeaderboard(updatedProfiles.slice(0, 10));
-      } else {
+    try {
+      const { data: profiles } = await supabase.from('profiles').select('*').eq('role', 'student');
+      const { data: attempts } = await supabase.from('test_attempts').select('student_id, test_id, score, created_at').order('created_at', { ascending: true });
+      const { data: activeTests } = await supabase.from('tests').select('id, title, batch_id, batches(title)');
+      const { data: enrollmentsData } = await supabase.from('enrollments').select('student_id, batch_id, batches(title)');
+      
+      if (!profiles || !attempts || !activeTests) {
+        setLeaderboard([]);
+        return;
+      }
+
+      // Map each student to their enrolled batch
+      const studentBatchMap = {};
+      (enrollmentsData || []).forEach(e => {
+        studentBatchMap[e.student_id] = {
+          batch_id: e.batch_id,
+          batch_title: e.batches?.title
+        };
+      });
+
+      // Filter students that belong to the current student's batch
+      const batchStudentIds = new Set();
+      profiles.forEach(p => {
+        const pEnroll = studentBatchMap[p.id];
+        const pBatchId = pEnroll?.batch_id;
+        const pBatchTitle = pEnroll?.batch_title;
+        if (isItemForStudentBatch(pBatchId, pBatchTitle, p.class_name)) {
+          batchStudentIds.add(p.id);
+        }
+      });
+
+      // Filter tests that belong to the current student's batch
+      const validBatchTestIds = new Set(
+        activeTests
+          .filter(t => !t.title.startsWith('[ARCHIVED]') && isItemForStudentBatch(t.batch_id, t.batches?.title, t.title))
+          .map(t => t.id)
+      );
+
+      const firstAttempts = {};
+      attempts.forEach(a => {
+        // Count ONLY attempts by batch students on batch tests
+        if (validBatchTestIds.has(a.test_id) && batchStudentIds.has(a.student_id)) {
+          const key = `${a.student_id}_${a.test_id}`;
+          if (!firstAttempts[key]) firstAttempts[key] = a;
+        }
+      });
+
+      const studentScores = {};
+      const studentLatestSubmit = {};
+      
+      Object.values(firstAttempts).forEach(a => {
+        const sid = a.student_id;
+        studentScores[sid] = (studentScores[sid] || 0) + a.score;
+        const attemptTime = new Date(a.created_at).getTime();
+        if (!studentLatestSubmit[sid] || attemptTime > studentLatestSubmit[sid]) {
+          studentLatestSubmit[sid] = attemptTime;
+        }
+      });
+
+      // Filter profiles for this batch's leaderboard
+      const updatedProfiles = profiles
+        .filter(p => batchStudentIds.has(p.id) && studentScores[p.id] !== undefined)
+        .map(p => ({
+          ...p,
+          total_test_score: studentScores[p.id] || 0,
+          latest_submit_time: studentLatestSubmit[p.id] || 0
+        }));
+
+      updatedProfiles.sort((a, b) => {
+        if (b.total_test_score !== a.total_test_score) {
+          return b.total_test_score - a.total_test_score;
+        }
+        return a.latest_submit_time - b.latest_submit_time; 
+      });
+      
+      setLeaderboard(updatedProfiles.slice(0, 10));
+    } catch (err) {
+      console.error("Leaderboard error:", err);
       setLeaderboard([]);
     }
   };
@@ -440,6 +468,12 @@ export default function StudentDashboard() {
   };
 
   
+  useEffect(() => {
+    if (studentBatchId) {
+      fetchLeaderboard();
+    }
+  }, [studentBatchId, studentBatchTitle]);
+
   useEffect(() => {
     if (!student) return;
     const updateOnlineStatus = async () => {
@@ -1004,14 +1038,29 @@ export default function StudentDashboard() {
 
         {activeTab === 'leaderboard' && (
           <div className="animate-tab-enter">
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1.5rem', marginTop: '0.5rem' }}>
-              <h2 className="text-accent" style={{ fontSize: '1.8rem', margin: 0, display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                <span style={{ fontSize: '2.2rem' }}>🏆</span> Global Leaderboard
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', marginBottom: '1.5rem', marginTop: '0.5rem', textAlign: 'center' }}>
+              <h2 className="text-accent" style={{ fontSize: '1.8rem', margin: '0 0 0.3rem 0', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                <span style={{ fontSize: '2.2rem' }}>🏆</span> {studentBatchTitle || 'Batch'} Leaderboard
               </h2>
+              <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+                Showing Top Rankers in <b>{studentBatchTitle || 'your batch'}</b> ({student.className || student.class_name || 'Class 8th'})
+              </p>
             </div>
 
             <div className="glass-card" style={{ padding: '0', overflow: 'hidden', border: '1px solid var(--glass-border)', borderRadius: '16px' }}>
-              {leaderboard.length === 0 ? <p className="text-muted text-center" style={{ padding: '3rem' }}>No data available yet.</p> : leaderboard.map((lbStudent, idx) => {
+              {leaderboard.length === 0 ? (
+                <div style={{ padding: '3rem 1rem', textAlign: 'center' }}>
+                  <p style={{ fontSize: '1.2rem', color: '#ffb74d', margin: '0 0 0.5rem 0' }}>
+                    🏆 Abhi aapke <b>"{studentBatchTitle || 'Selected'}"</b> batch me koi test attempt nahi hua hai.
+                  </p>
+                  <p className="text-muted" style={{ margin: 0, fontSize: '0.9rem' }}>
+                    Pehla test dekar Leaderboard me #1 Rank haasil karein!
+                  </p>
+                  <button onClick={() => switchTab('tests')} className="btn-primary mt-4" style={{ background: '#2196f3' }}>
+                    📝 Start Test Now
+                  </button>
+                </div>
+              ) : leaderboard.map((lbStudent, idx) => {
                 let badgeLabel = null;
                 let badgeIcon = null;
                 let cardStyle = { background: 'transparent', borderLeft: '4px solid transparent' };
