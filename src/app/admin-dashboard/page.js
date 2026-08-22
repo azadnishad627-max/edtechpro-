@@ -252,6 +252,7 @@ export default function AdminDashboard() {
   };
 
   const handleUpdateBatchTelegram = (batchId, channelId, botToken = tgBotToken) => {
+    if (!batchId) return;
     const cleanId = cleanTgChannelInput(channelId);
     const updated = {
       ...batchTelegramMap,
@@ -263,22 +264,45 @@ export default function AdminDashboard() {
     setBatchTelegramMap(updated);
     try {
       localStorage.setItem('batch_telegram_map', JSON.stringify(updated));
-      if (channelId) localStorage.setItem('tg_chat_id', channelId.trim());
+      if (cleanId) localStorage.setItem('tg_chat_id', cleanId);
       if (botToken) localStorage.setItem('tg_bot_token', botToken.trim());
     } catch (e) {}
   };
 
-  const handleSelectTgBatch = (batchId) => {
+  const getTelegramChannelForBatch = (batchId) => {
+    if (!batchId) return '@rkedu3229011';
+    
+    // Find batch object
+    const foundBatch = batches.find(b => b.id === batchId);
+    const titleUpper = (foundBatch?.title || '').toUpperCase();
+    const saved = batchTelegramMap[batchId]?.channelId;
+    
+    // Specifically check for TGT / PGT / TGT&PGT
+    if (titleUpper.includes('TGT') || titleUpper.includes('PGT')) {
+      if (!saved || saved === '@azadkumar3229011') {
+        return '@rkedu3229011';
+      }
+      return saved;
+    } else if (titleUpper.includes('NMMS')) {
+      return saved || '@azadkumar3229011';
+    }
+    
+    return saved || tgChatId || '@rkedu3229011';
+  };
+
+  const handleSelectBatchGlobally = (batchId) => {
+    setTestBatch(batchId);
+    setPasteBatch(batchId);
     setTgSelectedBatch(batchId);
-    if (batchId && batchTelegramMap[batchId]) {
-      if (batchTelegramMap[batchId].channelId) {
-        setTgChatId(batchTelegramMap[batchId].channelId);
-      }
-      if (batchTelegramMap[batchId].botToken) {
-        setTgBotToken(batchTelegramMap[batchId].botToken);
-      }
+    
+    if (batchId) {
+      const channel = getTelegramChannelForBatch(batchId);
+      setTgChatId(channel);
+      handleUpdateBatchTelegram(batchId, channel);
     }
   };
+
+  const handleSelectTgBatch = handleSelectBatchGlobally;
 
   useEffect(() => {
     // Admin Route Protection
@@ -298,12 +322,17 @@ export default function AdminDashboard() {
           let changed = false;
           data.forEach(b => {
             const titleUpper = (b.title || '').toUpperCase();
-            if ((titleUpper.includes('TGT') || titleUpper.includes('PGT')) && !currentMap[b.id]) {
-              currentMap[b.id] = { channelId: '@rkedu3229011', botToken: tgBotToken };
-              changed = true;
-            } else if (titleUpper.includes('NMMS') && !currentMap[b.id]) {
-              currentMap[b.id] = { channelId: '@azadkumar3229011', botToken: tgBotToken };
-              changed = true;
+            if (titleUpper.includes('TGT') || titleUpper.includes('PGT')) {
+              // Override if empty or legacy NMMS default
+              if (!currentMap[b.id] || currentMap[b.id].channelId === '@azadkumar3229011') {
+                currentMap[b.id] = { channelId: '@rkedu3229011', botToken: tgBotToken };
+                changed = true;
+              }
+            } else if (titleUpper.includes('NMMS')) {
+              if (!currentMap[b.id]) {
+                currentMap[b.id] = { channelId: '@azadkumar3229011', botToken: tgBotToken };
+                changed = true;
+              }
             }
           });
           if (changed) {
