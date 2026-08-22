@@ -6,6 +6,14 @@ export async function POST(req) {
   try {
     const { botToken, chatId, question } = await req.json();
     
+    // Clean and sanitize chatId (handles @username, numeric -100..., or https://t.me/username URLs)
+    let cleanChatId = String(chatId || '').trim();
+    cleanChatId = cleanChatId.replace(/[./\s]+$/, ''); // remove trailing dot/slashes/spaces
+    cleanChatId = cleanChatId.replace(/^(?:https?:\/\/)?(?:www\.)?(?:t\.me|telegram\.me)\//i, '@');
+    if (!cleanChatId.startsWith('@') && !cleanChatId.startsWith('-') && isNaN(Number(cleanChatId)) && cleanChatId.length > 0) {
+      cleanChatId = '@' + cleanChatId;
+    }
+
     // Telegram Limits: Question max 300 chars, Options max 100 chars, Explanation max 200 chars.
     let questionText = question.question_text || "Question";
     if (questionText.length > 300) questionText = questionText.substring(0, 297) + "...";
@@ -97,7 +105,7 @@ export async function POST(req) {
       : verifiedExplanation;
     
     const payload = {
-      chat_id: chatId,
+      chat_id: cleanChatId,
       question: questionText,
       options: JSON.stringify(options),
       type: "quiz",

@@ -100,7 +100,7 @@ export default function AdminDashboard() {
 
   // Telegram Quiz State & Batch-wise Mapping
   const [tgBotToken, setTgBotToken] = useState('8054498159:AAHdHB1Z1P479qA5C2C2loMedY7hixGcKJY');
-  const [tgChatId, setTgChatId] = useState('@azadkumar3229011');
+  const [tgChatId, setTgChatId] = useState('@rkedu3229011');
   const [batchTelegramMap, setBatchTelegramMap] = useState({});
   const [tgSelectedBatch, setTgSelectedBatch] = useState('');
   const [tgQuestionCount, setTgQuestionCount] = useState('10');
@@ -240,11 +240,23 @@ export default function AdminDashboard() {
     }
   }, []);
 
+  const cleanTgChannelInput = (val) => {
+    if (!val) return '';
+    let str = val.trim();
+    str = str.replace(/[./\s]+$/, '');
+    str = str.replace(/^(?:https?:\/\/)?(?:www\.)?(?:t\.me|telegram\.me)\//i, '@');
+    if (!str.startsWith('@') && !str.startsWith('-') && isNaN(Number(str)) && str.length > 0) {
+      str = '@' + str;
+    }
+    return str;
+  };
+
   const handleUpdateBatchTelegram = (batchId, channelId, botToken = tgBotToken) => {
+    const cleanId = cleanTgChannelInput(channelId);
     const updated = {
       ...batchTelegramMap,
       [batchId]: {
-        channelId: (channelId || '').trim(),
+        channelId: cleanId,
         botToken: (botToken || tgBotToken).trim()
       }
     };
@@ -277,7 +289,31 @@ export default function AdminDashboard() {
 
     async function fetchBatches() {
       const { data, error } = await supabase.from('batches').select('*');
-      if (data) setBatches(data);
+      if (data) {
+        setBatches(data);
+        
+        // Auto-assign TGT PGT channel @rkedu3229011 and NMMS channel @azadkumar3229011
+        try {
+          const currentMap = JSON.parse(localStorage.getItem('batch_telegram_map') || '{}');
+          let changed = false;
+          data.forEach(b => {
+            const titleUpper = (b.title || '').toUpperCase();
+            if ((titleUpper.includes('TGT') || titleUpper.includes('PGT')) && !currentMap[b.id]) {
+              currentMap[b.id] = { channelId: '@rkedu3229011', botToken: tgBotToken };
+              changed = true;
+            } else if (titleUpper.includes('NMMS') && !currentMap[b.id]) {
+              currentMap[b.id] = { channelId: '@azadkumar3229011', botToken: tgBotToken };
+              changed = true;
+            }
+          });
+          if (changed) {
+            setBatchTelegramMap(currentMap);
+            localStorage.setItem('batch_telegram_map', JSON.stringify(currentMap));
+          }
+        } catch (e) {
+          console.error(e);
+        }
+      }
 
       const { data: mData } = await supabase.from('content_materials').select('*, batches(title)');
       if (mData) setDbMaterials(mData);
