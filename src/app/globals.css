@@ -430,3 +430,49 @@ button {
   color: #fff;
   text-shadow: 0 0 10px rgba(255, 215, 0, 0.8), 0 0 20px rgba(255, 140, 0, 0.6);
 }
+
+/* Shimmering Animated Gradient Text */
+@keyframes shimmerGradient {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.shimmer-title {
+  background: linear-gradient(90deg, #38bdf8, #818cf8, #a855f7, #38bdf8, #22d3ee, #fbbf24, #38bdf8);
+  background-size: 300% 300%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: shimmerGradient 5s ease infinite;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+}
+
+/* Floating Trophy Animation */
+@keyframes floatTrophy {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-6px) rotate(4deg); }
+}
+
+.float-trophy-icon {
+  display: inline-block;
+  animation: floatTrophy 3s ease-in-out infinite;
+  filter: drop-shadow(0 0 12px rgba(255, 215, 0, 0.6));
+}
+
+/* Leaderboard Glass Header Container with Soft Glow */
+@keyframes pulseGlow {
+  0%, 100% { box-shadow: 0 0 15px rgba(14, 165, 233, 0.15), inset 0 0 15px rgba(14, 165, 233, 0.05); }
+  50% { box-shadow: 0 0 25px rgba(14, 165, 233, 0.35), inset 0 0 20px rgba(14, 165, 233, 0.15); }
+}
+
+.leaderboard-header-box {
+  background: linear-gradient(135deg, rgba(14, 165, 233, 0.1) 0%, rgba(99, 102, 241, 0.1) 100%);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  border-radius: 20px;
+  padding: 1.5rem 1rem;
+  text-align: center;
+  margin-bottom: 1.5rem;
+  animation: pulseGlow 4s ease-in-out infinite;
+  backdrop-filter: blur(10px);
+}

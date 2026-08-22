@@ -1038,13 +1038,37 @@ export default function StudentDashboard() {
 
         {activeTab === 'leaderboard' && (
           <div className="animate-tab-enter">
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', marginBottom: '1.5rem', marginTop: '0.5rem', textAlign: 'center' }}>
-              <h2 className="text-accent" style={{ fontSize: '1.8rem', margin: '0 0 0.3rem 0', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                <span style={{ fontSize: '2.2rem' }}>🏆</span> {studentBatchTitle || 'Batch'} Leaderboard
-              </h2>
-              <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-                Showing Top Rankers in <b>{studentBatchTitle || 'your batch'}</b> ({student.className || student.class_name || 'Class 8th'})
-              </p>
+            {/* Animated Modern Glass Header */}
+            <div className="leaderboard-header-box">
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.6rem', marginBottom: '0.5rem' }}>
+                <span className="float-trophy-icon" style={{ fontSize: '2rem' }}>🏆</span>
+                <span style={{ 
+                  background: 'linear-gradient(90deg, #ffd700, #ff9800)', 
+                  color: '#000', 
+                  fontSize: '0.75rem', 
+                  fontWeight: '900', 
+                  padding: '0.25rem 0.8rem', 
+                  borderRadius: '20px', 
+                  letterSpacing: '1px',
+                  boxShadow: '0 2px 10px rgba(255, 215, 0, 0.4)'
+                }}>
+                  TOP RANKERS
+                </span>
+              </div>
+
+              <h1 className="shimmer-title" style={{ 
+                fontSize: 'clamp(1.4rem, 5vw, 2rem)', 
+                lineHeight: '1.25', 
+                margin: '0 0 0.5rem 0'
+              }}>
+                {studentBatchTitle || 'Batch'} Leaderboard
+              </h1>
+
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', background: 'rgba(255, 255, 255, 0.06)', padding: '0.35rem 0.85rem', borderRadius: '12px', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
+                <span style={{ fontSize: '0.85rem', color: '#94a3b8' }}>
+                  Target: <b style={{ color: '#38bdf8' }}>{studentBatchTitle || 'Enrolled Course'}</b> ({student.className || student.class_name || 'Class 8th'})
+                </span>
+              </div>
             </div>
 
             <div className="glass-card" style={{ padding: '0', overflow: 'hidden', border: '1px solid var(--glass-border)', borderRadius: '16px' }}>
@@ -1143,30 +1167,33 @@ export default function StudentDashboard() {
                       </div>
 
                       {/* Name & Batch */}
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.1rem', flex: 1, minWidth: 0, paddingLeft: '0.3rem' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem', flex: 1, minWidth: 0, paddingLeft: '0.4rem' }}>
                         <div style={{ display: 'flex', alignItems: 'center' }}>
-                          <h3 className={idx === 0 ? "golden-text" : ""} style={{ 
-                            margin: 0, color: isMe ? 'var(--primary-color)' : 'white', 
-                            fontSize: isTop3 ? '1.1rem' : '1rem',
-                            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'
+                          <h3 style={{ 
+                            margin: 0, 
+                            color: idx === 0 ? '#ffd700' : isMe ? '#60a5fa' : '#ffffff', 
+                            fontSize: isTop3 ? '1.1rem' : '0.95rem',
+                            fontWeight: '700',
+                            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                            textShadow: '0 2px 4px rgba(0,0,0,0.8)'
                           }}>
                             {lbStudent.name} {isMe && '(You)'}
                           </h3>
                         </div>
-                        <p className="text-muted" style={{ margin: 0, fontSize: '0.8rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', textShadow: idx === 0 ? '0 0 5px #000' : 'none' }}>
-                          Batch: <span style={{ color: 'var(--text-light)' }}>{lbStudent.class_name || 'N/A'}</span>
+                        <p style={{ margin: 0, fontSize: '0.78rem', color: '#cbd5e1', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', textShadow: '0 1px 3px rgba(0,0,0,0.8)' }}>
+                          Class: <span style={{ color: '#93c5fd', fontWeight: '600' }}>{lbStudent.class_name || student.class_name || 'Standard'}</span>
                         </p>
                       </div>
                     </div>
 
                     {/* Right: Score & Streak */}
-                    <div style={{ textAlign: 'right', flexShrink: 0, paddingLeft: '0.5rem' }}>
-                      <h3 style={{ margin: '0 0 0.2rem 0', color: '#4CAF50', fontSize: isTop3 ? '1.3rem' : '1.1rem', fontWeight: '800' }}>
-                        {lbStudent.total_test_score || 0} <span style={{ fontSize: '0.75rem', fontWeight: 'normal', color: 'var(--text-muted)' }}>Marks</span>
-                      </h3>
-                      <p style={{ margin: 0, color: '#ff4444', fontSize: '0.75rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '0.2rem' }}>
+                    <div style={{ textAlign: 'right', flexShrink: 0, paddingLeft: '0.75rem' }}>
+                      <div style={{ margin: '0 0 0.2rem 0', color: '#4ade80', fontSize: isTop3 ? '1.25rem' : '1.05rem', fontWeight: '800', textShadow: '0 0 10px rgba(74, 222, 128, 0.4)' }}>
+                        {lbStudent.total_test_score || 0} <span style={{ fontSize: '0.75rem', fontWeight: 'normal', color: '#94a3b8' }}>Marks</span>
+                      </div>
+                      <div style={{ color: '#fb7185', fontSize: '0.75rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '0.2rem', textShadow: '0 1px 3px rgba(0,0,0,0.8)' }}>
                         🔥 {lbStudent.streak_days || 0} Days
-                      </p>
+                      </div>
                     </div>
                     
                     </div> {/* End of Content Wrapper */}
