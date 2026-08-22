@@ -98,9 +98,11 @@ export default function AdminDashboard() {
   const [liveTime, setLiveTime] = useState('');
   const [dbLiveClasses, setDbLiveClasses] = useState([]);
 
-  // Telegram Quiz State
+  // Telegram Quiz State & Batch-wise Mapping
   const [tgBotToken, setTgBotToken] = useState('8054498159:AAHdHB1Z1P479qA5C2C2loMedY7hixGcKJY');
   const [tgChatId, setTgChatId] = useState('@azadkumar3229011');
+  const [batchTelegramMap, setBatchTelegramMap] = useState({});
+  const [tgSelectedBatch, setTgSelectedBatch] = useState('');
   const [tgQuestionCount, setTgQuestionCount] = useState('10');
   const [tgLanguage, setTgLanguage] = useState('Hindi');
   const [tgPdfFile, setTgPdfFile] = useState(null);
@@ -221,6 +223,50 @@ export default function AdminDashboard() {
         }
       }
     }, [adminChats, activeChatStudentId]);
+
+  // Load saved Telegram channel configurations from localStorage
+  useEffect(() => {
+    try {
+      const savedMap = localStorage.getItem('batch_telegram_map');
+      if (savedMap) {
+        setBatchTelegramMap(JSON.parse(savedMap));
+      }
+      const savedToken = localStorage.getItem('tg_bot_token');
+      if (savedToken) setTgBotToken(savedToken);
+      const savedChatId = localStorage.getItem('tg_chat_id');
+      if (savedChatId) setTgChatId(savedChatId);
+    } catch (e) {
+      console.error("Error loading Telegram settings:", e);
+    }
+  }, []);
+
+  const handleUpdateBatchTelegram = (batchId, channelId, botToken = tgBotToken) => {
+    const updated = {
+      ...batchTelegramMap,
+      [batchId]: {
+        channelId: (channelId || '').trim(),
+        botToken: (botToken || tgBotToken).trim()
+      }
+    };
+    setBatchTelegramMap(updated);
+    try {
+      localStorage.setItem('batch_telegram_map', JSON.stringify(updated));
+      if (channelId) localStorage.setItem('tg_chat_id', channelId.trim());
+      if (botToken) localStorage.setItem('tg_bot_token', botToken.trim());
+    } catch (e) {}
+  };
+
+  const handleSelectTgBatch = (batchId) => {
+    setTgSelectedBatch(batchId);
+    if (batchId && batchTelegramMap[batchId]) {
+      if (batchTelegramMap[batchId].channelId) {
+        setTgChatId(batchTelegramMap[batchId].channelId);
+      }
+      if (batchTelegramMap[batchId].botToken) {
+        setTgBotToken(batchTelegramMap[batchId].botToken);
+      }
+    }
+  };
 
   useEffect(() => {
     // Admin Route Protection
@@ -1801,12 +1847,29 @@ export default function AdminDashboard() {
                     )}
                     <div>
                       <h4 style={{ margin: '0 0 0.25rem 0' }}>{b.title}</h4>
-                      <p className="text-muted" style={{ fontSize: '0.85rem', margin: 0 }}>
+                      <p className="text-muted" style={{ fontSize: '0.85rem', margin: '0 0 0.35rem 0' }}>
                         {b.is_free ? 'Free' : `₹${b.price}`}
                       </p>
+                      <div style={{ fontSize: '0.8rem', color: batchTelegramMap[b.id]?.channelId ? '#64b5f6' : '#9e9e9e', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                        <span>📲 TG:</span> <b>{batchTelegramMap[b.id]?.channelId || 'Not connected'}</b>
+                      </div>
                     </div>
                   </div>
-                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                    <button 
+                      type="button"
+                      onClick={() => {
+                        const currentVal = batchTelegramMap[b.id]?.channelId || '';
+                        const newChan = window.prompt(`Enter Telegram Channel ID or @Username for "${b.title}":`, currentVal);
+                        if (newChan !== null) {
+                          handleUpdateBatchTelegram(b.id, newChan.trim());
+                        }
+                      }} 
+                      className="btn-outline" 
+                      style={{ border: '1px solid #2196F3', color: '#2196F3', padding: '0.5rem 0.8rem', fontSize: '0.85rem' }}
+                    >
+                      📲 Set Telegram
+                    </button>
                     <button onClick={() => handleEditThumbnailClick(b.id)} className="btn-outline" style={{ padding: '0.5rem 1rem' }}>Upload Image</button>
                     <button onClick={() => handleDeleteBatch(b.id)} className="btn-outline" style={{ border: '1px solid #ff4444', color: '#ff4444', padding: '0.5rem 1rem' }}>Delete</button>
                   </div>
@@ -2215,12 +2278,70 @@ export default function AdminDashboard() {
             </div>
 
             {/* --- Option 2: Telegram pe Post --- */}
-            <h4 className="mt-4 text-accent" style={{ color: '#2196F3' }}>🔵 Option 2: Telegram Channel pe Post karo</h4>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', background: 'rgba(33, 150, 243, 0.1)', padding: '1rem', borderRadius: '8px', border: '1px solid rgba(33, 150, 243, 0.3)' }}>
-              <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>Channel ID: <b>{tgChatId || 'Not set'}</b> (Telegram Test tab se change karein)</p>
+            <h4 className="mt-4 text-accent" style={{ color: '#2196F3', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              🔵 Option 2: Telegram Channel pe Post karo
+            </h4>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', background: 'rgba(33, 150, 243, 0.08)', padding: '1.25rem', borderRadius: '12px', border: '1px solid rgba(33, 150, 243, 0.3)' }}>
+              
+              <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                <div style={{ flex: 1, minWidth: '220px' }}>
+                  <label style={{ fontSize: '0.85rem', color: '#90caf9', fontWeight: 'bold' }}>Target Batch / Course Select Karein</label>
+                  <select 
+                    value={tgSelectedBatch || pasteBatch} 
+                    onChange={(e) => {
+                      const bId = e.target.value;
+                      handleSelectTgBatch(bId);
+                      if (!pasteBatch) setPasteBatch(bId);
+                    }}
+                    style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #2196f3', background: 'rgba(0,0,0,0.3)', color: 'white', marginTop: '0.25rem' }}
+                  >
+                    <option value="">-- All Batches / Custom Channel --</option>
+                    {batches.map((b) => (
+                      <option key={b.id} value={b.id}>
+                        {b.title} {batchTelegramMap[b.id]?.channelId ? `(${batchTelegramMap[b.id].channelId})` : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div style={{ flex: 1, minWidth: '220px' }}>
+                  <label style={{ fontSize: '0.85rem', color: '#90caf9', fontWeight: 'bold' }}>Telegram Channel Username / ID</label>
+                  <input 
+                    type="text" 
+                    placeholder="e.g. @tgt_pgt_batch or @azadkumar3229011" 
+                    value={tgChatId} 
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setTgChatId(val);
+                      const currentBId = tgSelectedBatch || pasteBatch;
+                      if (currentBId) {
+                        handleUpdateBatchTelegram(currentBId, val);
+                      } else {
+                        try { localStorage.setItem('tg_chat_id', val); } catch(e){}
+                      }
+                    }} 
+                    style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'rgba(0,0,0,0.3)', color: 'white', marginTop: '0.25rem' }} 
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', background: 'rgba(0,0,0,0.2)', padding: '0.75rem 1rem', borderRadius: '8px' }}>
+                <div style={{ fontSize: '0.85rem', color: 'var(--text-light)' }}>
+                  📡 <b>Posting to Channel:</b> <span style={{ color: '#4caf50', fontWeight: 'bold' }}>{tgChatId || 'Not Set (Enter Channel above)'}</span>
+                  {(tgSelectedBatch || pasteBatch) && batches.find(b => b.id === (tgSelectedBatch || pasteBatch)) && (
+                    <span style={{ marginLeft: '0.5rem', color: '#64b5f6' }}>
+                      • Batch: <b>{batches.find(b => b.id === (tgSelectedBatch || pasteBatch))?.title}</b>
+                    </span>
+                  )}
+                </div>
+                <span style={{ fontSize: '0.75rem', color: '#81c784' }}>
+                  💾 Channel ID is saved automatically
+                </span>
+              </div>
+
               <button type="button" onClick={handlePasteToTelegram} disabled={isPasteProcessing} className="btn-primary" 
-                style={{ background: '#2196F3', width: '100%', fontSize: '1.1rem', padding: '1rem' }}>
-                {isPasteProcessing ? 'Processing...' : '🔵 Telegram pe Post karo'}
+                style={{ background: '#2196F3', width: '100%', fontSize: '1.1rem', padding: '1rem', fontWeight: 'bold' }}>
+                {isPasteProcessing ? '⏳ Posting to Telegram...' : `🔵 ${((tgSelectedBatch || pasteBatch) && batches.find(b => b.id === (tgSelectedBatch || pasteBatch))?.title) || 'Selected'} Telegram Channel pe Post karo`}
               </button>
             </div>
 
@@ -2308,18 +2429,88 @@ export default function AdminDashboard() {
             <h3 className="mb-4 text-accent" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               📲 Telegram Quiz Auto-Poster
             </h3>
-            <p className="text-muted mb-4">Upload a PDF chapter or question paper. The AI will generate multiple-choice questions and post them as interactive Quiz Polls directly to your Telegram channel.</p>
+            <p className="text-muted mb-4">Apne batches (TGT PGT, NMMS, etc.) ke Telegram channels connect karein aur PDF ya CSV se questions directly Quiz Polls ke roop me post karein.</p>
             
             <form style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
               
-              <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-                <div style={{ flex: 1, minWidth: '200px', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                  <label className="text-light" style={{ fontSize: '0.9rem' }}>Telegram Bot Token</label>
-                  <input type="text" placeholder="e.g. 8054498159:AAHdHB..." value={tgBotToken} onChange={(e) => setTgBotToken(e.target.value)} style={{ width: '100%', padding: '1rem', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'rgba(0,0,0,0.2)', color: 'white' }} required />
+              {/* Batch & Channel Selector Box */}
+              <div style={{ background: 'rgba(33, 150, 243, 0.08)', border: '1px solid rgba(33, 150, 243, 0.3)', padding: '1.25rem', borderRadius: '12px', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+                  <h4 style={{ margin: 0, color: '#2196f3', fontSize: '1.05rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    🎯 Select Target Batch & Channel
+                  </h4>
+                  <span style={{ fontSize: '0.8rem', color: '#81c784' }}>💾 Settings auto-saved per batch</span>
                 </div>
-                <div style={{ flex: 1, minWidth: '200px', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                  <label className="text-light" style={{ fontSize: '0.9rem' }}>Telegram Chat/Channel ID</label>
-                  <input type="text" placeholder="e.g. 5986243633 or @mychannel" value={tgChatId} onChange={(e) => setTgChatId(e.target.value)} style={{ width: '100%', padding: '1rem', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'rgba(0,0,0,0.2)', color: 'white' }} required />
+                
+                <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+                  <div style={{ flex: 1, minWidth: '220px', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                    <label className="text-light" style={{ fontSize: '0.85rem', fontWeight: 'bold' }}>Target Batch</label>
+                    <select 
+                      value={tgSelectedBatch} 
+                      onChange={(e) => handleSelectTgBatch(e.target.value)} 
+                      style={{ width: '100%', padding: '0.85rem', borderRadius: '8px', border: '1px solid #2196F3', background: 'rgba(0,0,0,0.3)', color: 'white' }}
+                    >
+                      <option value="">-- Custom / Direct Channel --</option>
+                      {batches.map((b) => (
+                        <option key={b.id} value={b.id}>
+                          {b.title} {batchTelegramMap[b.id]?.channelId ? `(Connected: ${batchTelegramMap[b.id].channelId})` : '(Not linked yet)'}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div style={{ flex: 1, minWidth: '220px', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                    <label className="text-light" style={{ fontSize: '0.85rem', fontWeight: 'bold' }}>Telegram Channel Username / ID</label>
+                    <input 
+                      type="text" 
+                      placeholder="e.g. @tgt_pgt_channel or @azadkumar3229011" 
+                      value={tgChatId} 
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setTgChatId(val);
+                        if (tgSelectedBatch) {
+                          handleUpdateBatchTelegram(tgSelectedBatch, val);
+                        } else {
+                          try { localStorage.setItem('tg_chat_id', val); } catch(e){}
+                        }
+                      }} 
+                      style={{ width: '100%', padding: '0.85rem', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'rgba(0,0,0,0.3)', color: 'white' }} 
+                      required 
+                    />
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+                  <div style={{ flex: 1, minWidth: '220px', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                    <label className="text-light" style={{ fontSize: '0.85rem', fontWeight: 'bold' }}>Telegram Bot Token</label>
+                    <input 
+                      type="text" 
+                      placeholder="e.g. 8054498159:AAHdHB..." 
+                      value={tgBotToken} 
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setTgBotToken(val);
+                        if (tgSelectedBatch) {
+                          handleUpdateBatchTelegram(tgSelectedBatch, tgChatId, val);
+                        } else {
+                          try { localStorage.setItem('tg_bot_token', val); } catch(e){}
+                        }
+                      }} 
+                      style={{ width: '100%', padding: '0.85rem', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'rgba(0,0,0,0.3)', color: 'white' }} 
+                      required 
+                    />
+                  </div>
+                </div>
+
+                {/* Helpful Connection Guide */}
+                <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', padding: '0.75rem 1rem', borderRadius: '8px', fontSize: '0.85rem' }}>
+                  <p style={{ margin: '0 0 0.35rem 0', color: '#ffb74d', fontWeight: 'bold' }}>💡 Telegram Channel Connect Karne Ka Tarika:</p>
+                  <ol style={{ margin: 0, paddingLeft: '1.2rem', color: 'var(--text-light)', lineHeight: '1.5' }}>
+                    <li>Telegram app me apne naye <b>TGT PGT Channel</b> ko open karein.</li>
+                    <li>Channel Settings &gt; <b>Administrators &gt; Add Admin</b> me jaakar apne Bot (Token wale bot) ko add karein.</li>
+                    <li>Bot ko <b>"Post Messages"</b> permission allow karein.</li>
+                    <li>Channel ka Username (jaise <code>@tgt_pgt_channel</code>) ya Channel ID upar daal dein. Yeh automatic save ho jayega!</li>
+                  </ol>
                 </div>
               </div>
 
