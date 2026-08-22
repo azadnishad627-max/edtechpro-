@@ -603,6 +603,39 @@ export default function StudentDashboard() {
     setIsSubmittingFeedback(false);
   };
 
+  // Helper to strictly match items to student batch
+  const isItemForStudentBatch = (itemBatchId, itemBatchTitle, itemTitle = '') => {
+    if (!studentBatchId && !studentBatchTitle) return true; // not enrolled, show all
+
+    // 1. Direct ID match
+    if (itemBatchId && studentBatchId && itemBatchId === studentBatchId) return true;
+    
+    // 2. Title keyword matching
+    const sTitle = (studentBatchTitle || '').toUpperCase();
+    const bTitle = (itemBatchTitle || '').toUpperCase();
+    const iTitle = (itemTitle || '').toUpperCase();
+
+    if (sTitle.includes('TGT') || sTitle.includes('PGT')) {
+      if (bTitle.includes('TGT') || bTitle.includes('PGT') || iTitle.includes('TGT') || iTitle.includes('PGT')) {
+        return true;
+      }
+      return false;
+    }
+
+    if (sTitle.includes('NMMS')) {
+      if (bTitle.includes('NMMS') || iTitle.includes('NMMS')) {
+        return true;
+      }
+      return false;
+    }
+
+    if (itemBatchTitle && studentBatchTitle && itemBatchTitle.toLowerCase().trim() === studentBatchTitle.toLowerCase().trim()) {
+      return true;
+    }
+
+    return false;
+  };
+
   const handleSaveProfile = async (e) => {
     e.preventDefault();
     setIsSavingProfile(true);
@@ -737,57 +770,94 @@ export default function StudentDashboard() {
         {activeTab === 'courses' && !selectedBatch && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
             
-            {liveClasses.length > 0 && (
-              <div style={{ marginBottom: '2rem' }}>
-                <h2 className="mb-4 text-primary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><span style={{ display: 'inline-block', width: '10px', height: '10px', background: '#ff4444', borderRadius: '50%', animation: 'pulse 1.5s infinite' }}></span>🔴 Live / Upcoming Classes</h2>
-                <div className="grid-cols-2">
-                  {liveClasses.map(lc => (
-                    <div key={lc.id} className="glass-card" style={{ borderLeft: '4px solid #ff4444', background: 'rgba(255, 68, 68, 0.05)' }}>
-                      <h3 className="mb-2">{lc.title}</h3>
-                      <p className="text-muted mb-4">Batch: {lc.batches?.title}</p>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span style={{ color: 'white', fontWeight: 'bold' }}>{new Date(lc.scheduled_time).toLocaleString()}</span>
-                        <a 
-                          href={lc.join_url} 
-                          target="_blank" 
-                          rel="noopener noreferrer" 
-                          className="btn-primary" 
-                          onClick={(e) => handleJoinLiveClass(e, lc.join_url)}
-                          style={{ background: '#ff4444', padding: '0.5rem 1rem' }}
-                        >
-                          Join Now
-                        </a>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+            {/* Header with enrolled batch indicator */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem', background: 'rgba(33, 150, 243, 0.08)', padding: '1rem 1.25rem', borderRadius: '12px', border: '1px solid rgba(33, 150, 243, 0.3)' }}>
+              <div>
+                <h3 style={{ margin: 0, color: '#64b5f6' }}>
+                  🎯 My Enrolled Course: <b>{studentBatchTitle || 'All Batches'}</b>
+                </h3>
+                <p style={{ margin: '0.25rem 0 0 0', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                  Standard: <b>{student.className || student.class_name || 'Class 8th'}</b> • Sirf aapke batch ka study material aur live classes dikh rahe hain.
+                </p>
               </div>
-            )}
+              <button onClick={() => { switchTab('profile'); setIsEditingProfile(true); }} className="btn-outline" style={{ padding: '0.5rem 1rem', fontSize: '0.85rem', border: '1px solid #64b5f6', color: '#64b5f6' }}>
+                ✏️ Change Course / Batch
+              </button>
+            </div>
 
-            <div>
-              <h2 className="mb-4 text-muted">Available Batches</h2>
-            <div className="grid-cols-3">
-              {dbBatches.map(batch => (
-                <div key={batch.id} className="glass-card" style={{ display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden' }}>
-                  {batch.image_url ? (
-                    <div style={{ width: '100%', height: '180px', backgroundImage: `url(${batch.image_url})`, backgroundSize: 'cover', backgroundPosition: 'center' }}></div>
-                  ) : (
-                    <div style={{ width: '100%', height: '180px', background: 'var(--gradient-brand)', opacity: 0.8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <span style={{ fontSize: '3rem' }}>📚</span>
-                    </div>
-                  )}
-                  <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', flex: 1 }}>
-                    <h3 className="mb-2">{batch.title}</h3>
-                    <p className="text-muted" style={{ flex: 1 }}>{batch.description}</p>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1rem' }}>
-                      {batch.is_free ? <span className="text-accent" style={{ fontWeight: 'bold' }}>Free</span> : <span className="text-muted">₹{batch.price}</span>}
-                      <button className="btn-primary" onClick={() => setSelectedBatch(batch)}>Start Learning</button>
-                    </div>
+            {/* Live Classes for Enrolled Batch */}
+            {(() => {
+              const myLiveClasses = liveClasses.filter(lc => isItemForStudentBatch(lc.batch_id, lc.batches?.title, lc.title));
+              return myLiveClasses.length > 0 ? (
+                <div style={{ marginBottom: '1rem' }}>
+                  <h2 className="mb-4 text-primary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <span style={{ display: 'inline-block', width: '10px', height: '10px', background: '#ff4444', borderRadius: '50%', animation: 'pulse 1.5s infinite' }}></span>
+                    🔴 Live / Upcoming Classes ({studentBatchTitle || 'Enrolled Batch'})
+                  </h2>
+                  <div className="grid-cols-2">
+                    {myLiveClasses.map(lc => (
+                      <div key={lc.id} className="glass-card" style={{ borderLeft: '4px solid #ff4444', background: 'rgba(255, 68, 68, 0.05)' }}>
+                        <h3 className="mb-2">{lc.title}</h3>
+                        <p className="text-muted mb-4">Batch: {lc.batches?.title || studentBatchTitle}</p>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span style={{ color: 'white', fontWeight: 'bold' }}>{new Date(lc.scheduled_time).toLocaleString()}</span>
+                          <a 
+                            href={lc.join_url} 
+                            target="_blank" 
+                            rel="noopener noreferrer" 
+                            className="btn-primary" 
+                            onClick={(e) => handleJoinLiveClass(e, lc.join_url)}
+                            style={{ background: '#ff4444', padding: '0.5rem 1rem' }}
+                          >
+                            Join Now
+                          </a>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
-              ))}
+              ) : null;
+            })()}
+
+            {/* Enrolled Batch Course Materials Card */}
+            <div>
+              <h2 className="mb-4 text-muted">Study Materials & Notes</h2>
+              {(() => {
+                const myBatches = dbBatches.filter(b => isItemForStudentBatch(b.id, b.title));
+                const batchesToShow = myBatches.length > 0 ? myBatches : dbBatches;
+
+                return (
+                  <div className="grid-cols-3">
+                    {batchesToShow.map(batch => (
+                      <div key={batch.id} className="glass-card" style={{ display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden', border: batch.id === studentBatchId ? '2px solid #2196f3' : '1px solid var(--glass-border)' }}>
+                        {batch.image_url ? (
+                          <div style={{ width: '100%', height: '180px', backgroundImage: `url(${batch.image_url})`, backgroundSize: 'cover', backgroundPosition: 'center' }}></div>
+                        ) : (
+                          <div style={{ width: '100%', height: '180px', background: 'var(--gradient-brand)', opacity: 0.8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <span style={{ fontSize: '3rem' }}>📚</span>
+                          </div>
+                        )}
+                        <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', flex: 1 }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                            <h3 style={{ margin: 0 }}>{batch.title}</h3>
+                            <span style={{ fontSize: '0.75rem', background: '#2196f3', color: 'white', padding: '0.2rem 0.5rem', borderRadius: '4px', fontWeight: 'bold' }}>
+                              Enrolled
+                            </span>
+                          </div>
+                          <p className="text-muted" style={{ flex: 1 }}>{batch.description}</p>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1rem' }}>
+                            {batch.is_free ? <span className="text-accent" style={{ fontWeight: 'bold' }}>Free</span> : <span className="text-muted">₹{batch.price}</span>}
+                            <button className="btn-primary" onClick={() => setSelectedBatch(batch)} style={{ background: '#2196f3', fontWeight: 'bold' }}>
+                              📖 Open Study Notes & Videos
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
             </div>
-          </div>
           </div>
         )}
 
@@ -849,16 +919,25 @@ export default function StudentDashboard() {
               </div>
 
               {(() => {
-                // Filter tests strictly by student's enrolled batch if enrolled
+                // Strictly filter tests matching ONLY student's enrolled batch
                 const activeTests = dbTests.filter(t => {
                   if (t.title.startsWith('[ARCHIVED]')) return false;
-                  if (studentBatchId) {
-                    // If test is tagged with a batch, only show if it matches student's batch
-                    if (t.batch_id && t.batch_id !== studentBatchId) return false;
-                  }
-                  return true;
+                  return isItemForStudentBatch(t.batch_id, t.batches?.title, t.title);
                 });
-                return activeTests.length === 0 ? <p className="text-muted">No tests available right now.</p> : activeTests.map(test => {
+
+                return activeTests.length === 0 ? (
+                  <div className="glass-card text-center py-5" style={{ padding: '3rem 1rem' }}>
+                    <p style={{ fontSize: '1.2rem', color: '#ffb74d', margin: '0 0 0.5rem 0' }}>
+                      📋 Abhi aapke <b>"{studentBatchTitle || 'Selected'}"</b> batch ke liye koi active test nahi hai.
+                    </p>
+                    <p className="text-muted" style={{ margin: 0, fontSize: '0.9rem' }}>
+                      Naye test schedule hote hi yahan show honge. Agar aapne galti se galat batch select kar liya hai toh Profile me jakar change karein.
+                    </p>
+                    <button onClick={() => { switchTab('profile'); setIsEditingProfile(true); }} className="btn-primary mt-4" style={{ background: '#2196f3' }}>
+                      ✏️ Batch Change Karein
+                    </button>
+                  </div>
+                ) : activeTests.map(test => {
                 const now = new Date();
                 const start = test.start_time ? new Date(test.start_time) : null;
                 const end = test.end_time ? new Date(test.end_time) : null;
