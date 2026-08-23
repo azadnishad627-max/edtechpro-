@@ -1,4 +1,5 @@
 "use client";
+import { CLASS_8_SUBJECTS, formatMaterialTitle, parseMaterialMetadata } from '../../lib/class8Data';
 import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../../lib/supabaseClient';
@@ -59,6 +60,19 @@ export default function AdminDashboard() {
   const [uploadType, setUploadType] = useState('video'); // 'video' or 'pdf'
   const [pdfFile, setPdfFile] = useState(null);
   const [dbMaterials, setDbMaterials] = useState([]);
+
+  // Chapter-Wise PDF Notes State
+  const [contentMode, setContentMode] = useState('chapter_notes'); // 'chapter_notes' or 'general'
+  const [chClass, setChClass] = useState('Class 8th');
+  const [chSubject, setChSubject] = useState('Science (विज्ञान)');
+  const [chChapter, setChChapter] = useState(CLASS_8_SUBJECTS['Science (विज्ञान)'] ? CLASS_8_SUBJECTS['Science (विज्ञान)'][0] : '');
+  const [chCustomChapter, setChCustomChapter] = useState('');
+  const [chNoteTitle, setChNoteTitle] = useState('');
+  const [chUploadType, setChUploadType] = useState('file'); // 'file' or 'url'
+  const [chPdfFile, setChPdfFile] = useState(null);
+  const [chPdfUrl, setChPdfUrl] = useState('');
+  const [chBatchId, setChBatchId] = useState('');
+  const [isUploadingChNote, setIsUploadingChNote] = useState(false);
   const [dbTests, setDbTests] = useState([]);
 
   // Test Manager State
@@ -666,6 +680,73 @@ export default function AdminDashboard() {
     // reset input
     e.target.value = '';
     setEditingBatchId(null);
+  };
+
+  // --- Upload Chapter-wise PDF Notes ---
+  const handleUploadChapterNote = async (e) => {
+    e.preventDefault();
+    const resolvedChapter = chChapter === '__custom__' ? chCustomChapter.trim() : chChapter;
+    if (!resolvedChapter) {
+      alert("Pehle chapter select ya type karein!");
+      return;
+    }
+
+    if (chUploadType === 'file' && !chPdfFile) {
+      alert("Pehle PDF file select karein!");
+      return;
+    }
+    if (chUploadType === 'url' && !chPdfUrl.trim()) {
+      alert("Pehle PDF ya Google Drive URL daalein!");
+      return;
+    }
+
+    setIsUploadingChNote(true);
+    let finalFileUrl = chPdfUrl.trim();
+
+    try {
+      if (chUploadType === 'file' && chPdfFile) {
+        const fileExt = chPdfFile.name.split('.').pop();
+        const cleanName = resolvedChapter.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 30);
+        const fileName = `ch_${Date.now()}_${cleanName}.${fileExt}`;
+        const filePath = `chapter_notes/${fileName}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from('notes')
+          .upload(filePath, chPdfFile, { upsert: true });
+
+        if (uploadError) {
+          throw new Error("Supabase Storage Error: " + uploadError.message + " (Bucket 'notes' verify karein)");
+        }
+
+        const { data: publicUrlData } = supabase.storage.from('notes').getPublicUrl(filePath);
+        finalFileUrl = publicUrlData.publicUrl;
+      }
+
+      const formattedTitle = formatMaterialTitle(chClass, chSubject, resolvedChapter, chNoteTitle || `${resolvedChapter} - Full Notes PDF`);
+
+      const { error: insertError } = await supabase.from('content_materials').insert([{
+        batch_id: chBatchId || null,
+        title: formattedTitle,
+        file_url: finalFileUrl
+      }]);
+
+      if (insertError) throw insertError;
+
+      alert(`✅ Success! "${resolvedChapter}" ka PDF Note successfully add ho gaya!`);
+      setChNoteTitle('');
+      setChPdfFile(null);
+      setChPdfUrl('');
+      setChCustomChapter('');
+
+      // Refresh list
+      const { data: mData } = await supabase.from('content_materials').select('*, batches(title)');
+      if (mData) setDbMaterials(mData);
+    } catch (err) {
+      console.error(err);
+      alert("Error: " + err.message);
+    } finally {
+      setIsUploadingChNote(false);
+    }
   };
 
   const handleUploadContent = async (e) => {
@@ -1946,49 +2027,270 @@ export default function AdminDashboard() {
       )}
 
       {activeTab === 'content' && (
-        <div className="animate-tab-enter grid-cols-2" style={{ alignItems: 'flex-start' }}>
-          <div className="glass-card">
-            <h3 className="mb-4">Add Course Material</h3>
-            <form onSubmit={handleUploadContent} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              <select value={contentBatch} onChange={(e) => setContentBatch(e.target.value)} style={{ padding: '1rem', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'var(--bg-dark)', color: 'white' }} required>
-                <option value="">Select Batch...</option>
-                {batches.map(b => <option key={b.id} value={b.id}>{b.title}</option>)}
-              </select>
-              <input type="text" placeholder="Material Title (e.g. Chapter 1 Notes)" value={contentTitle} onChange={(e) => setContentTitle(e.target.value)} style={{ padding: '1rem', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'var(--bg-dark)', color: 'white' }} required />
-              
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem' }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
-                  <input type="radio" name="uploadType" value="video" checked={uploadType === 'video'} onChange={() => setUploadType('video')} /> YouTube Video
-                </label>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
-                  <input type="radio" name="uploadType" value="pdf" checked={uploadType === 'pdf'} onChange={() => setUploadType('pdf')} /> Secure PDF Note
-                </label>
+        <div className="animate-tab-enter" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          
+          {/* Mode Switcher */}
+          <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+            <button 
+              type="button"
+              onClick={() => setContentMode('chapter_notes')} 
+              className={contentMode === 'chapter_notes' ? 'btn-primary' : 'btn-outline'}
+              style={{ padding: '0.75rem 1.5rem', fontWeight: 'bold' }}
+            >
+              📚 Class 8th Subject & Chapter-Wise PDF Notes
+            </button>
+            <button 
+              type="button"
+              onClick={() => setContentMode('general')} 
+              className={contentMode === 'general' ? 'btn-primary' : 'btn-outline'}
+              style={{ padding: '0.75rem 1.5rem' }}
+            >
+              🎥 General Batch Materials & Video Lectures
+            </button>
+          </div>
+
+          {contentMode === 'chapter_notes' ? (
+            <div className="grid-cols-2" style={{ alignItems: 'flex-start' }}>
+              {/* Form 1: Chapter-Wise PDF Notes Upload */}
+              <div className="glass-card" style={{ border: '1px solid #38bdf8' }}>
+                <h3 className="mb-2 text-accent" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <span>📚</span> Upload Chapter PDF Note
+                </h3>
+                <p className="text-muted mb-4" style={{ fontSize: '0.85rem' }}>
+                  Class 8th ke subject aur chapter select karke student dashboard ke liye PDF notes upload karein.
+                </p>
+
+                <form onSubmit={handleUploadChapterNote} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  {/* Class Dropdown */}
+                  <div>
+                    <label style={{ fontSize: '0.85rem', color: 'var(--text-light)', fontWeight: 'bold' }}>1. Select Class</label>
+                    <select 
+                      value={chClass} 
+                      onChange={(e) => setChClass(e.target.value)} 
+                      style={{ width: '100%', padding: '0.85rem', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'var(--bg-dark)', color: 'white', marginTop: '0.25rem' }}
+                      required
+                    >
+                      <option value="Class 8th">Class 8th</option>
+                      <option value="Class 9th">Class 9th</option>
+                      <option value="Class 10th">Class 10th</option>
+                      <option value="Class 11th">Class 11th</option>
+                      <option value="Class 12th">Class 12th</option>
+                    </select>
+                  </div>
+
+                  {/* Subject Dropdown */}
+                  <div>
+                    <label style={{ fontSize: '0.85rem', color: 'var(--text-light)', fontWeight: 'bold' }}>2. Select Subject *</label>
+                    <select 
+                      value={chSubject} 
+                      onChange={(e) => {
+                        const newSub = e.target.value;
+                        setChSubject(newSub);
+                        const chList = CLASS_8_SUBJECTS[newSub] || [];
+                        setChChapter(chList.length > 0 ? chList[0] : '__custom__');
+                      }} 
+                      style={{ width: '100%', padding: '0.85rem', borderRadius: '8px', border: '1px solid #38bdf8', background: 'var(--bg-dark)', color: 'white', marginTop: '0.25rem' }}
+                      required
+                    >
+                      {Object.keys(CLASS_8_SUBJECTS).map(sub => (
+                        <option key={sub} value={sub}>{sub}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Chapter Dropdown */}
+                  <div>
+                    <label style={{ fontSize: '0.85rem', color: 'var(--text-light)', fontWeight: 'bold' }}>3. Select Chapter *</label>
+                    <select 
+                      value={chChapter} 
+                      onChange={(e) => setChChapter(e.target.value)} 
+                      style={{ width: '100%', padding: '0.85rem', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'var(--bg-dark)', color: 'white', marginTop: '0.25rem' }}
+                      required
+                    >
+                      {(CLASS_8_SUBJECTS[chSubject] || []).map(ch => (
+                        <option key={ch} value={ch}>{ch}</option>
+                      ))}
+                      <option value="__custom__">➕ Add Custom Chapter / Extra Notes</option>
+                    </select>
+                  </div>
+
+                  {chChapter === '__custom__' && (
+                    <div>
+                      <label style={{ fontSize: '0.85rem', color: '#ffd700', fontWeight: 'bold' }}>Type Custom Chapter Name *</label>
+                      <input 
+                        type="text" 
+                        placeholder="e.g. Chapter 14: Extra Revision Notes" 
+                        value={chCustomChapter} 
+                        onChange={(e) => setChCustomChapter(e.target.value)} 
+                        style={{ width: '100%', padding: '0.85rem', borderRadius: '8px', border: '1px solid #ffd700', background: 'var(--bg-dark)', color: 'white', marginTop: '0.25rem' }}
+                        required
+                      />
+                    </div>
+                  )}
+
+                  {/* Optional Custom Note Title */}
+                  <div>
+                    <label style={{ fontSize: '0.85rem', color: 'var(--text-light)' }}>Note Title (Optional)</label>
+                    <input 
+                      type="text" 
+                      placeholder="e.g. Complete Handwritten Notes & Formula Sheet" 
+                      value={chNoteTitle} 
+                      onChange={(e) => setChNoteTitle(e.target.value)} 
+                      style={{ width: '100%', padding: '0.85rem', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'var(--bg-dark)', color: 'white', marginTop: '0.25rem' }}
+                    />
+                  </div>
+
+                  {/* Upload Source */}
+                  <div>
+                    <label style={{ fontSize: '0.85rem', color: 'var(--text-light)', fontWeight: 'bold', display: 'block', marginBottom: '0.5rem' }}>4. PDF Source *</label>
+                    <div style={{ display: 'flex', gap: '1.5rem', marginBottom: '0.5rem' }}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer' }}>
+                        <input type="radio" name="chUploadType" checked={chUploadType === 'file'} onChange={() => setChUploadType('file')} />
+                        <span>📤 Upload PDF File</span>
+                      </label>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer' }}>
+                        <input type="radio" name="chUploadType" checked={chUploadType === 'url'} onChange={() => setChUploadType('url')} />
+                        <span>🔗 PDF / Drive URL</span>
+                      </label>
+                    </div>
+
+                    {chUploadType === 'file' ? (
+                      <input 
+                        type="file" 
+                        accept="application/pdf" 
+                        onChange={(e) => setChPdfFile(e.target.files[0])} 
+                        style={{ width: '100%', padding: '0.85rem', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'var(--bg-dark)', color: 'white' }} 
+                        required 
+                      />
+                    ) : (
+                      <input 
+                        type="url" 
+                        placeholder="e.g. https://drive.google.com/... or PDF Link" 
+                        value={chPdfUrl} 
+                        onChange={(e) => setChPdfUrl(e.target.value)} 
+                        style={{ width: '100%', padding: '0.85rem', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'var(--bg-dark)', color: 'white' }} 
+                        required 
+                      />
+                    )}
+                  </div>
+
+                  {/* Batch Target */}
+                  <div>
+                    <label style={{ fontSize: '0.85rem', color: 'var(--text-light)' }}>5. Target Batch (Optional)</label>
+                    <select 
+                      value={chBatchId} 
+                      onChange={(e) => setChBatchId(e.target.value)} 
+                      style={{ width: '100%', padding: '0.85rem', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'var(--bg-dark)', color: 'white', marginTop: '0.25rem' }}
+                    >
+                      <option value="">🌐 All Batches (Universal)</option>
+                      {batches.map(b => <option key={b.id} value={b.id}>{b.title}</option>)}
+                    </select>
+                  </div>
+
+                  <button type="submit" disabled={isUploadingChNote} className="btn-primary mt-2" style={{ background: 'linear-gradient(135deg, #0ea5e9, #6366f1)', padding: '1rem', fontSize: '1rem', fontWeight: 'bold' }}>
+                    {isUploadingChNote ? '⏳ Uploading Chapter Note...' : '📤 Publish Chapter PDF Note'}
+                  </button>
+                </form>
               </div>
 
-              {uploadType === 'video' ? (
-                <input type="url" placeholder="YouTube Video URL (e.g. https://youtu.be/...)" value={contentUrl} onChange={(e) => setContentUrl(e.target.value)} style={{ padding: '1rem', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'var(--bg-dark)', color: 'white' }} required />
-              ) : (
-                <input type="file" accept="application/pdf" onChange={(e) => setPdfFile(e.target.files[0])} style={{ padding: '1rem', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'var(--bg-dark)', color: 'white' }} required />
-              )}
-
-              <button type="submit" className="btn-primary mt-2">Publish Material to Course</button>
-            </form>
-          </div>
-
-          <div className="glass-card">
-            <h3 className="mb-4">Manage Uploaded Materials</h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', maxHeight: '400px', overflowY: 'auto', paddingRight: '10px' }}>
-              {dbMaterials.length === 0 ? <p className="text-muted">No materials uploaded yet.</p> : dbMaterials.map(m => (
-                <div key={m.id} style={{ padding: '1rem', border: '1px solid var(--glass-border)', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.02)' }}>
-                  <div>
-                    <h4 style={{ margin: '0 0 0.25rem 0' }}>{m.title}</h4>
-                    <p className="text-muted" style={{ fontSize: '0.85rem', margin: 0 }}>Batch: {m.batches?.title}</p>
-                  </div>
-                  <button onClick={() => handleDeleteContent(m.id)} className="btn-outline" style={{ border: '1px solid #ff4444', color: '#ff4444', padding: '0.5rem 1rem' }}>Delete</button>
+              {/* Manage Uploaded Chapter Notes */}
+              <div className="glass-card">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                  <h3 style={{ margin: 0 }}>📚 Uploaded Chapter Notes</h3>
+                  <span style={{ fontSize: '0.85rem', background: 'rgba(56, 189, 248, 0.1)', color: '#38bdf8', padding: '0.2rem 0.6rem', borderRadius: '12px' }}>
+                    {dbMaterials.filter(m => (m.title || '').includes('[SUBJECT:')).length} Notes
+                  </span>
                 </div>
-              ))}
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', maxHeight: '550px', overflowY: 'auto', paddingRight: '6px' }}>
+                  {(() => {
+                    const chMaterials = dbMaterials
+                      .map(m => parseMaterialMetadata(m))
+                      .filter(m => m.subject !== null);
+
+                    if (chMaterials.length === 0) {
+                      return <p className="text-muted text-center py-4">Abhi koi Chapter PDF Note upload nahi kiya gaya hai.</p>;
+                    }
+
+                    return chMaterials.map(m => (
+                      <div key={m.id} style={{ padding: '0.85rem 1rem', border: '1px solid var(--glass-border)', borderRadius: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.02)', gap: '0.75rem' }}>
+                        <div style={{ minWidth: 0, flex: 1 }}>
+                          <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', marginBottom: '0.25rem' }}>
+                            <span style={{ fontSize: '0.75rem', background: 'rgba(56, 189, 248, 0.15)', color: '#38bdf8', padding: '0.15rem 0.45rem', borderRadius: '4px', fontWeight: 'bold' }}>
+                              {m.subject}
+                            </span>
+                            <span style={{ fontSize: '0.75rem', background: 'rgba(255, 255, 255, 0.08)', color: '#e2e8f0', padding: '0.15rem 0.45rem', borderRadius: '4px' }}>
+                              {m.className}
+                            </span>
+                          </div>
+                          <h4 style={{ margin: '0 0 0.2rem 0', fontSize: '0.95rem', color: 'white', wordBreak: 'break-word' }}>
+                            {m.chapter || m.cleanTitle}
+                          </h4>
+                          <p className="text-muted" style={{ fontSize: '0.8rem', margin: 0 }}>
+                            {m.cleanTitle}
+                          </p>
+                        </div>
+                        <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0 }}>
+                          <a href={m.file_url} target="_blank" rel="noreferrer" className="btn-outline" style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', color: '#38bdf8', borderColor: '#38bdf8' }}>
+                            👁️ View
+                          </a>
+                          <button onClick={() => handleDeleteContent(m.id)} className="btn-outline" style={{ border: '1px solid #ff4444', color: '#ff4444', padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}>
+                            🗑️
+                          </button>
+                        </div>
+                      </div>
+                    ));
+                  })()}
+                </div>
+              </div>
             </div>
-          </div>
+          ) : (
+            /* Mode 2: General Batch Materials */
+            <div className="grid-cols-2" style={{ alignItems: 'flex-start' }}>
+              <div className="glass-card">
+                <h3 className="mb-4">Add Course Material (General)</h3>
+                <form onSubmit={handleUploadContent} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  <select value={contentBatch} onChange={(e) => setContentBatch(e.target.value)} style={{ padding: '1rem', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'var(--bg-dark)', color: 'white' }} required>
+                    <option value="">Select Batch...</option>
+                    {batches.map(b => <option key={b.id} value={b.id}>{b.title}</option>)}
+                  </select>
+                  <input type="text" placeholder="Material Title (e.g. Full Syllabus Guide)" value={contentTitle} onChange={(e) => setContentTitle(e.target.value)} style={{ padding: '1rem', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'var(--bg-dark)', color: 'white' }} required />
+                  
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+                      <input type="radio" name="uploadType" value="video" checked={uploadType === 'video'} onChange={() => setUploadType('video')} /> YouTube Video
+                    </label>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+                      <input type="radio" name="uploadType" value="pdf" checked={uploadType === 'pdf'} onChange={() => setUploadType('pdf')} /> Secure PDF Note
+                    </label>
+                  </div>
+
+                  {uploadType === 'video' ? (
+                    <input type="url" placeholder="YouTube Video URL (e.g. https://youtu.be/...)" value={contentUrl} onChange={(e) => setContentUrl(e.target.value)} style={{ padding: '1rem', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'var(--bg-dark)', color: 'white' }} required />
+                  ) : (
+                    <input type="file" accept="application/pdf" onChange={(e) => setPdfFile(e.target.files[0])} style={{ padding: '1rem', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'var(--bg-dark)', color: 'white' }} required />
+                  )}
+
+                  <button type="submit" className="btn-primary mt-2">Publish Material to Course</button>
+                </form>
+              </div>
+
+              <div className="glass-card">
+                <h3 className="mb-4">Manage General Materials</h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', maxHeight: '400px', overflowY: 'auto', paddingRight: '10px' }}>
+                  {dbMaterials.filter(m => !(m.title || '').includes('[SUBJECT:')).length === 0 ? <p className="text-muted">No general materials uploaded yet.</p> : dbMaterials.filter(m => !(m.title || '').includes('[SUBJECT:')).map(m => (
+                    <div key={m.id} style={{ padding: '1rem', border: '1px solid var(--glass-border)', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.02)' }}>
+                      <div>
+                        <h4 style={{ margin: '0 0 0.25rem 0' }}>{m.title}</h4>
+                        <p className="text-muted" style={{ fontSize: '0.85rem', margin: 0 }}>Batch: {m.batches?.title}</p>
+                      </div>
+                      <button onClick={() => handleDeleteContent(m.id)} className="btn-outline" style={{ border: '1px solid #ff4444', color: '#ff4444', padding: '0.5rem 1rem' }}>Delete</button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -3081,4 +3383,3 @@ export default function AdminDashboard() {
     </div>
   );
 }
-
