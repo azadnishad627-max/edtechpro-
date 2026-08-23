@@ -859,28 +859,36 @@ export default function StudentDashboard() {
               ) : null;
             })()}
 
-            {/* --- 📚 CLASS 8TH SUBJECT & CHAPTER-WISE PDF NOTES SYSTEM --- */}
-            <div className="glass-card" style={{ padding: '1.5rem', borderRadius: '16px', border: '1px solid rgba(56, 189, 248, 0.3)', background: 'linear-gradient(135deg, rgba(14, 165, 233, 0.05) 0%, rgba(99, 102, 241, 0.05) 100%)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.5rem' }}>
+            {/* --- 📚 COMPACT SUBJECT & CHAPTER DROPDOWN PDF NOTES SYSTEM --- */}
+            <div className="glass-card" style={{ padding: '1.25rem', borderRadius: '16px', border: '1px solid rgba(56, 189, 248, 0.35)', background: 'linear-gradient(135deg, rgba(14, 165, 233, 0.08) 0%, rgba(99, 102, 241, 0.08) 100%)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
+                <span style={{ fontSize: '1.5rem' }}>📚</span>
                 <div>
-                  <h2 style={{ margin: 0, fontSize: 'clamp(1.2rem, 4vw, 1.6rem)', color: 'white', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <span>📚</span> Class 8th Subject & Chapter Notes
-                  </h2>
-                  <p style={{ margin: '0.25rem 0 0 0', color: '#94a3b8', fontSize: '0.85rem' }}>
-                    Apna subject select karein aur kisi bhi chapter ka PDF note kholkar padhein.
+                  <h3 style={{ margin: 0, color: 'white', fontSize: '1.15rem', fontWeight: 'bold' }}>
+                    Class 8th Chapter-Wise PDF Notes
+                  </h3>
+                  <p style={{ margin: 0, color: '#94a3b8', fontSize: '0.8rem' }}>
+                    Subject aur Chapter dropdown se select karein aur notes padhein.
                   </p>
                 </div>
+              </div>
 
-                {/* Subject Selector Dropdown (Mobile-Friendly) */}
-                <div style={{ minWidth: '220px', flex: 1, maxWidth: '350px' }}>
+              {/* DUAL DROPDOWN SELECTORS */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1rem', marginBottom: '1.25rem' }}>
+                {/* Dropdown 1: Select Subject */}
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.82rem', color: '#38bdf8', fontWeight: 'bold', marginBottom: '0.35rem' }}>
+                    1. Select Subject (विषय चुनें)
+                  </label>
                   <select 
                     value={selectedSubject} 
                     onChange={(e) => {
-                      setSelectedSubject(e.target.value);
-                      setSelectedChapter(null);
-                      setChapterSearch('');
+                      const newSub = e.target.value;
+                      setSelectedSubject(newSub);
+                      const subChList = CLASS_8_SUBJECTS[newSub] || [];
+                      setSelectedChapter(subChList.length > 0 ? subChList[0] : null);
                     }}
-                    style={{ width: '100%', padding: '0.75rem 1rem', borderRadius: '10px', border: '1px solid #38bdf8', background: 'var(--bg-dark)', color: 'white', fontWeight: 'bold', fontSize: '0.95rem' }}
+                    style={{ width: '100%', padding: '0.85rem 1rem', borderRadius: '10px', border: '1px solid #38bdf8', background: 'var(--bg-dark)', color: 'white', fontWeight: 'bold', fontSize: '0.95rem' }}
                   >
                     {Object.keys(CLASS_8_SUBJECTS).map(sub => (
                       <option key={sub} value={sub}>
@@ -889,157 +897,150 @@ export default function StudentDashboard() {
                     ))}
                   </select>
                 </div>
-              </div>
 
-              {/* Subject Chips / Tabs */}
-              <div style={{ display: 'flex', gap: '0.5rem', overflowX: 'auto', paddingBottom: '0.75rem', marginBottom: '1.5rem', scrollbarWidth: 'none' }}>
-                {Object.keys(CLASS_8_SUBJECTS).map(sub => {
-                  const isSelected = selectedSubject === sub;
-                  const icon = SUBJECT_ICONS[sub] || '📖';
-                  return (
-                    <button
-                      key={sub}
-                      onClick={() => {
-                        setSelectedSubject(sub);
-                        setSelectedChapter(null);
-                        setChapterSearch('');
-                      }}
-                      style={{
-                        padding: '0.6rem 1rem',
-                        borderRadius: '25px',
-                        border: isSelected ? '1px solid #38bdf8' : '1px solid rgba(255,255,255,0.1)',
-                        background: isSelected ? 'linear-gradient(135deg, #0ea5e9, #6366f1)' : 'rgba(255,255,255,0.04)',
-                        color: isSelected ? 'white' : '#cbd5e1',
-                        fontSize: '0.85rem',
-                        fontWeight: isSelected ? 'bold' : 'normal',
-                        whiteSpace: 'nowrap',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.4rem',
-                        transition: 'all 0.2s ease',
-                        boxShadow: isSelected ? '0 4px 15px rgba(14, 165, 233, 0.3)' : 'none'
-                      }}
-                    >
-                      <span>{icon}</span>
-                      <span>{sub}</span>
-                    </button>
-                  );
-                })}
-              </div>
+                {/* Dropdown 2: Select Chapter */}
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.82rem', color: '#38bdf8', fontWeight: 'bold', marginBottom: '0.35rem' }}>
+                    2. Select Chapter (पाठ चुनें)
+                  </label>
+                  {(() => {
+                    const chList = CLASS_8_SUBJECTS[selectedSubject] || [];
+                    const activeCh = selectedChapter || (chList.length > 0 ? chList[0] : '');
+                    const parsedMaterials = dbMaterials.map(m => parseMaterialMetadata(m));
 
-              {/* Search & Chapter Header */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem', marginBottom: '1rem', background: 'rgba(0,0,0,0.25)', padding: '0.75rem 1rem', borderRadius: '10px' }}>
-                <div style={{ color: '#38bdf8', fontWeight: 'bold', fontSize: '0.95rem' }}>
-                  {(SUBJECT_ICONS[selectedSubject] || '📖')} {selectedSubject} — All Chapters
+                    return (
+                      <select 
+                        value={activeCh} 
+                        onChange={(e) => setSelectedChapter(e.target.value)}
+                        style={{ width: '100%', padding: '0.85rem 1rem', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.2)', background: 'var(--bg-dark)', color: 'white', fontSize: '0.95rem' }}
+                      >
+                        {chList.map((ch, idx) => {
+                          const hasNotes = parsedMaterials.some(m => {
+                            if (!m.subject && !m.chapter) return m.title.toLowerCase().includes(ch.toLowerCase());
+                            const isSubMatch = m.subject && (m.subject.includes(selectedSubject.split(' ')[0]) || selectedSubject.includes(m.subject));
+                            const isChMatch = m.chapter && (m.chapter.trim() === ch.trim() || ch.includes(m.chapter) || m.chapter.includes(ch));
+                            return isSubMatch && isChMatch;
+                          });
+
+                          return (
+                            <option key={idx} value={ch}>
+                              {ch} {hasNotes ? '📄 (PDF Ready)' : ''}
+                            </option>
+                          );
+                        })}
+                      </select>
+                    );
+                  })()}
                 </div>
-                <input 
-                  type="text" 
-                  placeholder="🔍 Search chapter..." 
-                  value={chapterSearch}
-                  onChange={(e) => setChapterSearch(e.target.value)}
-                  style={{ padding: '0.45rem 0.85rem', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'var(--bg-dark)', color: 'white', fontSize: '0.85rem', width: '100%', maxWidth: '220px' }}
-                />
               </div>
 
-              {/* Chapter Cards Accordion List */}
+              {/* ACTIVE SELECTED CHAPTER CARD */}
               {(() => {
-                const chapters = CLASS_8_SUBJECTS[selectedSubject] || [];
-                const filteredChapters = chapterSearch.trim() 
-                  ? chapters.filter(c => c.toLowerCase().includes(chapterSearch.toLowerCase()))
-                  : chapters;
+                const chList = CLASS_8_SUBJECTS[selectedSubject] || [];
+                const currentCh = selectedChapter || (chList.length > 0 ? chList[0] : null);
+                if (!currentCh) return null;
 
-                // Parse uploaded materials for this subject
+                const currentIndex = chList.indexOf(currentCh);
                 const parsedMaterials = dbMaterials.map(m => parseMaterialMetadata(m));
 
-                if (filteredChapters.length === 0) {
-                  return <p className="text-muted text-center py-4">Koi chapter match nahi hua.</p>;
-                }
+                const currentNotes = parsedMaterials.filter(m => {
+                  if (!m.subject && !m.chapter) return m.title.toLowerCase().includes(currentCh.toLowerCase());
+                  const isSubMatch = m.subject && (m.subject.includes(selectedSubject.split(' ')[0]) || selectedSubject.includes(m.subject));
+                  const isChMatch = m.chapter && (m.chapter.trim() === currentCh.trim() || currentCh.includes(m.chapter) || m.chapter.includes(currentCh));
+                  return isSubMatch && isChMatch;
+                });
+
+                const hasNotes = currentNotes.length > 0;
 
                 return (
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1rem' }}>
-                    {filteredChapters.map((ch, idx) => {
-                      // Find PDF notes matching this chapter and subject
-                      const chNotes = parsedMaterials.filter(m => {
-                        if (!m.subject && !m.chapter) {
-                          // Fallback: match by title keyword
-                          return m.title.toLowerCase().includes(ch.toLowerCase());
-                        }
-                        const isSubMatch = m.subject && (m.subject.includes(selectedSubject.split(' ')[0]) || selectedSubject.includes(m.subject));
-                        const isChMatch = m.chapter && (m.chapter.trim() === ch.trim() || ch.includes(m.chapter) || m.chapter.includes(ch));
-                        return isSubMatch && isChMatch;
-                      });
-
-                      const hasNotes = chNotes.length > 0;
-
-                      return (
-                        <div 
-                          key={idx}
-                          style={{
-                            padding: '1.2rem',
-                            borderRadius: '12px',
-                            background: hasNotes ? 'rgba(56, 189, 248, 0.05)' : 'rgba(255, 255, 255, 0.02)',
-                            border: hasNotes ? '1px solid rgba(56, 189, 248, 0.4)' : '1px solid var(--glass-border)',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            justifyContent: 'space-between',
-                            gap: '0.8rem',
-                            transition: 'all 0.3s ease'
-                          }}
-                        >
-                          <div>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.5rem', marginBottom: '0.4rem' }}>
-                              <span style={{ fontSize: '0.75rem', fontWeight: 'bold', color: '#94a3b8', background: 'rgba(255,255,255,0.06)', padding: '0.15rem 0.5rem', borderRadius: '4px' }}>
-                                #{idx + 1}
-                              </span>
-                              {hasNotes ? (
-                                <span style={{ fontSize: '0.75rem', background: 'rgba(16, 185, 129, 0.15)', color: '#10b981', padding: '0.2rem 0.5rem', borderRadius: '6px', fontWeight: 'bold' }}>
-                                  ✓ {chNotes.length} PDF Note Available
-                                </span>
-                              ) : (
-                                <span style={{ fontSize: '0.72rem', color: '#64748b', background: 'rgba(255,255,255,0.03)', padding: '0.15rem 0.45rem', borderRadius: '4px' }}>
-                                  ⏳ Notes Coming Soon
-                                </span>
-                              )}
-                            </div>
-
-                            <h4 style={{ margin: '0 0 0.4rem 0', fontSize: '1rem', color: 'white', lineHeight: '1.4' }}>
-                              {ch}
-                            </h4>
-                          </div>
-
-                          {hasNotes ? (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                              {chNotes.map(note => (
-                                <button
-                                  key={note.id}
-                                  onClick={() => window.open(`/secure-notes/${note.id}`, '_blank')}
-                                  className="btn-primary"
-                                  style={{
-                                    width: '100%',
-                                    padding: '0.65rem 1rem',
-                                    fontSize: '0.85rem',
-                                    fontWeight: 'bold',
-                                    background: 'linear-gradient(135deg, #0ea5e9, #2563eb)',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    gap: '0.4rem'
-                                  }}
-                                >
-                                  <span>🔒</span>
-                                  <span>Open Chapter PDF Note</span>
-                                </button>
-                              ))}
-                            </div>
-                          ) : (
-                            <div style={{ padding: '0.5rem', textAlign: 'center', background: 'rgba(0,0,0,0.15)', borderRadius: '6px', fontSize: '0.78rem', color: '#64748b' }}>
-                              Sir is chapter ke notes jald upload karenge
-                            </div>
-                          )}
+                  <div style={{
+                    padding: '1.25rem',
+                    borderRadius: '12px',
+                    background: hasNotes ? 'rgba(14, 165, 233, 0.08)' : 'rgba(0, 0, 0, 0.25)',
+                    border: hasNotes ? '1px solid rgba(56, 189, 248, 0.4)' : '1px solid var(--glass-border)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '1rem'
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.5rem' }}>
+                      <div>
+                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginBottom: '0.35rem' }}>
+                          <span style={{ fontSize: '0.75rem', background: '#0284c7', color: 'white', padding: '0.15rem 0.5rem', borderRadius: '4px', fontWeight: 'bold' }}>
+                            {(SUBJECT_ICONS[selectedSubject] || '📖')} {selectedSubject}
+                          </span>
+                          <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>
+                            Chapter {currentIndex >= 0 ? currentIndex + 1 : 1} of {chList.length}
+                          </span>
                         </div>
-                      );
-                    })}
+                        <h4 style={{ margin: 0, color: 'white', fontSize: '1.15rem', lineHeight: '1.4' }}>
+                          {currentCh}
+                        </h4>
+                      </div>
+
+                      {hasNotes ? (
+                        <span style={{ fontSize: '0.8rem', background: 'rgba(16, 185, 129, 0.15)', color: '#10b981', padding: '0.25rem 0.65rem', borderRadius: '6px', fontWeight: 'bold' }}>
+                          🟢 {currentNotes.length} PDF Note Available
+                        </span>
+                      ) : (
+                        <span style={{ fontSize: '0.75rem', color: '#94a3b8', background: 'rgba(255,255,255,0.05)', padding: '0.2rem 0.5rem', borderRadius: '4px' }}>
+                          ⏳ Notes Coming Soon
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Action Buttons */}
+                    {hasNotes ? (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                        {currentNotes.map(note => (
+                          <button
+                            key={note.id}
+                            onClick={() => window.open(`/secure-notes/${note.id}`, '_blank')}
+                            className="btn-primary"
+                            style={{
+                              width: '100%',
+                              padding: '0.85rem 1.25rem',
+                              fontSize: '0.95rem',
+                              fontWeight: 'bold',
+                              background: 'linear-gradient(135deg, #0ea5e9, #2563eb)',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: '0.5rem',
+                              boxShadow: '0 4px 15px rgba(14, 165, 233, 0.3)'
+                            }}
+                          >
+                            <span>🔒</span>
+                            <span>Open Chapter PDF Note (With Zoom Controls)</span>
+                          </button>
+                        ))}
+                      </div>
+                    ) : (
+                      <div style={{ padding: '0.75rem', textAlign: 'center', background: 'rgba(0,0,0,0.2)', borderRadius: '8px', fontSize: '0.85rem', color: '#94a3b8' }}>
+                        📝 Sir is chapter ke PDF notes jald hi upload karenge.
+                      </div>
+                    )}
+
+                    {/* Navigation Prev / Next Buttons */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', paddingTop: '0.5rem', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                      <button
+                        type="button"
+                        disabled={currentIndex <= 0}
+                        onClick={() => setSelectedChapter(chList[currentIndex - 1])}
+                        className="btn-outline"
+                        style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', opacity: currentIndex <= 0 ? 0.4 : 1, cursor: currentIndex <= 0 ? 'not-allowed' : 'pointer' }}
+                      >
+                        ← Prev Chapter
+                      </button>
+                      <button
+                        type="button"
+                        disabled={currentIndex >= chList.length - 1}
+                        onClick={() => setSelectedChapter(chList[currentIndex + 1])}
+                        className="btn-outline"
+                        style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', opacity: currentIndex >= chList.length - 1 ? 0.4 : 1, cursor: currentIndex >= chList.length - 1 ? 'not-allowed' : 'pointer' }}
+                      >
+                        Next Chapter →
+                      </button>
+                    </div>
                   </div>
                 );
               })()}
