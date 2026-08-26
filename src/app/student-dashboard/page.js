@@ -282,26 +282,29 @@ export default function StudentDashboard() {
         }
       });
 
-      // Filter tests that belong to the current student's batch
+      // Filter tests that belong to the current student's batch (including both active and archived tests)
+      // Scores should ONLY be removed if a test is actually deleted by the admin!
       const validBatchTestIds = new Set(
         activeTests
-          .filter(t => !t.title.startsWith('[ARCHIVED]') && isItemForStudentBatch(t.batch_id, t.batches?.title, t.title))
+          .filter(t => isItemForStudentBatch(t.batch_id, t.batches?.title, t.title))
           .map(t => t.id)
       );
 
-      const firstAttempts = {};
+      const bestAttempts = {};
       attempts.forEach(a => {
-        // Count ONLY attempts by batch students on batch tests
-        if (validBatchTestIds.has(a.test_id) && batchStudentIds.has(a.student_id)) {
+        // Count all attempts on tests that belong to this batch
+        if (validBatchTestIds.has(a.test_id)) {
           const key = `${a.student_id}_${a.test_id}`;
-          if (!firstAttempts[key]) firstAttempts[key] = a;
+          if (!bestAttempts[key] || bestAttempts[key].score < a.score) {
+            bestAttempts[key] = a;
+          }
         }
       });
 
       const studentScores = {};
       const studentLatestSubmit = {};
       
-      Object.values(firstAttempts).forEach(a => {
+      Object.values(bestAttempts).forEach(a => {
         const sid = a.student_id;
         studentScores[sid] = (studentScores[sid] || 0) + a.score;
         const attemptTime = new Date(a.created_at).getTime();
@@ -310,9 +313,9 @@ export default function StudentDashboard() {
         }
       });
 
-      // Filter profiles for this batch's leaderboard
+      // Include all students who took tests in this batch or belong to this batch
       const updatedProfiles = profiles
-        .filter(p => batchStudentIds.has(p.id) && studentScores[p.id] !== undefined)
+        .filter(p => (batchStudentIds.has(p.id) || studentScores[p.id] !== undefined) && (studentScores[p.id] !== undefined && studentScores[p.id] > 0))
         .map(p => ({
           ...p,
           total_test_score: studentScores[p.id] || 0,
@@ -326,7 +329,8 @@ export default function StudentDashboard() {
         return a.latest_submit_time - b.latest_submit_time; 
       });
       
-      setLeaderboard(updatedProfiles.slice(0, 10));
+      // Display all students who gave tests, ranked by score (not just top 10)
+      setLeaderboard(updatedProfiles);
     } catch (err) {
       console.error("Leaderboard error:", err);
       setLeaderboard([]);
@@ -1492,12 +1496,18 @@ export default function StudentDashboard() {
                     </h4>
                     <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.9rem' }}>Tests Taken</p>
                   </div>
-                  <div style={{ flex: 1, background: 'rgba(255, 68, 68, 0.1)', border: '1px solid rgba(255, 68, 68, 0.3)', padding: '1rem', borderRadius: '8px', textAlign: 'center' }}>
-                    <h4 style={{ margin: '0 0 0.5rem 0', color: '#ff4444', fontSize: '2rem' }}>
-                      {dbTests.filter(t => t.is_active && !t.title.startsWith('[ARCHIVED]') && (!t.batch_id || t.batch_id === student?.batch_id)).map(t => t.id).filter(id => !new Set(myTestAttempts.map(a => a.test_id)).has(id)).length}
-                    </h4>
-                    <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.9rem' }}>Tests Missed</p>
-                  </div>
+                  {(() => {
+                    const myAttemptedTestIds = new Set(myTestAttempts.map(a => a.test_id));
+                    const missedTestsList = dbTests.filter(t => isItemForStudentBatch(t.batch_id, t.batches?.title, t.title) && !myAttemptedTestIds.has(t.id));
+                    return (
+                      <div style={{ flex: 1, background: 'rgba(255, 68, 68, 0.1)', border: '1px solid rgba(255, 68, 68, 0.3)', padding: '1rem', borderRadius: '8px', textAlign: 'center' }}>
+                        <h4 style={{ margin: '0 0 0.5rem 0', color: '#ff4444', fontSize: '2rem' }}>
+                          {missedTestsList.length}
+                        </h4>
+                        <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.9rem' }}>Tests Missed</p>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 <div style={{ padding: '1.5rem' }}>
@@ -1562,6 +1572,80 @@ export default function StudentDashboard() {
                       </table>
                     </div>
                   )}
+                </div>
+
+                {/* --- MISSED TESTS (छूटे हुए टेस्ट) --- */}
+                <div style={{ padding: '1.5rem', borderTop: '1px solid var(--glass-border)', background: 'rgba(239, 68, 68, 0.03)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                      <span style={{ fontSize: '1.4rem' }}>⚠️</span>
+                      <div>
+                        <h4 style={{ margin: 0, color: '#f87171' }}>Missed Tests (छूटे हुए टेस्ट)</h4>
+                        <p className="text-muted" style={{ margin: '0.2rem 0 0 0', fontSize: '0.85rem' }}>
+                          Jo tests aap time par nahi de paye, unhe yahan se practice ke liye attempt karein.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {(() => {
+                    const myAttemptedTestIds = new Set(myTestAttempts.map(a => a.test_id));
+                    const missedTests = dbTests.filter(t => isItemForStudentBatch(t.batch_id, t.batches?.title, t.title) && !myAttemptedTestIds.has(t.id));
+
+                    if (missedTests.length === 0) {
+                      return (
+                        <div style={{ padding: '1rem', borderRadius: '8px', background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.2)', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                          <span>🎉</span>
+                          <p style={{ margin: 0, color: '#34d399', fontSize: '0.9rem' }}>
+                            Shandar! Aapne apne batch ka koi bhi test miss nahi kiya hai.
+                          </p>
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                        {missedTests.map(mTest => (
+                          <div 
+                            key={mTest.id} 
+                            style={{ 
+                              padding: '1rem', 
+                              borderRadius: '10px', 
+                              background: 'rgba(255,255,255,0.03)', 
+                              border: '1px solid rgba(239, 68, 68, 0.25)',
+                              display: 'flex', 
+                              justifyContent: 'space-between', 
+                              alignItems: 'center',
+                              flexWrap: 'wrap',
+                              gap: '0.75rem'
+                            }}
+                          >
+                            <div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
+                                <span style={{ background: 'rgba(239, 68, 68, 0.2)', color: '#f87171', fontSize: '0.75rem', fontWeight: 'bold', padding: '0.2rem 0.5rem', borderRadius: '4px' }}>
+                                  Missed / छूटा हुआ
+                                </span>
+                                <h4 style={{ margin: 0, fontSize: '1rem' }}>
+                                  {mTest.title.replace('[ARCHIVED] ', '').replace('[REASONING] ', '')}
+                                </h4>
+                              </div>
+                              <p className="text-muted" style={{ margin: 0, fontSize: '0.85rem' }}>
+                                {mTest.total_questions || 0} Questions • {mTest.duration_mins || 30} Mins
+                              </p>
+                            </div>
+
+                            <button 
+                              onClick={() => router.push(`/test/${mTest.id}?practice=true`)}
+                              className="btn-primary" 
+                              style={{ background: 'linear-gradient(135deg, #ef4444, #f97316)', padding: '0.5rem 1rem', fontSize: '0.85rem', whiteSpace: 'nowrap' }}
+                            >
+                              📝 Practice Now
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* --- PRACTICE & REVISION (Archived Tests) --- */}
