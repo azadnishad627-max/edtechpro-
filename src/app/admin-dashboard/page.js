@@ -978,7 +978,7 @@ export default function AdminDashboard() {
     setGenerateProgress(`Initializing generation...`);
     try {
       const total = parseInt(totalQuestions, 10);
-      const batchSize = 1; // 1 Question per batch completely guarantees NO VERCEL TIMEOUT
+      const batchSize = Math.min(total, 5); // 5 Questions per fast NVIDIA API call
       let allGeneratedQuestions = [];
 
       for (let i = 0; i < total; i += batchSize) {
@@ -1027,7 +1027,8 @@ export default function AdminDashboard() {
         option_b: q.option_b,
         option_c: q.option_c,
         option_d: q.option_d,
-        correct_answer: q.correct_answer
+        correct_answer: q.correct_answer,
+        explanation: q.explanation || null
       }));
 
       const { error: qError } = await supabase.from('questions').insert(questionsToInsert);
@@ -2395,8 +2396,60 @@ export default function AdminDashboard() {
                   <input type="text" placeholder="e.g. Science Chapter 1 Mock" value={testTitle} onChange={(e) => setTestTitle(e.target.value)} style={{ width: '100%', padding: '1rem', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'rgba(0,0,0,0.2)', color: 'white' }} required />
                 </div>
                 <div style={{ flex: 1, minWidth: '200px', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                  <label className="text-light" style={{ fontSize: '0.9rem' }}>AI Generation Topic</label>
-                  <input type="text" placeholder="e.g. Photosynthesis Class 10" value={testTopic} onChange={(e) => setTestTopic(e.target.value)} style={{ width: '100%', padding: '1rem', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'rgba(0,0,0,0.2)', color: 'white' }} required />
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <label className="text-light" style={{ fontSize: '0.9rem', fontWeight: 'bold', color: '#38bdf8' }}>
+                      ⚡ AI Generation Topic (NVIDIA AI)
+                    </label>
+                    <span style={{ fontSize: '0.75rem', background: 'rgba(56, 189, 248, 0.15)', color: '#38bdf8', padding: '0.2rem 0.5rem', borderRadius: '4px' }}>
+                      NVIDIA Vision AI Active
+                    </span>
+                  </div>
+                  <input 
+                    type="text" 
+                    placeholder="e.g. NMMS MAT (Mental Ability) or Topic Name" 
+                    value={testTopic} 
+                    onChange={(e) => setTestTopic(e.target.value)} 
+                    style={{ width: '100%', padding: '1rem', borderRadius: '8px', border: '1px solid #38bdf8', background: 'rgba(0,0,0,0.3)', color: 'white', fontWeight: 'bold' }} 
+                    required 
+                  />
+
+                  {/* Quick 1-Click MAT & Subject Preset Chips */}
+                  <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', marginTop: '0.4rem' }}>
+                    {[
+                      { label: "🎯 NMMS MAT Full Test", topic: "NMMS MAT - Mental Ability Test (संख्या श्रृंखला, कोडिंग, सादृश्यता, पासा)", title: "NMMS MAT Full Mock Test", count: "10" },
+                      { label: "🔢 Number & Letter Series", topic: "NMMS MAT - Number Series and Alphabet Series Reasoning (संख्या एवं अक्षर श्रृंखला)", title: "MAT Series Reasoning Test", count: "10" },
+                      { label: "🪞 Mirror & Water Images", topic: "NMMS MAT - Mirror Images and Water Reflection Reasoning (दर्पण एवं जल प्रतिबिंब)", title: "MAT Mirror Image Test", count: "10" },
+                      { label: "🎲 Dice & Cubes (पासा)", topic: "NMMS MAT - Dice and Cube Facing Problems (पासा और घन)", title: "MAT Dice Test", count: "10" },
+                      { label: "✂️ Paper Folding", topic: "NMMS MAT - Paper Folding and Cutting Reasoning (कागज़ मोड़ना व काटना)", title: "MAT Paper Folding Test", count: "10" },
+                      { label: "🔬 Class 8th Science", topic: "Class 8th Science NCERT (विज्ञान महत्वपूर्ण प्रश्न)", title: "Class 8th Science Test", count: "10" },
+                      { label: "📐 Class 8th Maths", topic: "Class 8th Mathematics NCERT (गणित महत्वपूर्ण प्रश्न)", title: "Class 8th Maths Test", count: "10" }
+                    ].map((preset, pIdx) => (
+                      <button
+                        key={pIdx}
+                        type="button"
+                        onClick={() => {
+                          setTestTopic(preset.topic);
+                          if (!testTitle) setTestTitle(preset.title);
+                          if (!totalQuestions) setTotalQuestions(preset.count);
+                          if (!duration) setDuration("20");
+                          setTestLanguage("Hindi");
+                        }}
+                        style={{
+                          background: testTopic === preset.topic ? 'linear-gradient(135deg, #0ea5e9, #6366f1)' : 'rgba(255,255,255,0.06)',
+                          color: testTopic === preset.topic ? 'white' : '#cbd5e1',
+                          border: testTopic === preset.topic ? '1px solid #38bdf8' : '1px solid rgba(255,255,255,0.1)',
+                          borderRadius: '20px',
+                          padding: '0.35rem 0.75rem',
+                          fontSize: '0.75rem',
+                          cursor: 'pointer',
+                          whiteSpace: 'nowrap',
+                          transition: 'all 0.2s'
+                        }}
+                      >
+                        {preset.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
 

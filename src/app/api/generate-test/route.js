@@ -1,92 +1,149 @@
 import { NextResponse } from 'next/server';
-import OpenAI from 'openai';
 
 export const runtime = 'edge';
 export const maxDuration = 60;
 
-const API_CONFIGS = [
-  {
-    key: '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',
-    model: 'nvidia/ising-calibration-1.5-31b'
-  },
-  {
-    key: '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',
-    model: 'google/gemma-4-31b-it'
-  },
-  {
-    key: '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',
-    model: 'nvidia/nemotron-3.5-lightning-30b-a3b'
-  }
-];
+const NVIDIA_KEY = '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';
+const BYNARA_KEY = 'sk-nry-N9x2vinWSSErTHlfxxHd5nzXpTS_vUvq1mKThFcbUS4';
 
 export async function POST(req) {
   try {
-    const { topic, questionCount, language = 'English' } = await req.json();
+    const { topic, questionCount = 5, language = 'Hindi', imageUrl } = await req.json();
 
-    const systemPrompt = `You are an expert educational test generator. Generate exactly ${questionCount} multiple choice questions about "${topic}".
-The questions, options, and explanations MUST be written in ${language}.
-Return ONLY a valid JSON array of objects. Do not include markdown blocks like \`\`\`json.
-Each object must have exactly these keys: "question_text", "option_a", "option_b", "option_c", "option_d", "correct_answer", "explanation".
-The "correct_answer" MUST be the exact full text of the correct option (not just A/B/C/D).
-The "explanation" MUST be a detailed step-by-step solution or reason explaining how to arrive at the correct answer.
-Make sure the JSON output is perfectly formatted and valid.`;
+    if (!topic || topic.trim().length === 0) {
+      return NextResponse.json({ error: "Topic is required for generating questions." }, { status: 400 });
+    }
 
-    let completion = null;
+    const count = parseInt(questionCount, 10) || 5;
+
+    const systemPrompt = `You are a master question paper maker for Indian competitive & scholarship exams, specially NMMS (National Means Cum-Merit Scholarship) Class 8th MAT (Mental Ability Test) and Science/Maths.
+Generate exactly ${count} multiple choice questions (MCQs) for the topic: "${topic}".
+The questions, options, and step-by-step reasoning solutions MUST be written in ${language}.
+Return ONLY a valid JSON array of objects. Do NOT include markdown code blocks like \`\`\`json or explanatory chat text.
+Each object must have these exact keys:
+- "question_text": The complete question in ${language}.
+- "option_a": Option A text.
+- "option_b": Option B text.
+- "option_c": Option C text.
+- "option_d": Option D text.
+- "correct_answer": The exact full text of the correct option (e.g. value of option_a, option_b, option_c, or option_d).
+- "explanation": Step-by-step reasoning logic explaining how to solve it in ${language}.`;
+
+    // Construct user content (support both text and image if provided)
+    let userMessageContent = `Generate ${count} high quality exam MCQs for "${topic}" in ${language}. Output JSON array only.`;
+
+    let messages = [
+      { role: "system", content: systemPrompt }
+    ];
+
+    if (imageUrl) {
+      messages.push({
+        role: "user",
+        content: [
+          { type: "image_url", image_url: { url: imageUrl } },
+          { type: "text", text: userMessageContent }
+        ]
+      });
+    } else {
+      messages.push({
+        role: "user",
+        content: userMessageContent
+      });
+    }
+
+    let rawOutput = "";
     let lastError = null;
 
-    for (const config of API_CONFIGS) {
+    // --- ATTEMPT 1: NVIDIA Vision Model ---
+    try {
+      const nvRes = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${NVIDIA_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          model: 'meta/llama-3.2-11b-vision-instruct',
+          messages: messages,
+          temperature: 0.5,
+          max_tokens: 4096
+        })
+      });
+
+      if (nvRes.ok) {
+        const nvData = await nvRes.json();
+        rawOutput = nvData.choices?.[0]?.message?.content || "";
+      } else {
+        const errText = await nvRes.text();
+        console.error("NVIDIA API returned error:", nvRes.status, errText);
+        lastError = new Error(`NVIDIA HTTP ${nvRes.status}: ${errText}`);
+      }
+    } catch (e) {
+      console.error("NVIDIA call failed:", e.message);
+      lastError = e;
+    }
+
+    // --- ATTEMPT 2: Fallback to Bynara Qwen 3.8 27B if NVIDIA fails ---
+    if (!rawOutput) {
       try {
-        const openai = new OpenAI({
-          apiKey: config.key,
-          baseURL: 'https://integrate.api.nvidia.com/v1',
+        console.log("Using Bynara Qwen3.8-27b as fallback...");
+        const byRes = await fetch('https://router.bynara.id/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${BYNARA_KEY}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            model: 'qwen3.8-27b',
+            messages: [
+              { role: "system", content: systemPrompt },
+              { role: "user", content: `Generate ${count} questions on ${topic} in ${language}. Output JSON array only.` }
+            ],
+            temperature: 0.5,
+            max_tokens: 4096
+          })
         });
-        
-        completion = await openai.chat.completions.create({
-          model: config.model,
-          messages: [
-            {"role": "system", "content": systemPrompt},
-            {"role": "user", "content": `Generate ${questionCount} questions on ${topic} in ${language}.`}
-          ],
-          temperature: 0.7,
-          top_p: 0.95,
-          max_tokens: 16384
-        });
-        
-        break; // Success! Break the fallback loop
-      } catch (err) {
-        console.error(`Error with model ${config.model}:`, err.message);
-        lastError = err;
+
+        if (byRes.ok) {
+          const byData = await byRes.json();
+          rawOutput = byData.choices?.[0]?.message?.content || "";
+        } else {
+          const errText = await byRes.text();
+          throw new Error(`Bynara fallback failed (${byRes.status}): ${errText}`);
+        }
+      } catch (fbErr) {
+        console.error("Fallback error:", fbErr.message);
+        throw new Error(lastError?.message || fbErr.message);
       }
     }
-    
-    if (!completion) {
-      throw new Error(`All fallback APIs failed. Last error: ${lastError?.message}`);
+
+    if (!rawOutput) {
+      throw new Error("AI returned empty response.");
     }
 
-    let aiResponse = completion.choices[0]?.message?.content || "";
-
-    if (!aiResponse) throw new Error("AI returned empty response");
-
-    // Clean up markdown blocks if the AI disobeyed
-    aiResponse = aiResponse.replace(/```json/gi, "").replace(/```/g, "").trim();
-    
-    // Attempt to extract json array if there is conversational text
-    const jsonMatch = aiResponse.match(/\[\s*\{[\s\S]*\}\s*\]/);
-    if (jsonMatch) {
-      aiResponse = jsonMatch[0];
+    // Clean JSON formatting
+    let cleanJson = rawOutput.replace(/```json/gi, "").replace(/```/g, "").trim();
+    const match = cleanJson.match(/\[\s*\{[\s\S]*\}\s*\]/);
+    if (match) {
+      cleanJson = match[0];
     }
 
-    let questions;
+    let questions = [];
     try {
-      questions = JSON.parse(aiResponse);
-    } catch (e) {
-      console.error("Failed to parse JSON:", aiResponse);
-      throw new Error(`Failed to parse AI JSON response. AI output snippet: ${aiResponse.substring(0, 100)}...`);
+      questions = JSON.parse(cleanJson);
+    } catch (parseErr) {
+      console.error("Failed to parse JSON:", cleanJson);
+      throw new Error(`Invalid JSON returned by AI: ${cleanJson.substring(0, 120)}...`);
     }
 
-    return NextResponse.json({ questions });
-    
+    if (!Array.isArray(questions) || questions.length === 0) {
+      throw new Error("AI did not return a valid list of questions.");
+    }
+
+    return NextResponse.json({ questions, count: questions.length });
+
   } catch (err) {
+    console.error("Generate Test Route Error:", err.message);
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
