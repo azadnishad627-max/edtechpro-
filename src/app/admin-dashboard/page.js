@@ -1027,8 +1027,7 @@ export default function AdminDashboard() {
         option_b: q.option_b,
         option_c: q.option_c,
         option_d: q.option_d,
-        correct_answer: q.correct_answer,
-        explanation: q.explanation || null
+        correct_answer: q.correct_answer
       }));
 
       const { error: qError } = await supabase.from('questions').insert(questionsToInsert);
