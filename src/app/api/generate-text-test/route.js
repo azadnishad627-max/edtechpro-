@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 
-export const runtime = "edge";
 export const maxDuration = 60;
+export const dynamic = 'force-dynamic';
 
 const NVIDIA_KEY = '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';
 const BYNARA_KEY = 'sk-nry-N9x2vinWSSErTHlfxxHd5nzXpTS_vUvq1mKThFcbUS4';
@@ -16,14 +16,13 @@ export async function POST(req) {
 
     const count = parseInt(questionCount, 10) || 5;
 
-    const systemPrompt = `You are an expert exam question paper maker.
-The user has provided raw text or notes.
-Extract or generate exactly ${count} multiple choice questions (MCQs) based STRICTLY on the provided text.
-The questions, options, and explanations MUST be written in ${language}.
-Return ONLY a valid JSON array of objects without markdown codeblocks like \`\`\`json.
-Each object must have exactly these keys: "question_text", "option_a", "option_b", "option_c", "option_d", "correct_answer", "explanation".
-The "correct_answer" MUST be the exact full text of the correct option.
-The "explanation" MUST be a detailed step-by-step reason explaining the solution.`;
+    const systemPrompt = "You are an expert exam question paper maker.\n" +
+      "Extract or generate exactly " + count + " multiple choice questions (MCQs) based strictly on the provided text.\n" +
+      "The questions, options, and explanations MUST be written in " + language + ".\n" +
+      "Return ONLY a valid JSON array of objects without markdown formatting or codeblocks.\n" +
+      "Each object must have exactly these keys: 'question_text', 'option_a', 'option_b', 'option_c', 'option_d', 'correct_answer', 'explanation'.\n" +
+      "The 'correct_answer' MUST be the exact full text of the correct option.\n" +
+      "The 'explanation' MUST be a detailed step-by-step reason explaining the solution.";
 
     let rawOutput = "";
 
@@ -38,7 +37,7 @@ The "explanation" MUST be a detailed step-by-step reason explaining the solution
           model: 'meta/llama-3.2-11b-vision-instruct',
           messages: [
             { "role": "system", "content": systemPrompt },
-            { "role": "user", "content": `Here is the raw text:\n\n${rawText}` }
+            { "role": "user", "content": "Here is the text:\n\n" + rawText }
           ],
           temperature: 0.5,
           max_tokens: 4096
@@ -54,7 +53,6 @@ The "explanation" MUST be a detailed step-by-step reason explaining the solution
     }
 
     if (!rawOutput) {
-      // Fallback
       const byRes = await fetch('https://router.bynara.id/v1/chat/completions', {
         method: "POST",
         headers: {
@@ -65,7 +63,7 @@ The "explanation" MUST be a detailed step-by-step reason explaining the solution
           model: 'qwen3.8-27b',
           messages: [
             { "role": "system", "content": systemPrompt },
-            { "role": "user", "content": `Here is the raw text:\n\n${rawText}` }
+            { "role": "user", "content": "Here is the text:\n\n" + rawText }
           ],
           temperature: 0.5,
           max_tokens: 4096

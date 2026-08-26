@@ -978,7 +978,7 @@ export default function AdminDashboard() {
     setGenerateProgress(`Initializing generation...`);
     try {
       const total = parseInt(totalQuestions, 10);
-      const batchSize = Math.min(total, 5); // 5 Questions per fast NVIDIA API call
+      const batchSize = 1; // 1 question per fast request to guarantee ZERO Vercel timeout
       let allGeneratedQuestions = [];
 
       for (let i = 0; i < total; i += batchSize) {
