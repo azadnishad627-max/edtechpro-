@@ -16,20 +16,11 @@ export async function POST(req) {
 
     const count = parseInt(questionCount, 10) || 1;
 
-    const systemPrompt = "You are an expert question maker for Indian competitive exams, specially NMMS Class 8th MAT (Mental Ability Test) and Science/Maths.\n" +
-      "Generate exactly " + count + " multiple choice questions (MCQs) for the topic: \"" + topic + "\".\n" +
-      "The questions, options, and step-by-step reasoning solutions MUST be written in " + language + ".\n" +
-      "Return ONLY a valid JSON array of objects without markdown formatting or codeblocks.\n" +
-      "Each object must have these exact keys:\n" +
-      "- \"question_text\": The complete question in " + language + ".\n" +
-      "- \"option_a\": Option A text.\n" +
-      "- \"option_b\": Option B text.\n" +
-      "- \"option_c\": Option C text.\n" +
-      "- \"option_d\": Option D text.\n" +
-      "- \"correct_answer\": The exact full text of the correct option.\n" +
-      "- \"explanation\": Step-by-step reasoning solution in " + language + ".";
+    const systemPrompt = "You are an expert exam question paper maker for Indian scholarship exams (NMMS Class 8th MAT & Science/Maths).\n" +
+      "Create exactly " + count + " MCQ in " + language + " for topic: \"" + topic + "\".\n" +
+      "Output strictly JSON array only: [{\"question_text\":\"...\",\"option_a\":\"...\",\"option_b\":\"...\",\"option_c\":\"...\",\"option_d\":\"...\",\"correct_answer\":\"...\",\"explanation\":\"...\"}].";
 
-    const userMessageContent = "Generate " + count + " NMMS exam MCQs for \"" + topic + "\" in " + language + ". Output JSON array only.";
+    const userMessageContent = "Create " + count + " MCQ for " + topic + " in " + language + ". Output JSON array only.";
 
     let messages = [
       { role: "system", content: systemPrompt }
@@ -52,10 +43,10 @@ export async function POST(req) {
 
     let rawOutput = "";
 
-    // 1. Try NVIDIA Vision Model with 18s timeout
+    // 1. Try NVIDIA Vision Model with 8s timeout to stay well under any Vercel limits
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 18000);
+      const timeoutId = setTimeout(() => controller.abort(), 8000);
 
       const nvRes = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
         method: 'POST',
@@ -66,8 +57,8 @@ export async function POST(req) {
         body: JSON.stringify({
           model: 'meta/llama-3.2-11b-vision-instruct',
           messages: messages,
-          temperature: 0.5,
-          max_tokens: Math.max(800, count * 500)
+          temperature: 0.2,
+          max_tokens: Math.min(800, Math.max(260, count * 260))
         }),
         signal: controller.signal
       });
@@ -95,8 +86,8 @@ export async function POST(req) {
             { role: "system", content: systemPrompt },
             { role: "user", content: userMessageContent }
           ],
-          temperature: 0.5,
-          max_tokens: Math.max(800, count * 500)
+          temperature: 0.3,
+          max_tokens: Math.min(800, Math.max(260, count * 260))
         })
       });
 
