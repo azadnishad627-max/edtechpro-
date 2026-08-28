@@ -64,11 +64,17 @@ export async function POST(req) {
 
     const count = parseInt(questionCount, 10) || 1;
 
-    const systemPrompt = "You are an expert exam question paper maker for Indian scholarship exams (NMMS Class 8th MAT & Science/Maths).\n" +
-      "Create exactly " + count + " multiple choice questions in " + language + " for topic: \"" + topic + "\".\n" +
-      "Return ONLY a JSON array of objects with keys: \"question_text\", \"option_a\", \"option_b\", \"option_c\", \"option_d\", \"correct_answer\", \"explanation\".";
+    const systemPrompt = `You are an expert exam paper maker for the official National Means-cum-Merit Scholarship (NMMS Class 8th MAT - Mental Ability Test in ${language}).
+Create exactly ${count} multiple choice questions (MCQs) for the topic: "${topic}".
 
-    const userMessageContent = "Create " + count + " MCQ for " + topic + " in " + language + ". Output JSON array only.";
+Format and Style instructions:
+1. For visual / diagram reasoning topics (e.g. आकृति श्रृंखला/Figure Series, आकृति सादृश्यता/Analogy, अपूर्ण आकृति/Pattern Completion, ज्यामितीय वेन आरेख/Venn Diagram, लुप्त संख्या/Missing Number in Shapes, जल/दर्पण प्रतिबिंब/Water Reflection, संख्याओं का स्तूप/Number Pyramid, पासा/Dice):
+   - Include standard official question instructions (e.g., "सूचना : प्रश्न आकृति को देखकर प्रश्न चिन्ह (?) के स्थान पर आने वाली सही उत्तर आकृति चुनिए।", or "सूचना : दी गई वेन आकृति में आयत, त्रिभुज और वृत्त को देखकर सही विकल्प चुनिए।", or "सूचना : नीचे दी गई संख्याओं का विशिष्ट स्तूप देखकर लुप्त पद ज्ञात कीजिए।").
+   - Ensure options (A, B, C, D) are clearly labeled and match the standard official answer pattern.
+2. The language MUST strictly be ${language}.
+3. Return ONLY a valid JSON array of objects with keys: "question_text", "option_a", "option_b", "option_c", "option_d", "correct_answer", "explanation".`;
+
+    const userMessageContent = `Create ${count} official NMMS MAT Class 8th MCQ in ${language} for topic "${topic}". Return JSON array only.`;
 
     let messages = [
       { role: "system", content: systemPrompt }
