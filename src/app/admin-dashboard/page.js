@@ -1,5 +1,5 @@
 "use client";
-import { CLASS_8_SUBJECTS, formatMaterialTitle, parseMaterialMetadata } from '../../lib/class8Data';
+import { CURRICULUM_DATA, CLASSES_LIST, CLASS_8_SUBJECTS, formatMaterialTitle, parseMaterialMetadata } from '../../lib/class8Data';
 import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../../lib/supabaseClient';
@@ -73,6 +73,13 @@ export default function AdminDashboard() {
   const [chPdfUrl, setChPdfUrl] = useState('');
   const [chBatchId, setChBatchId] = useState('');
   const [isUploadingChNote, setIsUploadingChNote] = useState(false);
+
+  // Festival Banner State (Default Active: Raksha Bandhan)
+  const [festivalActive, setFestivalActive] = useState(true);
+  const [festivalType, setFestivalType] = useState('raksha_bandhan');
+  const [festivalTitle, setFestivalTitle] = useState('🌸 रक्षाबंधन की हार्दिक शुभकामनाएं! 🪢');
+  const [festivalMessage, setFestivalMessage] = useState('भाई-बहन के पवित्र स्नेह, विश्वास और सुरक्षा के पावन पर्व रक्षाबंधन की सभी विद्यार्थियों को ढेर सारी बधाई एवं शुभकामनाएं! 💖✨');
+  const [isSavingFestival, setIsSavingFestival] = useState(false);
   const [dbTests, setDbTests] = useState([]);
 
   // Test Manager State
@@ -394,7 +401,20 @@ export default function AdminDashboard() {
       }
 
       const { data: aData } = await supabase.from('announcements').select('*').order('created_at', { ascending: false });
-      if (aData) setDbAnnouncements(aData);
+      if (aData) {
+        setDbAnnouncements(aData);
+        // Look for festival config
+        const festConfig = aData.find(a => a.title === '[FESTIVAL_CONFIG]');
+        if (festConfig && festConfig.content) {
+          try {
+            const parsed = JSON.parse(festConfig.content);
+            if (typeof parsed.active === 'boolean') setFestivalActive(parsed.active);
+            if (parsed.type) setFestivalType(parsed.type);
+            if (parsed.title) setFestivalTitle(parsed.title);
+            if (parsed.message) setFestivalMessage(parsed.message);
+          } catch(e) {}
+        }
+      }
 
       const { data: fData } = await supabase.from('feedback').select('*').order('created_at', { ascending: false });
       if (fData) setDbFeedback(fData);
@@ -567,6 +587,33 @@ export default function AdminDashboard() {
       setDbLiveClasses(dbLiveClasses.filter(c => c.id !== id));
       alert("Live class deleted.");
     }
+  };
+
+  const handleSaveFestivalConfig = async (e) => {
+    if (e) e.preventDefault();
+    setIsSavingFestival(true);
+    try {
+      const payload = JSON.stringify({
+        active: festivalActive,
+        type: festivalType,
+        title: festivalTitle,
+        message: festivalMessage,
+        updated_at: new Date().toISOString()
+      });
+
+      const existing = dbAnnouncements.find(a => a.title === '[FESTIVAL_CONFIG]');
+      if (existing) {
+        await supabase.from('announcements').update({ content: payload }).eq('id', existing.id);
+      } else {
+        await supabase.from('announcements').insert([{ title: '[FESTIVAL_CONFIG]', content: payload }]);
+      }
+      alert("Festival banner updated successfully! Live across all student apps.");
+      const { data: aData } = await supabase.from('announcements').select('*').order('created_at', { ascending: false });
+      if (aData) setDbAnnouncements(aData);
+    } catch(err) {
+      alert("Error saving festival: " + err.message);
+    }
+    setIsSavingFestival(false);
   };
 
   const handleCreateAnnouncement = async (e) => {
@@ -1945,6 +1992,7 @@ export default function AdminDashboard() {
         <button className={activeTab === 'tg_test' ? 'btn-primary' : 'btn-outline'} onClick={() => switchTab('tg_test')} style={{ padding: '0.5rem 1rem' }}>📲 Telegram Test</button>
         <button className={activeTab === 'live' ? 'btn-primary' : 'btn-outline'} onClick={() => switchTab('live')} style={{ padding: '0.5rem 1rem' }}>Live Classes</button>
         <button className={activeTab === 'announcements' ? 'btn-primary' : 'btn-outline'} onClick={() => switchTab('announcements')} style={{ padding: '0.5rem 1rem' }}>Announcements</button>
+        <button className={activeTab === 'festival' ? 'btn-primary' : 'btn-outline'} onClick={() => switchTab('festival')} style={{ padding: '0.5rem 1rem', background: activeTab === 'festival' ? 'linear-gradient(135deg, #ec4899, #f59e0b)' : 'rgba(236,72,153,0.1)', borderColor: '#ec4899' }}>🌸 Festival Banner</button>
         <button className={activeTab === 'feedback' ? 'btn-primary' : 'btn-outline'} onClick={() => switchTab('feedback')} style={{ padding: '0.5rem 1rem' }}>Student Feedback</button>
         <button className={activeTab === 'admin_chats' ? 'btn-primary' : 'btn-outline'} onClick={() => switchTab('admin_chats')} style={{ padding: '0.5rem 1rem' }}>💬 Student Chats</button>
       </div>
@@ -2066,15 +2114,21 @@ export default function AdminDashboard() {
                     <label style={{ fontSize: '0.85rem', color: 'var(--text-light)', fontWeight: 'bold' }}>1. Select Class</label>
                     <select 
                       value={chClass} 
-                      onChange={(e) => setChClass(e.target.value)} 
-                      style={{ width: '100%', padding: '0.85rem', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'var(--bg-dark)', color: 'white', marginTop: '0.25rem' }}
+                      onChange={(e) => {
+                        const newClass = e.target.value;
+                        setChClass(newClass);
+                        const availableSubjects = Object.keys(CURRICULUM_DATA[newClass] || CURRICULUM_DATA["Class 8th"]);
+                        const firstSub = availableSubjects[0] || 'Science (विज्ञान)';
+                        setChSubject(firstSub);
+                        const chList = (CURRICULUM_DATA[newClass] && CURRICULUM_DATA[newClass][firstSub]) || [];
+                        setChChapter(chList.length > 0 ? chList[0] : '__custom__');
+                      }} 
+                      style={{ width: '100%', padding: '0.85rem', borderRadius: '8px', border: '1px solid #38bdf8', background: 'var(--bg-dark)', color: 'white', marginTop: '0.25rem', fontWeight: 'bold' }}
                       required
                     >
-                      <option value="Class 8th">Class 8th</option>
-                      <option value="Class 9th">Class 9th</option>
-                      <option value="Class 10th">Class 10th</option>
-                      <option value="Class 11th">Class 11th</option>
-                      <option value="Class 12th">Class 12th</option>
+                      {CLASSES_LIST.map(cls => (
+                        <option key={cls} value={cls}>{cls}</option>
+                      ))}
                     </select>
                   </div>
 
@@ -2086,13 +2140,14 @@ export default function AdminDashboard() {
                       onChange={(e) => {
                         const newSub = e.target.value;
                         setChSubject(newSub);
-                        const chList = CLASS_8_SUBJECTS[newSub] || [];
+                        const classData = CURRICULUM_DATA[chClass] || CURRICULUM_DATA["Class 8th"];
+                        const chList = classData[newSub] || [];
                         setChChapter(chList.length > 0 ? chList[0] : '__custom__');
                       }} 
                       style={{ width: '100%', padding: '0.85rem', borderRadius: '8px', border: '1px solid #38bdf8', background: 'var(--bg-dark)', color: 'white', marginTop: '0.25rem' }}
                       required
                     >
-                      {Object.keys(CLASS_8_SUBJECTS).map(sub => (
+                      {Object.keys(CURRICULUM_DATA[chClass] || CURRICULUM_DATA["Class 8th"]).map(sub => (
                         <option key={sub} value={sub}>{sub}</option>
                       ))}
                     </select>
@@ -2107,7 +2162,7 @@ export default function AdminDashboard() {
                       style={{ width: '100%', padding: '0.85rem', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'var(--bg-dark)', color: 'white', marginTop: '0.25rem' }}
                       required
                     >
-                      {(CLASS_8_SUBJECTS[chSubject] || []).map(ch => (
+                      {((CURRICULUM_DATA[chClass] || CURRICULUM_DATA["Class 8th"])[chSubject] || []).map(ch => (
                         <option key={ch} value={ch}>{ch}</option>
                       ))}
                       <option value="__custom__">➕ Add Custom Chapter / Extra Notes</option>
@@ -3103,6 +3158,156 @@ export default function AdminDashboard() {
         </div>
       )}
 
+      {activeTab === 'festival' && (
+        <div className="animate-tab-enter grid-cols-2" style={{ alignItems: 'flex-start' }}>
+          <div className="glass-card">
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
+              <span style={{ fontSize: '1.8rem' }}>🎉</span>
+              <div>
+                <h3 style={{ margin: 0, color: '#f472b6' }}>Top Festival Animation & Banner</h3>
+                <p className="text-muted" style={{ margin: '0.2rem 0 0 0', fontSize: '0.85rem' }}>
+                  Student Dashboard ke top par chalne wala festival animation aur greeting yahan se manage karein.
+                </p>
+              </div>
+            </div>
+
+            <form onSubmit={handleSaveFestivalConfig} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+              {/* Status Toggle */}
+              <div style={{ background: 'rgba(255,255,255,0.03)', padding: '1rem', borderRadius: '10px', border: '1px solid var(--glass-border)' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer' }}>
+                  <input 
+                    type="checkbox" 
+                    checked={festivalActive} 
+                    onChange={(e) => setFestivalActive(e.target.checked)} 
+                    style={{ width: '22px', height: '22px', accentColor: '#ec4899' }} 
+                  />
+                  <div>
+                    <span style={{ fontWeight: 'bold', color: festivalActive ? '#34d399' : '#f87171', fontSize: '1rem' }}>
+                      {festivalActive ? '✅ Festival Banner ACTIVE (Live On App)' : '❌ Festival Banner DISABLED (Off)'}
+                    </span>
+                    <p style={{ margin: '0.2rem 0 0 0', fontSize: '0.8rem', color: '#94a3b8' }}>
+                      Turn on to show animated festive greetings at the top of the app.
+                    </p>
+                  </div>
+                </label>
+              </div>
+
+              {/* Select Festival Preset */}
+              <div>
+                <label style={{ fontSize: '0.9rem', color: 'var(--text-light)', fontWeight: 'bold', display: 'block', marginBottom: '0.5rem' }}>
+                  1. Select Festival Preset (पर्व चुनें)
+                </label>
+                <select 
+                  value={festivalType} 
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setFestivalType(val);
+                    if (val === 'raksha_bandhan') {
+                      setFestivalTitle('🌸 रक्षाबंधन की हार्दिक शुभकामनाएं! 🪢');
+                      setFestivalMessage('भाई-बहन के पवित्र स्नेह, विश्वास और सुरक्षा के पावन पर्व रक्षाबंधन की सभी विद्यार्थियों को ढेर सारी बधाई एवं शुभकामनाएं! 💖✨');
+                    } else if (val === 'independence_day') {
+                      setFestivalTitle('🇮🇳 स्वतंत्रता दिवस की हार्दिक शुभकामनाएं!');
+                      setFestivalMessage('आज़ादी के इस महापर्व पर देश के सभी वीर जवानों को नमन। जय हिन्द, जय भारत! 🇮🇳✨');
+                    } else if (val === 'diwali') {
+                      setFestivalTitle('🪔 शुभ दीपावली! Happy Diwali ✨');
+                      setFestivalMessage('दीपों का यह पावन पर्व आपके जीवन में ज्ञान, सुख, शांति और समृद्धि लेकर आए! 🪔🌟');
+                    } else if (val === 'holi') {
+                      setFestivalTitle('🎨 होली के पावन पर्व की हार्दिक बधाई!');
+                      setFestivalMessage('रंगों, उमंग और खुशियों से भरा यह पावन पर्व आपके जीवन में नई ऊर्जा भरे! 🌈🎉');
+                    } else if (val === 'eid') {
+                      setFestivalTitle('🌙 ईद मुबारक! Eid Mubarak');
+                      setFestivalMessage('आप सभी को और आपके परिवार को ईद की ढेर सारी खुशियाँ और मुबारकबाद! ✨🕌');
+                    } else if (val === 'exam_wishes') {
+                      setFestivalTitle('🏆 Best of Luck for Your Exams! All the Best!');
+                      setFestivalMessage('मेहनत ही सफलता की कुंजी है। पूरी लगन और विश्वास के साथ परीक्षा दें, सफलता निश्चित है! 📚🔥');
+                    }
+                  }}
+                  style={{ width: '100%', padding: '0.9rem', borderRadius: '8px', border: '1px solid #ec4899', background: 'var(--bg-dark)', color: 'white', fontSize: '0.95rem' }}
+                >
+                  <option value="raksha_bandhan">🪢 Raksha Bandhan (रक्षाबंधन) - Active Today!</option>
+                  <option value="independence_day">🇮🇳 Independence Day (स्वतंत्रता दिवस)</option>
+                  <option value="diwali">🪔 Diwali / Deepawali (दीपावली)</option>
+                  <option value="holi">🎨 Holi (होली)</option>
+                  <option value="eid">🌙 Eid (ईद मुबारक)</option>
+                  <option value="exam_wishes">🏆 Exam Wishes (परीक्षा की शुभकामनाएं)</option>
+                  <option value="custom">✍️ Custom Festival / Announcement</option>
+                </select>
+              </div>
+
+              {/* Title */}
+              <div>
+                <label style={{ fontSize: '0.9rem', color: 'var(--text-light)', fontWeight: 'bold', display: 'block', marginBottom: '0.5rem' }}>
+                  2. Festival Heading / Banner Title
+                </label>
+                <input 
+                  type="text" 
+                  value={festivalTitle} 
+                  onChange={(e) => setFestivalTitle(e.target.value)} 
+                  style={{ width: '100%', padding: '0.85rem', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'var(--bg-dark)', color: 'white' }}
+                  required
+                />
+              </div>
+
+              {/* Message */}
+              <div>
+                <label style={{ fontSize: '0.9rem', color: 'var(--text-light)', fontWeight: 'bold', display: 'block', marginBottom: '0.5rem' }}>
+                  3. Festival Greeting Message
+                </label>
+                <textarea 
+                  value={festivalMessage} 
+                  onChange={(e) => setFestivalMessage(e.target.value)} 
+                  rows={3}
+                  style={{ width: '100%', padding: '0.85rem', borderRadius: '8px', border: '1px solid var(--glass-border)', background: 'var(--bg-dark)', color: 'white', fontFamily: 'inherit' }}
+                  required
+                />
+              </div>
+
+              <button 
+                type="submit" 
+                disabled={isSavingFestival} 
+                className="btn-primary" 
+                style={{ background: 'linear-gradient(135deg, #ec4899, #f59e0b)', padding: '0.9rem', fontSize: '1rem', fontWeight: 'bold', marginTop: '0.5rem' }}
+              >
+                {isSavingFestival ? '⏳ Updating App...' : '💾 Save & Activate Festival Banner'}
+              </button>
+            </form>
+          </div>
+
+          {/* Live Preview Card */}
+          <div className="glass-card">
+            <h3 style={{ margin: '0 0 1rem 0', color: '#38bdf8' }}>📱 Live Top Banner Preview</h3>
+            <p className="text-muted" style={{ fontSize: '0.85rem', marginBottom: '1.5rem' }}>
+              Student Dashboard ke top par ye banner aisi animated style me dikhega:
+            </p>
+
+            <div style={{ 
+              borderRadius: '16px', 
+              padding: '1.25rem', 
+              background: festivalType === 'raksha_bandhan' 
+                ? 'linear-gradient(135deg, rgba(236,72,153,0.25) 0%, rgba(245,158,11,0.2) 100%)' 
+                : 'linear-gradient(135deg, rgba(56,189,248,0.2) 0%, rgba(168,85,247,0.2) 100%)',
+              border: '2px solid rgba(236,72,153,0.5)',
+              position: 'relative',
+              overflow: 'hidden',
+              boxShadow: '0 8px 32px rgba(236,72,153,0.2)'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.5rem' }}>
+                <span style={{ fontSize: '1.5rem' }}>🪢</span>
+                <span style={{ background: 'linear-gradient(135deg, #ec4899, #f59e0b)', color: 'white', fontSize: '0.75rem', fontWeight: '900', padding: '0.2rem 0.6rem', borderRadius: '12px', letterSpacing: '0.5px' }}>
+                  {festivalActive ? 'LIVE CELEBRATION' : 'BANNER OFF'}
+                </span>
+              </div>
+              <h3 style={{ margin: '0 0 0.4rem 0', color: '#fef08a', fontSize: '1.15rem' }}>
+                {festivalTitle || 'Festival Title'}
+              </h3>
+              <p style={{ margin: 0, color: '#f1f5f9', fontSize: '0.85rem', lineHeight: '1.5' }}>
+                {festivalMessage || 'Festival wish message will be shown here.'}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {activeTab === 'announcements' && (
         <div className="animate-tab-enter grid-cols-2" style={{ alignItems: 'flex-start' }}>
           <div className="glass-card">
@@ -3117,7 +3322,7 @@ export default function AdminDashboard() {
           <div className="glass-card">
             <h3 className="mb-4">Recent Announcements</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', maxHeight: '500px', overflowY: 'auto' }}>
-              {dbAnnouncements.length === 0 ? <p className="text-muted">No announcements posted yet.</p> : dbAnnouncements.map(ann => (
+              {dbAnnouncements.filter(a => a.title !== '[FESTIVAL_CONFIG]').length === 0 ? <p className="text-muted">No announcements posted yet.</p> : dbAnnouncements.filter(a => a.title !== '[FESTIVAL_CONFIG]').map(ann => (
                 <div key={ann.id} style={{ padding: '1rem', border: '1px solid var(--glass-border)', borderRadius: '8px', background: 'rgba(255,255,255,0.02)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
                   <div style={{ flex: 1 }}>
                     <h4 style={{ margin: '0 0 0.5rem 0' }}>{ann.title}</h4>

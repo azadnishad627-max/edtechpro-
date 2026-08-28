@@ -1,5 +1,5 @@
 "use client";
-import { CLASS_8_SUBJECTS, SUBJECT_ICONS, parseMaterialMetadata } from '../../lib/class8Data';
+import { CURRICULUM_DATA, CLASSES_LIST, CLASS_8_SUBJECTS, SUBJECT_ICONS, parseMaterialMetadata } from '../../lib/class8Data';
 import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../../lib/supabaseClient';
@@ -50,6 +50,19 @@ export default function StudentDashboard() {
 
   const [liveClasses, setLiveClasses] = useState([]);
   const [leaderboard, setLeaderboard] = useState([]);
+  const [activeLeaderboardTest, setActiveLeaderboardTest] = useState(null);
+
+  // Festival Banner State (Default Active: Raksha Bandhan)
+  const [festivalConfig, setFestivalConfig] = useState({
+    active: true,
+    type: 'raksha_bandhan',
+    title: '🌸 रक्षाबंधन की हार्दिक शुभकामनाएं! 🪢',
+    message: 'भाई-बहन के पवित्र स्नेह, विश्वास और सुरक्षा के पावन पर्व रक्षाबंधन की सभी विद्यार्थियों को ढेर सारी बधाई एवं शुभकामनाएं! 💖✨'
+  });
+  const [isFestivalDismissed, setIsFestivalDismissed] = useState(false);
+
+  // Multi-Class Notes State
+  const [selectedClass, setSelectedClass] = useState('Class 8th');
   const [bookmarkedQuestions, setBookmarkedQuestions] = useState([]);
   const [activeLiveClassUrl, setActiveLiveClassUrl] = useState(null);
   const [activeTestUrl, setActiveTestUrl] = useState(null);
@@ -282,22 +295,36 @@ export default function StudentDashboard() {
         }
       });
 
-      // Filter tests that belong to the current student's batch (including both active and archived tests)
-      // Scores should ONLY be removed if a test is actually deleted by the admin!
-      const validBatchTestIds = new Set(
-        activeTests
-          .filter(t => isItemForStudentBatch(t.batch_id, t.batches?.title, t.title))
-          .map(t => t.id)
-      );
+      // 1. Find all tests belonging to student's batch
+      const batchTests = activeTests.filter(t => isItemForStudentBatch(t.batch_id, t.batches?.title, t.title));
+      
+      if (batchTests.length === 0) {
+        setLeaderboard([]);
+        setActiveLeaderboardTest(null);
+        return;
+      }
+
+      // Sort tests latest first
+      batchTests.sort((a, b) => {
+        const timeA = new Date(a.created_at || 0).getTime();
+        const timeB = new Date(b.created_at || 0).getTime();
+        return (timeB - timeA) || (b.id - a.id);
+      });
+
+      // Target the latest test: prioritize active non-archived test, else the most recent test
+      const targetTest = batchTests.find(t => !t.title.startsWith('[ARCHIVED]')) || batchTests[0];
+      setActiveLeaderboardTest(targetTest);
+      const targetTestId = targetTest.id;
+
+      // 2. Filter attempts ONLY for this target test!
+      const targetAttempts = attempts.filter(a => a.test_id === targetTestId);
 
       const bestAttempts = {};
-      attempts.forEach(a => {
-        // Count all attempts on tests that belong to this batch
-        if (validBatchTestIds.has(a.test_id)) {
-          const key = `${a.student_id}_${a.test_id}`;
-          if (!bestAttempts[key] || bestAttempts[key].score < a.score) {
-            bestAttempts[key] = a;
-          }
+      targetAttempts.forEach(a => {
+        const sid = a.student_id;
+        // Keep highest score on this test
+        if (!bestAttempts[sid] || bestAttempts[sid].score < a.score) {
+          bestAttempts[sid] = a;
         }
       });
 
@@ -306,19 +333,16 @@ export default function StudentDashboard() {
       
       Object.values(bestAttempts).forEach(a => {
         const sid = a.student_id;
-        studentScores[sid] = (studentScores[sid] || 0) + a.score;
-        const attemptTime = new Date(a.created_at).getTime();
-        if (!studentLatestSubmit[sid] || attemptTime > studentLatestSubmit[sid]) {
-          studentLatestSubmit[sid] = attemptTime;
-        }
+        studentScores[sid] = a.score;
+        studentLatestSubmit[sid] = new Date(a.created_at).getTime();
       });
 
-      // Include all students who took tests in this batch or belong to this batch
+      // Only show students who have attempted THIS target test
       const updatedProfiles = profiles
-        .filter(p => (batchStudentIds.has(p.id) || studentScores[p.id] !== undefined) && (studentScores[p.id] !== undefined && studentScores[p.id] > 0))
+        .filter(p => studentScores[p.id] !== undefined)
         .map(p => ({
           ...p,
-          total_test_score: studentScores[p.id] || 0,
+          total_test_score: studentScores[p.id],
           latest_submit_time: studentLatestSubmit[p.id] || 0
         }));
 
@@ -329,7 +353,7 @@ export default function StudentDashboard() {
         return a.latest_submit_time - b.latest_submit_time; 
       });
       
-      // Display all students who gave tests, ranked by score (not just top 10)
+      // Live leaderboard reflects ONLY the target test results
       setLeaderboard(updatedProfiles);
     } catch (err) {
       console.error("Leaderboard error:", err);
@@ -339,7 +363,24 @@ export default function StudentDashboard() {
 
   const fetchAnnouncements = async () => {
     const { data } = await supabase.from('announcements').select('*').order('created_at', { ascending: false });
-    if (data) setAnnouncements(data);
+    if (data) {
+      // Look for festival config
+      const festConfig = data.find(a => a.title === '[FESTIVAL_CONFIG]');
+      if (festConfig && festConfig.content) {
+        try {
+          const parsed = JSON.parse(festConfig.content);
+          setFestivalConfig(prev => ({
+            ...prev,
+            active: typeof parsed.active === 'boolean' ? parsed.active : true,
+            type: parsed.type || prev.type,
+            title: parsed.title || prev.title,
+            message: parsed.message || prev.message
+          }));
+        } catch(e) {}
+      }
+      // Filter out festival config from visible student notifications
+      setAnnouncements(data.filter(a => a.title !== '[FESTIVAL_CONFIG]'));
+    }
   };
 
   const fetchBatches = async () => {
@@ -761,7 +802,118 @@ export default function StudentDashboard() {
 
   return (
     <>
-            <div className="container pt-navbar mobile-pb">
+      <div className="container pt-navbar mobile-pb">
+        {/* FESTIVAL & CELEBRATION TOP ANIMATED BANNER */}
+        {festivalConfig.active && (
+          !isFestivalDismissed ? (
+            <div style={{
+              margin: '0 0 1.5rem 0',
+              padding: '1.25rem 1.5rem',
+              borderRadius: '16px',
+              background: festivalConfig.type === 'raksha_bandhan'
+                ? 'linear-gradient(135deg, rgba(244,63,94,0.18) 0%, rgba(245,158,11,0.2) 50%, rgba(217,70,239,0.18) 100%)'
+                : 'linear-gradient(135deg, rgba(56,189,248,0.2) 0%, rgba(168,85,247,0.2) 100%)',
+              border: festivalConfig.type === 'raksha_bandhan' ? '2px solid rgba(245,158,11,0.5)' : '2px solid rgba(56,189,248,0.5)',
+              boxShadow: '0 10px 30px rgba(0,0,0,0.3), inset 0 0 20px rgba(245,158,11,0.1)',
+              position: 'relative',
+              overflow: 'hidden',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '1rem',
+              flexWrap: 'wrap'
+            }}>
+              {/* Animated Floating Background Sparkles */}
+              <div style={{ position: 'absolute', top: '-10px', right: '40px', fontSize: '2.5rem', opacity: 0.25, pointerEvents: 'none', animation: 'spin 12s linear infinite' }}>
+                🪢
+              </div>
+              <div style={{ position: 'absolute', bottom: '-5px', left: '20px', fontSize: '2rem', opacity: 0.25, pointerEvents: 'none' }}>
+                🌸
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1.2rem', flex: 1, minWidth: '260px' }}>
+                <div style={{
+                  width: '54px',
+                  height: '54px',
+                  borderRadius: '50%',
+                  background: 'linear-gradient(135deg, #f43f5e, #f59e0b)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '1.8rem',
+                  boxShadow: '0 4px 15px rgba(244,63,94,0.5)',
+                  flexShrink: 0
+                }}>
+                  {festivalConfig.type === 'raksha_bandhan' ? '🪢' : '🎉'}
+                </div>
+
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem', flexWrap: 'wrap' }}>
+                    <span style={{ 
+                      background: 'linear-gradient(135deg, #f43f5e, #f59e0b)', 
+                      color: 'white', 
+                      fontSize: '0.72rem', 
+                      fontWeight: '900', 
+                      padding: '0.15rem 0.6rem', 
+                      borderRadius: '12px', 
+                      letterSpacing: '0.5px' 
+                    }}>
+                      {festivalConfig.type === 'raksha_bandhan' ? '✨ पावन पर्व रक्षाबंधन ✨' : '🎉 SPECIAL CELEBRATION'}
+                    </span>
+                  </div>
+                  <h3 style={{ margin: '0 0 0.25rem 0', color: '#fef08a', fontSize: 'clamp(1.05rem, 3.5vw, 1.25rem)', fontWeight: '800' }}>
+                    {festivalConfig.title}
+                  </h3>
+                  <p style={{ margin: 0, color: '#f1f5f9', fontSize: '0.85rem', lineHeight: '1.4' }}>
+                    {festivalConfig.message}
+                  </p>
+                </div>
+              </div>
+
+              <button 
+                onClick={() => setIsFestivalDismissed(true)} 
+                title="Minimize banner"
+                style={{ 
+                  background: 'rgba(255,255,255,0.1)', 
+                  border: '1px solid rgba(255,255,255,0.2)', 
+                  color: 'white', 
+                  borderRadius: '50%', 
+                  width: '32px', 
+                  height: '32px', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center', 
+                  cursor: 'pointer',
+                  fontSize: '0.85rem'
+                }}
+              >
+                ✕
+              </button>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1rem' }}>
+              <button 
+                onClick={() => setIsFestivalDismissed(false)}
+                style={{
+                  background: 'linear-gradient(135deg, rgba(244,63,94,0.3), rgba(245,158,11,0.3))',
+                  border: '1px solid rgba(245,158,11,0.5)',
+                  color: '#fef08a',
+                  padding: '0.35rem 0.85rem',
+                  borderRadius: '20px',
+                  fontSize: '0.8rem',
+                  fontWeight: 'bold',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.4rem'
+                }}
+              >
+                🪢 {festivalConfig.type === 'raksha_bandhan' ? 'रक्षाबंधन पर्व शुभकामना' : 'Festival Greeting'} 🌸
+              </button>
+            </div>
+          )
+        )}
+
       <div style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
           <div style={{ width: '55px', height: '55px', borderRadius: '50%', overflow: 'hidden', border: '2px solid var(--primary-color)', flexShrink: 0, boxShadow: '0 4px 15px rgba(0,0,0,0.3)' }}>
@@ -824,9 +976,7 @@ export default function StudentDashboard() {
                   Standard: <b>{student.className || student.class_name || 'Class 8th'}</b> • Sirf aapke batch ka study material aur live classes dikh rahe hain.
                 </p>
               </div>
-              <button onClick={() => { switchTab('profile'); setIsEditingProfile(true); }} className="btn-outline" style={{ padding: '0.5rem 1rem', fontSize: '0.85rem', border: '1px solid #64b5f6', color: '#64b5f6' }}>
-                ✏️ Change Course / Batch
-              </button>
+
             </div>
 
             {/* Live Classes for Enrolled Batch */}
@@ -869,32 +1019,57 @@ export default function StudentDashboard() {
                 <span style={{ fontSize: '1.5rem' }}>📚</span>
                 <div>
                   <h3 style={{ margin: 0, color: 'white', fontSize: '1.15rem', fontWeight: 'bold' }}>
-                    Class 8th Chapter-Wise PDF Notes
+                    {selectedClass} Chapter-Wise PDF Notes
                   </h3>
                   <p style={{ margin: 0, color: '#94a3b8', fontSize: '0.8rem' }}>
-                    Subject aur Chapter dropdown se select karein aur notes padhein.
+                    Class, Subject aur Chapter select karke study notes padhein.
                   </p>
                 </div>
               </div>
 
-              {/* DUAL DROPDOWN SELECTORS */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1rem', marginBottom: '1.25rem' }}>
+              {/* TRIPLE DROPDOWN SELECTORS: Class, Subject, Chapter */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '1.25rem' }}>
+                {/* Dropdown 0: Select Class */}
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.82rem', color: '#ffd700', fontWeight: 'bold', marginBottom: '0.35rem' }}>
+                    1. Select Class (कक्षा चुनें)
+                  </label>
+                  <select 
+                    value={selectedClass} 
+                    onChange={(e) => {
+                      const newCls = e.target.value;
+                      setSelectedClass(newCls);
+                      const clsSubs = Object.keys(CURRICULUM_DATA[newCls] || CURRICULUM_DATA["Class 8th"]);
+                      const firstSub = clsSubs[0] || 'Science (विज्ञान)';
+                      setSelectedSubject(firstSub);
+                      const subChList = (CURRICULUM_DATA[newCls] && CURRICULUM_DATA[newCls][firstSub]) || [];
+                      setSelectedChapter(subChList.length > 0 ? subChList[0] : null);
+                    }}
+                    style={{ width: '100%', padding: '0.85rem 1rem', borderRadius: '10px', border: '1px solid #ffd700', background: 'var(--bg-dark)', color: 'white', fontWeight: 'bold', fontSize: '0.95rem' }}
+                  >
+                    {CLASSES_LIST.map(cls => (
+                      <option key={cls} value={cls}>🏫 {cls}</option>
+                    ))}
+                  </select>
+                </div>
+
                 {/* Dropdown 1: Select Subject */}
                 <div>
                   <label style={{ display: 'block', fontSize: '0.82rem', color: '#38bdf8', fontWeight: 'bold', marginBottom: '0.35rem' }}>
-                    1. Select Subject (विषय चुनें)
+                    2. Select Subject (विषय चुनें)
                   </label>
                   <select 
                     value={selectedSubject} 
                     onChange={(e) => {
                       const newSub = e.target.value;
                       setSelectedSubject(newSub);
-                      const subChList = CLASS_8_SUBJECTS[newSub] || [];
+                      const classCurriculum = CURRICULUM_DATA[selectedClass] || CURRICULUM_DATA["Class 8th"];
+                      const subChList = classCurriculum[newSub] || [];
                       setSelectedChapter(subChList.length > 0 ? subChList[0] : null);
                     }}
                     style={{ width: '100%', padding: '0.85rem 1rem', borderRadius: '10px', border: '1px solid #38bdf8', background: 'var(--bg-dark)', color: 'white', fontWeight: 'bold', fontSize: '0.95rem' }}
                   >
-                    {Object.keys(CLASS_8_SUBJECTS).map(sub => (
+                    {Object.keys(CURRICULUM_DATA[selectedClass] || CURRICULUM_DATA["Class 8th"]).map(sub => (
                       <option key={sub} value={sub}>
                         {(SUBJECT_ICONS[sub] || '📖')} {sub}
                       </option>
@@ -905,10 +1080,11 @@ export default function StudentDashboard() {
                 {/* Dropdown 2: Select Chapter */}
                 <div>
                   <label style={{ display: 'block', fontSize: '0.82rem', color: '#38bdf8', fontWeight: 'bold', marginBottom: '0.35rem' }}>
-                    2. Select Chapter (पाठ चुनें)
+                    3. Select Chapter (पाठ चुनें)
                   </label>
                   {(() => {
-                    const chList = CLASS_8_SUBJECTS[selectedSubject] || [];
+                    const classCurriculum = CURRICULUM_DATA[selectedClass] || CURRICULUM_DATA["Class 8th"];
+                    const chList = classCurriculum[selectedSubject] || [];
                     const activeCh = selectedChapter || (chList.length > 0 ? chList[0] : '');
                     const parsedMaterials = dbMaterials.map(m => parseMaterialMetadata(m));
 
@@ -940,7 +1116,7 @@ export default function StudentDashboard() {
 
               {/* ACTIVE SELECTED CHAPTER CARD */}
               {(() => {
-                const chList = CLASS_8_SUBJECTS[selectedSubject] || [];
+                const chList = (CURRICULUM_DATA[selectedClass] || CURRICULUM_DATA["Class 8th"])[selectedSubject] || [];
                 const currentCh = selectedChapter || (chList.length > 0 ? chList[0] : null);
                 if (!currentCh) return null;
 
@@ -1258,12 +1434,12 @@ export default function StudentDashboard() {
                 lineHeight: '1.25', 
                 margin: '0 0 0.5rem 0'
               }}>
-                {studentBatchTitle || 'Batch'} Leaderboard
+                {activeLeaderboardTest ? activeLeaderboardTest.title.replace('[ARCHIVED] ', '').replace('[REASONING] ', '') : (studentBatchTitle || 'Batch')} Leaderboard
               </h1>
 
               <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', background: 'rgba(255, 255, 255, 0.06)', padding: '0.35rem 0.85rem', borderRadius: '12px', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
                 <span style={{ fontSize: '0.85rem', color: '#94a3b8' }}>
-                  Target: <b style={{ color: '#38bdf8' }}>{studentBatchTitle || 'Enrolled Course'}</b> ({student.className || student.class_name || 'Class 8th'})
+                  Target: <b style={{ color: '#38bdf8' }}>{activeLeaderboardTest ? 'Latest Test Result' : (studentBatchTitle || 'Enrolled Course')}</b> ({student.className || student.class_name || 'Class 8th'}) • Naya test aane par leaderboard update hoga
                 </span>
               </div>
             </div>
@@ -1272,10 +1448,10 @@ export default function StudentDashboard() {
               {leaderboard.length === 0 ? (
                 <div style={{ padding: '3rem 1rem', textAlign: 'center' }}>
                   <p style={{ fontSize: '1.2rem', color: '#ffb74d', margin: '0 0 0.5rem 0' }}>
-                    🏆 Abhi aapke <b>"{studentBatchTitle || 'Selected'}"</b> batch me koi test attempt nahi hua hai.
+                    🏆 {activeLeaderboardTest ? `Test: "${activeLeaderboardTest.title.replace('[ARCHIVED] ', '')}" me abhi tak kisi student ne attempt nahi kiya hai.` : `Abhi aapke batch me koi test attempt nahi hua hai.`}
                   </p>
                   <p className="text-muted" style={{ margin: 0, fontSize: '0.9rem' }}>
-                    Pehla test dekar Leaderboard me #1 Rank haasil karein!
+                    Pehla test submit karke Leaderboard me #1 Rank haasil karein!
                   </p>
                   <button onClick={() => switchTab('tests')} className="btn-primary mt-4" style={{ background: '#2196f3' }}>
                     📝 Start Test Now
