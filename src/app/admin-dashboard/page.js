@@ -1066,7 +1066,7 @@ export default function AdminDashboard() {
       if (testError) throw testError;
       const testId = testData[0].id;
 
-      // 2. Insert Questions
+      // 2. Insert Questions (including reasoning diagram image_url)
       const questionsToInsert = generatedQuestions.map(q => ({
         test_id: testId,
         question_text: q.question_text,
@@ -1074,7 +1074,8 @@ export default function AdminDashboard() {
         option_b: q.option_b,
         option_c: q.option_c,
         option_d: q.option_d,
-        correct_answer: q.correct_answer
+        correct_answer: q.correct_answer,
+        image_url: q.image_url || null
       }));
 
       const { error: qError } = await supabase.from('questions').insert(questionsToInsert);

@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { getSmartDiagramForQuestion } from '../../../lib/diagramGenerator';
 
 export const maxDuration = 60;
 export const dynamic = 'force-dynamic';
@@ -158,16 +159,24 @@ export async function POST(req) {
       throw new Error("Could not parse questions from AI response.");
     }
 
-    // Normalize keys
-    const questions = rawQuestions.map(q => ({
-      question_text: q.question_text || q.question || "N/A",
-      option_a: q.option_a || (q.options ? q.options[0] : "A"),
-      option_b: q.option_b || (q.options ? q.options[1] : "B"),
-      option_c: q.option_c || (q.options ? q.options[2] : "C"),
-      option_d: q.option_d || (q.options ? q.options[3] : "D"),
-      correct_answer: q.correct_answer || q.answer || q.option_a || "Option A",
-      explanation: q.explanation || q.solution || ""
-    }));
+    // Normalize keys & attach diagrams for reasoning/diagram questions
+    const questions = rawQuestions.map(q => {
+      let finalImg = q.image_url || q.image || null;
+      if (!finalImg) {
+        finalImg = getSmartDiagramForQuestion(topic, q.question_text || q.question || '');
+      }
+
+      return {
+        question_text: q.question_text || q.question || "N/A",
+        option_a: q.option_a || (q.options ? q.options[0] : "A"),
+        option_b: q.option_b || (q.options ? q.options[1] : "B"),
+        option_c: q.option_c || (q.options ? q.options[2] : "C"),
+        option_d: q.option_d || (q.options ? q.options[3] : "D"),
+        correct_answer: q.correct_answer || q.answer || q.option_a || "Option A",
+        explanation: q.explanation || q.solution || "",
+        image_url: finalImg || null
+      };
+    });
 
     return NextResponse.json({ questions, count: questions.length });
 
