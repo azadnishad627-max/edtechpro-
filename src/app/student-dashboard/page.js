@@ -267,35 +267,18 @@ export default function StudentDashboard() {
     try {
       const { data: profiles } = await supabase.from('profiles').select('*').eq('role', 'student');
       const { data: attempts } = await supabase.from('test_attempts').select('student_id, test_id, score, created_at').order('created_at', { ascending: true });
-      const { data: activeTests } = await supabase.from('tests').select('id, title, batch_id, batches(title)');
-      const { data: enrollmentsData } = await supabase.from('enrollments').select('student_id, batch_id, batches(title)');
+      const { data: activeTests } = await supabase
+        .from('tests')
+        .select('id, title, batch_id, created_at, is_active, batches(title)')
+        .order('created_at', { ascending: false });
       
-      if (!profiles || !attempts || !activeTests) {
+      if (!profiles || !activeTests) {
         setLeaderboard([]);
+        setActiveLeaderboardTest(null);
         return;
       }
 
-      // Map each student to their enrolled batch
-      const studentBatchMap = {};
-      (enrollmentsData || []).forEach(e => {
-        studentBatchMap[e.student_id] = {
-          batch_id: e.batch_id,
-          batch_title: e.batches?.title
-        };
-      });
-
-      // Filter students that belong to the current student's batch
-      const batchStudentIds = new Set();
-      profiles.forEach(p => {
-        const pEnroll = studentBatchMap[p.id];
-        const pBatchId = pEnroll?.batch_id;
-        const pBatchTitle = pEnroll?.batch_title;
-        if (isItemForStudentBatch(pBatchId, pBatchTitle, p.class_name)) {
-          batchStudentIds.add(p.id);
-        }
-      });
-
-      // 1. Find all tests belonging to student's batch
+      // 1. Find tests belonging to student's batch
       const batchTests = activeTests.filter(t => isItemForStudentBatch(t.batch_id, t.batches?.title, t.title));
       
       if (batchTests.length === 0) {
@@ -304,25 +287,33 @@ export default function StudentDashboard() {
         return;
       }
 
-      // Sort tests latest first
-      batchTests.sort((a, b) => {
-        const timeA = new Date(a.created_at || 0).getTime();
-        const timeB = new Date(b.created_at || 0).getTime();
-        return (timeB - timeA) || (b.id - a.id);
-      });
+      // 2. Find the ACTIVE live test (must NOT be archived)
+      // When admin publishes a new test, previous tests get [ARCHIVED]
+      // So the current live test is the non-archived one!
+      const currentLiveTest = batchTests.find(t => !t.title.startsWith('[ARCHIVED]'));
 
-      // Target the latest test: prioritize active non-archived test, else the most recent test
-      const targetTest = batchTests.find(t => !t.title.startsWith('[ARCHIVED]')) || batchTests[0];
-      setActiveLeaderboardTest(targetTest);
-      const targetTestId = targetTest.id;
+      if (!currentLiveTest) {
+        setLeaderboard([]);
+        setActiveLeaderboardTest(null);
+        return;
+      }
 
-      // 2. Filter attempts ONLY for this target test!
-      const targetAttempts = attempts.filter(a => a.test_id === targetTestId);
+      setActiveLeaderboardTest(currentLiveTest);
+      const targetTestId = currentLiveTest.id;
 
+      // 3. Filter attempts ONLY for this current live test!
+      const targetAttempts = (attempts || []).filter(a => a.test_id === targetTestId);
+
+      if (targetAttempts.length === 0) {
+        // New test published, but no student has submitted it yet -> Leaderboard completely empty!
+        setLeaderboard([]);
+        return;
+      }
+
+      // Keep best attempt per student on this current live test
       const bestAttempts = {};
       targetAttempts.forEach(a => {
         const sid = a.student_id;
-        // Keep highest score on this test
         if (!bestAttempts[sid] || bestAttempts[sid].score < a.score) {
           bestAttempts[sid] = a;
         }
@@ -337,7 +328,7 @@ export default function StudentDashboard() {
         studentLatestSubmit[sid] = new Date(a.created_at).getTime();
       });
 
-      // Only show students who have attempted THIS target test
+      // ONLY students who submitted THIS current test will show
       const updatedProfiles = profiles
         .filter(p => studentScores[p.id] !== undefined)
         .map(p => ({
@@ -353,11 +344,11 @@ export default function StudentDashboard() {
         return a.latest_submit_time - b.latest_submit_time; 
       });
       
-      // Live leaderboard reflects ONLY the target test results
       setLeaderboard(updatedProfiles);
     } catch (err) {
       console.error("Leaderboard error:", err);
       setLeaderboard([]);
+      setActiveLeaderboardTest(null);
     }
   };
 
