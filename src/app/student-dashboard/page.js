@@ -312,8 +312,32 @@ export default function StudentDashboard() {
         batchTests = activeTests;
       }
 
-      // 2. Find the ACTIVE live test (prefer non-archived test, else fallback to latest)
-      const currentLiveTest = batchTests.find(t => !t.title.startsWith('[ARCHIVED]')) || batchTests[0];
+      // 2. Find the ACTIVE live test
+      // Prioritize the test the student MOST RECENTLY took, so they immediately see their result!
+      let lastTakenTestId = null;
+      if (sData) {
+        const studentObj = JSON.parse(sData);
+        const { data: myLatest } = await supabase
+          .from('test_attempts')
+          .select('test_id')
+          .eq('student_id', studentObj.id)
+          .order('created_at', { ascending: false })
+          .limit(1);
+        if (myLatest && myLatest.length > 0) {
+          lastTakenTestId = myLatest[0].test_id;
+        }
+      }
+
+      // If they just took a test, show that test's leaderboard. Otherwise, show the newest non-archived test.
+      let currentLiveTest = null;
+      if (lastTakenTestId) {
+        currentLiveTest = batchTests.find(t => String(t.id) === String(lastTakenTestId));
+      }
+      
+      // Fallback to the newest non-archived test if they haven't taken any or if the test isn't in their batch
+      if (!currentLiveTest) {
+        currentLiveTest = batchTests.find(t => !t.title.startsWith('[ARCHIVED]')) || batchTests[0];
+      }
 
       if (!currentLiveTest) {
         setLeaderboard([]);
@@ -322,7 +346,8 @@ export default function StudentDashboard() {
       }
 
       setActiveLeaderboardTest(currentLiveTest);
-      const targetTestId = String(currentLiveTest.id);
+      // Use exactly the original type (number or string) to avoid any PostgREST strict type casting failures
+      const targetTestId = currentLiveTest.id;
 
       // 3. Fetch attempts ONLY for this current live test (Fixes 1000 row truncation limit)
       const { data: targetAttempts } = await supabase
