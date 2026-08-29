@@ -281,22 +281,29 @@ export default function StudentDashboard() {
       let currentBatchId = studentBatchId;
       let currentBatchTitle = studentBatchTitle;
       if (sData) {
-        const parsed = JSON.parse(sData);
-        if (parsed.batch_id) currentBatchId = parsed.batch_id;
-        if (parsed.batch_title) currentBatchTitle = parsed.batch_title;
+        try {
+          const parsed = JSON.parse(sData);
+          if (parsed.batch_id) currentBatchId = parsed.batch_id;
+          if (parsed.batch_title) currentBatchTitle = String(parsed.batch_title);
+        } catch(e) {}
       }
       
       const isTestForMe = (itemBatchId, itemBatchTitle, itemTitle) => {
-        if (!itemBatchId && !itemBatchTitle) return true;
-        if (itemBatchTitle && itemBatchTitle.toLowerCase() === 'all batches') return true;
-        if (itemBatchId && currentBatchId && String(itemBatchId) === String(currentBatchId)) return true;
-        if (itemBatchTitle && currentBatchTitle && itemBatchTitle.toLowerCase().trim() === currentBatchTitle.toLowerCase().trim()) return true;
-        return false;
+        try {
+          if (!itemBatchId && !itemBatchTitle) return true;
+          const iTitle = itemBatchTitle ? String(itemBatchTitle).toLowerCase().trim() : '';
+          const cTitle = currentBatchTitle ? String(currentBatchTitle).toLowerCase().trim() : '';
+          if (iTitle === 'all batches') return true;
+          if (itemBatchId && currentBatchId && String(itemBatchId) === String(currentBatchId)) return true;
+          if (iTitle && cTitle && iTitle === cTitle) return true;
+          return false;
+        } catch(e) { return false; }
       };
 
+      // Safely fetch tests using exact same query format as fetchTests to prevent column missing errors
       const { data: activeTests, error: tErr } = await supabase
         .from('tests')
-        .select('id, title, batch_id, created_at, is_active, batches(title)')
+        .select('*, batches(title)')
         .order('created_at', { ascending: false });
       
       if (!activeTests || activeTests.length === 0) {
@@ -308,7 +315,8 @@ export default function StudentDashboard() {
       let batchTests = activeTests.filter(t => isTestForMe(t.batch_id, t.batches?.title, t.title));
       if (batchTests.length === 0) batchTests = activeTests;
 
-      const currentLiveTest = batchTests.find(t => !t.title.startsWith('[ARCHIVED]')) || batchTests[0];
+      // Safely check title property without crashing if null
+      const currentLiveTest = batchTests.find(t => t.title && !String(t.title).startsWith('[ARCHIVED]')) || batchTests[0];
 
       if (!currentLiveTest) {
         setLeaderboard([]);
@@ -319,14 +327,13 @@ export default function StudentDashboard() {
       setActiveLeaderboardTest(currentLiveTest);
       const targetTestId = String(currentLiveTest.id);
 
-      // Fetch the 1000 MOST RECENT attempts overall to completely avoid DB type casting issues
+      // Fetch the 1000 MOST RECENT attempts overall
       const { data: recentAttempts } = await supabase
         .from('test_attempts')
         .select('student_id, test_id, score, created_at')
         .order('created_at', { ascending: false })
         .limit(1000);
 
-      // Filter in memory precisely by string
       const targetAttempts = (recentAttempts || []).filter(a => String(a.test_id) === targetTestId);
 
       if (targetAttempts.length === 0) {
@@ -353,8 +360,8 @@ export default function StudentDashboard() {
       const uniqueStudentIds = Object.keys(studentScores);
       let profiles = [];
       if (uniqueStudentIds.length > 0) {
-        // Fallback to fetch ALL profiles if IN query fails for some reason
-        const { data: rawProfiles } = await supabase.from('profiles').select('*');
+        // Correctly filter IN for just these students
+        const { data: rawProfiles } = await supabase.from('profiles').select('*').in('id', uniqueStudentIds);
         profiles = rawProfiles || [];
       }
 
@@ -393,6 +400,7 @@ export default function StudentDashboard() {
       setLeaderboard(updatedProfiles);
     } catch (err) {
       console.error("Leaderboard error:", err);
+      // Don't set null here so we don't clear an active test if it succeeded but profiles failed
       setLeaderboard([]);
     }
   };
