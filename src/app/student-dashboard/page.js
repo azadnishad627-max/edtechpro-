@@ -13,6 +13,9 @@ export default function StudentDashboard() {
   const switchTab = (tab) => {
     window.history.pushState({ tab }, '', '#' + tab);
     setActiveTab(tab);
+    if (tab === 'leaderboard') {
+      fetchLeaderboard();
+    }
   };
 
   useEffect(() => {
@@ -233,6 +236,15 @@ export default function StudentDashboard() {
     fetchData();
   }, [router]);
 
+  // Live auto-refresh for leaderboard every 8 seconds when activeTab === 'leaderboard'
+  useEffect(() => {
+    if (activeTab === 'leaderboard') {
+      fetchLeaderboard();
+      const interval = setInterval(fetchLeaderboard, 8000);
+      return () => clearInterval(interval);
+    }
+  }, [activeTab, studentBatchId, studentBatchTitle]);
+
   const fetchBookmarks = async () => {
     const sData = localStorage.getItem('studentInfo');
     if (sData) {
@@ -265,32 +277,30 @@ export default function StudentDashboard() {
 
   const fetchLeaderboard = async () => {
     try {
-      const { data: profiles } = await supabase.from('profiles').select('*').eq('role', 'student');
+      const { data: rawProfiles } = await supabase.from('profiles').select('*');
       const { data: attempts } = await supabase.from('test_attempts').select('student_id, test_id, score, created_at').order('created_at', { ascending: true });
       const { data: activeTests } = await supabase
         .from('tests')
         .select('id, title, batch_id, created_at, is_active, batches(title)')
         .order('created_at', { ascending: false });
       
-      if (!profiles || !activeTests) {
+      if (!rawProfiles || !activeTests || activeTests.length === 0) {
         setLeaderboard([]);
         setActiveLeaderboardTest(null);
         return;
       }
 
-      // 1. Find tests belonging to student's batch
-      const batchTests = activeTests.filter(t => isItemForStudentBatch(t.batch_id, t.batches?.title, t.title));
-      
+      // Filter out admin profiles
+      const profiles = rawProfiles.filter(p => p.role !== 'admin');
+
+      // 1. Find tests belonging to student's batch, fallback to activeTests
+      let batchTests = activeTests.filter(t => isItemForStudentBatch(t.batch_id, t.batches?.title, t.title));
       if (batchTests.length === 0) {
-        setLeaderboard([]);
-        setActiveLeaderboardTest(null);
-        return;
+        batchTests = activeTests;
       }
 
-      // 2. Find the ACTIVE live test (must NOT be archived)
-      // When admin publishes a new test, previous tests get [ARCHIVED]
-      // So the current live test is the non-archived one!
-      const currentLiveTest = batchTests.find(t => !t.title.startsWith('[ARCHIVED]'));
+      // 2. Find the ACTIVE live test (prefer non-archived test, else fallback to latest)
+      const currentLiveTest = batchTests.find(t => !t.title.startsWith('[ARCHIVED]')) || batchTests[0];
 
       if (!currentLiveTest) {
         setLeaderboard([]);
@@ -299,10 +309,10 @@ export default function StudentDashboard() {
       }
 
       setActiveLeaderboardTest(currentLiveTest);
-      const targetTestId = currentLiveTest.id;
+      const targetTestId = String(currentLiveTest.id);
 
-      // 3. Filter attempts ONLY for this current live test!
-      const targetAttempts = (attempts || []).filter(a => a.test_id === targetTestId);
+      // 3. Filter attempts ONLY for this current live test (Type-safe String comparison)
+      const targetAttempts = (attempts || []).filter(a => String(a.test_id) === targetTestId);
 
       if (targetAttempts.length === 0) {
         // New test published, but no student has submitted it yet -> Leaderboard completely empty!
@@ -313,8 +323,8 @@ export default function StudentDashboard() {
       // Keep best attempt per student on this current live test
       const bestAttempts = {};
       targetAttempts.forEach(a => {
-        const sid = a.student_id;
-        if (!bestAttempts[sid] || bestAttempts[sid].score < a.score) {
+        const sid = String(a.student_id);
+        if (!bestAttempts[sid] || Number(bestAttempts[sid].score) < Number(a.score)) {
           bestAttempts[sid] = a;
         }
       });
@@ -323,19 +333,36 @@ export default function StudentDashboard() {
       const studentLatestSubmit = {};
       
       Object.values(bestAttempts).forEach(a => {
-        const sid = a.student_id;
-        studentScores[sid] = a.score;
+        const sid = String(a.student_id);
+        studentScores[sid] = Number(a.score);
         studentLatestSubmit[sid] = new Date(a.created_at).getTime();
       });
 
-      // ONLY students who submitted THIS current test will show
-      const updatedProfiles = profiles
-        .filter(p => studentScores[p.id] !== undefined)
-        .map(p => ({
-          ...p,
-          total_test_score: studentScores[p.id],
-          latest_submit_time: studentLatestSubmit[p.id] || 0
-        }));
+      // Match student profiles or fallback cleanly
+      const profileMap = {};
+      profiles.forEach(p => {
+        profileMap[String(p.id)] = p;
+      });
+
+      const updatedProfiles = Object.keys(studentScores).map(sid => {
+        const p = profileMap[sid];
+        if (p) {
+          return {
+            ...p,
+            total_test_score: studentScores[sid],
+            latest_submit_time: studentLatestSubmit[sid] || 0
+          };
+        } else {
+          return {
+            id: sid,
+            name: `Student #${sid.substring(0, 5)}`,
+            class_name: 'Class 8th',
+            total_test_score: studentScores[sid],
+            latest_submit_time: studentLatestSubmit[sid] || 0,
+            streak_days: 1
+          };
+        }
+      });
 
       updatedProfiles.sort((a, b) => {
         if (b.total_test_score !== a.total_test_score) {
