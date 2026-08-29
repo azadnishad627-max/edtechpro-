@@ -277,7 +277,6 @@ export default function StudentDashboard() {
 
   const fetchLeaderboard = async () => {
     try {
-      // Get student info directly from local storage to avoid async state issues
       const sData = localStorage.getItem('studentInfo');
       let currentBatchId = studentBatchId;
       let currentBatchTitle = studentBatchTitle;
@@ -295,7 +294,7 @@ export default function StudentDashboard() {
         return false;
       };
 
-      const { data: activeTests } = await supabase
+      const { data: activeTests, error: tErr } = await supabase
         .from('tests')
         .select('id, title, batch_id, created_at, is_active, batches(title)')
         .order('created_at', { ascending: false });
@@ -306,14 +305,9 @@ export default function StudentDashboard() {
         return;
       }
 
-      // 1. Find tests belonging to student's batch, fallback to activeTests
       let batchTests = activeTests.filter(t => isTestForMe(t.batch_id, t.batches?.title, t.title));
-      if (batchTests.length === 0) {
-        batchTests = activeTests;
-      }
+      if (batchTests.length === 0) batchTests = activeTests;
 
-      // 2. Find the ACTIVE live test
-      // ALWAYS pick the latest NON-archived test, as requested by the user
       const currentLiveTest = batchTests.find(t => !t.title.startsWith('[ARCHIVED]')) || batchTests[0];
 
       if (!currentLiveTest) {
@@ -323,21 +317,23 @@ export default function StudentDashboard() {
       }
 
       setActiveLeaderboardTest(currentLiveTest);
-      const targetTestId = currentLiveTest.id;
+      const targetTestId = String(currentLiveTest.id);
 
-      // 3. Fetch attempts ONLY for this current live test (Fixes 1000 row truncation limit)
-      const { data: targetAttempts } = await supabase
+      // Fetch the 1000 MOST RECENT attempts overall to completely avoid DB type casting issues
+      const { data: recentAttempts } = await supabase
         .from('test_attempts')
         .select('student_id, test_id, score, created_at')
-        .eq('test_id', targetTestId)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(1000);
 
-      if (!targetAttempts || targetAttempts.length === 0) {
+      // Filter in memory precisely by string
+      const targetAttempts = (recentAttempts || []).filter(a => String(a.test_id) === targetTestId);
+
+      if (targetAttempts.length === 0) {
         setLeaderboard([]);
         return;
       }
 
-      // Keep best attempt per student on this current live test
       const bestAttempts = {};
       targetAttempts.forEach(a => {
         const sid = String(a.student_id);
@@ -348,22 +344,20 @@ export default function StudentDashboard() {
 
       const studentScores = {};
       const studentLatestSubmit = {};
-      
       Object.values(bestAttempts).forEach(a => {
         const sid = String(a.student_id);
         studentScores[sid] = Number(a.score);
         studentLatestSubmit[sid] = new Date(a.created_at).getTime();
       });
 
-      // 4. Fetch precise profiles ONLY for the students who submitted (avoids 1000-row limit on profiles table)
       const uniqueStudentIds = Object.keys(studentScores);
       let profiles = [];
       if (uniqueStudentIds.length > 0) {
-        const { data: rawProfiles } = await supabase.from('profiles').select('*').in('id', uniqueStudentIds);
+        // Fallback to fetch ALL profiles if IN query fails for some reason
+        const { data: rawProfiles } = await supabase.from('profiles').select('*');
         profiles = rawProfiles || [];
       }
 
-      // Match student profiles or fallback cleanly
       const profileMap = {};
       profiles.forEach(p => {
         profileMap[String(p.id)] = p;
@@ -400,7 +394,6 @@ export default function StudentDashboard() {
     } catch (err) {
       console.error("Leaderboard error:", err);
       setLeaderboard([]);
-      setActiveLeaderboardTest(null);
     }
   };
 
