@@ -277,24 +277,37 @@ export default function StudentDashboard() {
 
   const fetchLeaderboard = async () => {
     try {
-      const { data: rawProfiles } = await supabase.from('profiles').select('*');
-      const { data: attempts } = await supabase.from('test_attempts').select('student_id, test_id, score, created_at').order('created_at', { ascending: true });
+      // Get student info directly from local storage to avoid async state issues
+      const sData = localStorage.getItem('studentInfo');
+      let currentBatchId = studentBatchId;
+      let currentBatchTitle = studentBatchTitle;
+      if (sData) {
+        const parsed = JSON.parse(sData);
+        if (parsed.batch_id) currentBatchId = parsed.batch_id;
+        if (parsed.batch_title) currentBatchTitle = parsed.batch_title;
+      }
+      
+      const isTestForMe = (itemBatchId, itemBatchTitle, itemTitle) => {
+        if (!itemBatchId && !itemBatchTitle) return true;
+        if (itemBatchTitle && itemBatchTitle.toLowerCase() === 'all batches') return true;
+        if (itemBatchId && currentBatchId && String(itemBatchId) === String(currentBatchId)) return true;
+        if (itemBatchTitle && currentBatchTitle && itemBatchTitle.toLowerCase().trim() === currentBatchTitle.toLowerCase().trim()) return true;
+        return false;
+      };
+
       const { data: activeTests } = await supabase
         .from('tests')
         .select('id, title, batch_id, created_at, is_active, batches(title)')
         .order('created_at', { ascending: false });
       
-      if (!rawProfiles || !activeTests || activeTests.length === 0) {
+      if (!activeTests || activeTests.length === 0) {
         setLeaderboard([]);
         setActiveLeaderboardTest(null);
         return;
       }
 
-      // Filter out admin profiles
-      const profiles = rawProfiles.filter(p => p.role !== 'admin');
-
       // 1. Find tests belonging to student's batch, fallback to activeTests
-      let batchTests = activeTests.filter(t => isItemForStudentBatch(t.batch_id, t.batches?.title, t.title));
+      let batchTests = activeTests.filter(t => isTestForMe(t.batch_id, t.batches?.title, t.title));
       if (batchTests.length === 0) {
         batchTests = activeTests;
       }
@@ -311,11 +324,14 @@ export default function StudentDashboard() {
       setActiveLeaderboardTest(currentLiveTest);
       const targetTestId = String(currentLiveTest.id);
 
-      // 3. Filter attempts ONLY for this current live test (Type-safe String comparison)
-      const targetAttempts = (attempts || []).filter(a => String(a.test_id) === targetTestId);
+      // 3. Fetch attempts ONLY for this current live test (Fixes 1000 row truncation limit)
+      const { data: targetAttempts } = await supabase
+        .from('test_attempts')
+        .select('student_id, test_id, score, created_at')
+        .eq('test_id', targetTestId)
+        .order('created_at', { ascending: false });
 
-      if (targetAttempts.length === 0) {
-        // New test published, but no student has submitted it yet -> Leaderboard completely empty!
+      if (!targetAttempts || targetAttempts.length === 0) {
         setLeaderboard([]);
         return;
       }
@@ -337,6 +353,10 @@ export default function StudentDashboard() {
         studentScores[sid] = Number(a.score);
         studentLatestSubmit[sid] = new Date(a.created_at).getTime();
       });
+
+      // 4. Fetch profiles
+      const { data: rawProfiles } = await supabase.from('profiles').select('*');
+      const profiles = (rawProfiles || []).filter(p => p.role !== 'admin');
 
       // Match student profiles or fallback cleanly
       const profileMap = {};
