@@ -146,16 +146,24 @@ export default function TakeTest() {
           // Only submit if answers were started, else just force submit
           setIsEvaluating(true);
           fetch('/api/evaluate-test', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ testId: id, answers, student_id: studentInfo?.id })
-          }).then(res => res.json()).then(data => {
-            if (data.results) {
-              setEvaluationData(data);
-              setIsSubmitted(true);
-              localStorage.removeItem(`testProgress_${id}`);
-            }
-          }).catch(err => console.error("Auto submit error", err)).finally(() => setIsEvaluating(false));
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ testId: id, answers, student_id: studentInfo?.id })
+            }).then(res => res.json()).then(async data => {
+              if (data.results) {
+                if (studentInfo?.id) {
+                  await supabase.from('test_attempts').insert([{
+                    student_id: studentInfo.id,
+                    test_id: id,
+                    score: data.score,
+                    total_questions: data.total
+                  }]);
+                }
+                setEvaluationData(data);
+                setIsSubmitted(true);
+                localStorage.removeItem(`testProgress_${id}`);
+              }
+            }).catch(err => console.error("Auto submit error", err)).finally(() => setIsEvaluating(false));
         }
       }
     };
@@ -203,6 +211,15 @@ export default function TakeTest() {
       });
       const data = await res.json();
       if (data.results) {
+        if (studentInfo?.id) {
+          const { error: insertErr } = await supabase.from('test_attempts').insert([{
+            student_id: studentInfo.id,
+            test_id: id,
+            score: data.score,
+            total_questions: data.total
+          }]);
+          if (insertErr) console.error("Failed to save attempt to DB", insertErr);
+        }
         setEvaluationData(data);
         setIsSubmitted(true);
         localStorage.removeItem(`testProgress_${id}`); // Clear saved progress on submit

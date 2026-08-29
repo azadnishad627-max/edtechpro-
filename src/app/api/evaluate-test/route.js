@@ -75,17 +75,7 @@ export async function POST(req) {
       };
     });
 
-    if (student_id) {
-      const { error: insertError } = await supabase.from('test_attempts').insert([{
-        student_id,
-        test_id: testId,
-        score,
-        total_questions: questions.length
-      }]);
-      if (insertError) {
-        console.error('Error saving test attempt:', insertError);
-      }
-    }
+    // Note: We now insert test_attempts on the client side using the authenticated supabase instance to respect RLS.
 
     return NextResponse.json({
       score,
