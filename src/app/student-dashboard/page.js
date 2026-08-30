@@ -1019,217 +1019,108 @@ export default function StudentDashboard() {
               ) : null;
             })()}
 
-            {/* --- 📚 COMPACT SUBJECT & CHAPTER DROPDOWN PDF NOTES SYSTEM --- */}
-            <div className="glass-card" style={{ padding: '1.25rem', borderRadius: '16px', border: '1px solid rgba(56, 189, 248, 0.35)', background: 'linear-gradient(135deg, rgba(14, 165, 233, 0.08) 0%, rgba(99, 102, 241, 0.08) 100%)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
-                <span style={{ fontSize: '1.5rem' }}>📚</span>
-                <div>
-                  <h3 style={{ margin: 0, color: 'white', fontSize: '1.15rem', fontWeight: 'bold' }}>
-                    {selectedClass} Chapter-Wise PDF Notes
+            {/* SMART COMPACT CHAPTER-WISE NOTES */}
+            <div className="glass-card" style={{ padding: '1rem', borderRadius: '16px', border: '1px solid rgba(56, 189, 248, 0.25)', background: 'linear-gradient(135deg, rgba(14, 165, 233, 0.05) 0%, rgba(99, 102, 241, 0.05) 100%)', marginBottom: '2rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '1rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <span style={{ fontSize: '1.4rem' }}>📚</span>
+                  <h3 style={{ margin: 0, color: 'white', fontSize: '1.1rem', fontWeight: 'bold' }}>
+                    {selectedClass} Chapter Notes
                   </h3>
-                  <p style={{ margin: 0, color: '#94a3b8', fontSize: '0.8rem' }}>
-                    Class, Subject aur Chapter select karke study notes padhein.
-                  </p>
                 </div>
+                {/* Compact Class Selector */}
+                <select 
+                  value={selectedClass} 
+                  onChange={(e) => {
+                    const newCls = e.target.value;
+                    setSelectedClass(newCls);
+                    const clsSubs = Object.keys(CURRICULUM_DATA[newCls] || CURRICULUM_DATA["Class 8th"]);
+                    const firstSub = clsSubs[0] || 'Science (विज्ञान)';
+                    setSelectedSubject(firstSub);
+                  }}
+                  style={{ padding: '0.4rem 0.8rem', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.2)', background: 'rgba(0,0,0,0.4)', color: '#ffd700', fontWeight: 'bold', fontSize: '0.85rem' }}
+                >
+                  {CLASSES_LIST.map(cls => (
+                    <option key={cls} value={cls}>{cls}</option>
+                  ))}
+                </select>
               </div>
 
-              {/* TRIPLE DROPDOWN SELECTORS: Class, Subject, Chapter */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '1.25rem' }}>
-                {/* Dropdown 0: Select Class */}
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.82rem', color: '#ffd700', fontWeight: 'bold', marginBottom: '0.35rem' }}>
-                    1. Select Class (कक्षा चुनें)
-                  </label>
-                  <select 
-                    value={selectedClass} 
-                    onChange={(e) => {
-                      const newCls = e.target.value;
-                      setSelectedClass(newCls);
-                      const clsSubs = Object.keys(CURRICULUM_DATA[newCls] || CURRICULUM_DATA["Class 8th"]);
-                      const firstSub = clsSubs[0] || 'Science (विज्ञान)';
-                      setSelectedSubject(firstSub);
-                      const subChList = (CURRICULUM_DATA[newCls] && CURRICULUM_DATA[newCls][firstSub]) || [];
-                      setSelectedChapter(subChList.length > 0 ? subChList[0] : null);
+              {/* Horizontal Subject Pills */}
+              <div style={{ display: 'flex', gap: '0.5rem', overflowX: 'auto', paddingBottom: '0.5rem', marginBottom: '1rem', scrollbarWidth: 'none' }}>
+                {Object.keys(CURRICULUM_DATA[selectedClass] || CURRICULUM_DATA["Class 8th"]).map(sub => (
+                  <button 
+                    key={sub}
+                    onClick={() => setSelectedSubject(sub)}
+                    style={{
+                      padding: '0.4rem 1rem',
+                      borderRadius: '20px',
+                      whiteSpace: 'nowrap',
+                      fontSize: '0.85rem',
+                      fontWeight: 'bold',
+                      border: selectedSubject === sub ? '1px solid #38bdf8' : '1px solid rgba(255,255,255,0.1)',
+                      background: selectedSubject === sub ? 'rgba(56,189,248,0.15)' : 'rgba(0,0,0,0.2)',
+                      color: selectedSubject === sub ? '#38bdf8' : '#94a3b8',
+                      transition: 'all 0.2s'
                     }}
-                    style={{ width: '100%', padding: '0.85rem 1rem', borderRadius: '10px', border: '1px solid #ffd700', background: 'var(--bg-dark)', color: 'white', fontWeight: 'bold', fontSize: '0.95rem' }}
                   >
-                    {CLASSES_LIST.map(cls => (
-                      <option key={cls} value={cls}>🏫 {cls}</option>
-                    ))}
-                  </select>
-                </div>
+                    {(SUBJECT_ICONS[sub] || '📄')} {sub.split(' ')[0]}
+                  </button>
+                ))}
+              </div>
 
-                {/* Dropdown 1: Select Subject */}
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.82rem', color: '#38bdf8', fontWeight: 'bold', marginBottom: '0.35rem' }}>
-                    2. Select Subject (विषय चुनें)
-                  </label>
-                  <select 
-                    value={selectedSubject} 
-                    onChange={(e) => {
-                      const newSub = e.target.value;
-                      setSelectedSubject(newSub);
-                      const classCurriculum = CURRICULUM_DATA[selectedClass] || CURRICULUM_DATA["Class 8th"];
-                      const subChList = classCurriculum[newSub] || [];
-                      setSelectedChapter(subChList.length > 0 ? subChList[0] : null);
-                    }}
-                    style={{ width: '100%', padding: '0.85rem 1rem', borderRadius: '10px', border: '1px solid #38bdf8', background: 'var(--bg-dark)', color: 'white', fontWeight: 'bold', fontSize: '0.95rem' }}
-                  >
-                    {Object.keys(CURRICULUM_DATA[selectedClass] || CURRICULUM_DATA["Class 8th"]).map(sub => (
-                      <option key={sub} value={sub}>
-                        {(SUBJECT_ICONS[sub] || '📖')} {sub}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+              {/* Scrollable Chapter List */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxHeight: '400px', overflowY: 'auto', paddingRight: '0.3rem' }}>
+                {(() => {
+                  const classCurriculum = CURRICULUM_DATA[selectedClass] || CURRICULUM_DATA["Class 8th"];
+                  const chList = classCurriculum[selectedSubject] || [];
+                  const parsedMaterials = dbMaterials.map(m => parseMaterialMetadata(m));
 
-                {/* Dropdown 2: Select Chapter */}
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.82rem', color: '#38bdf8', fontWeight: 'bold', marginBottom: '0.35rem' }}>
-                    3. Select Chapter (पाठ चुनें)
-                  </label>
-                  {(() => {
-                    const classCurriculum = CURRICULUM_DATA[selectedClass] || CURRICULUM_DATA["Class 8th"];
-                    const chList = classCurriculum[selectedSubject] || [];
-                    const activeCh = selectedChapter || (chList.length > 0 ? chList[0] : '');
-                    const parsedMaterials = dbMaterials.map(m => parseMaterialMetadata(m));
+                  return chList.map((ch, idx) => {
+                    const currentNotes = parsedMaterials.filter(m => {
+                      if (!m.subject && !m.chapter) return m.title.toLowerCase().includes(ch.toLowerCase());
+                      const isSubMatch = m.subject && (m.subject.includes(selectedSubject.split(' ')[0]) || selectedSubject.includes(m.subject));
+                      const isChMatch = m.chapter && (m.chapter.trim() === ch.trim() || ch.includes(m.chapter) || m.chapter.includes(ch));
+                      return isSubMatch && isChMatch;
+                    });
+
+                    const hasNotes = currentNotes.length > 0;
 
                     return (
-                      <select 
-                        value={activeCh} 
-                        onChange={(e) => setSelectedChapter(e.target.value)}
-                        style={{ width: '100%', padding: '0.85rem 1rem', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.2)', background: 'var(--bg-dark)', color: 'white', fontSize: '0.95rem' }}
-                      >
-                        {chList.map((ch, idx) => {
-                          const hasNotes = parsedMaterials.some(m => {
-                            if (!m.subject && !m.chapter) return m.title.toLowerCase().includes(ch.toLowerCase());
-                            const isSubMatch = m.subject && (m.subject.includes(selectedSubject.split(' ')[0]) || selectedSubject.includes(m.subject));
-                            const isChMatch = m.chapter && (m.chapter.trim() === ch.trim() || ch.includes(m.chapter) || m.chapter.includes(ch));
-                            return isSubMatch && isChMatch;
-                          });
-
-                          return (
-                            <option key={idx} value={ch}>
-                              {ch} {hasNotes ? '📄 (PDF Ready)' : ''}
-                            </option>
-                          );
-                        })}
-                      </select>
-                    );
-                  })()}
-                </div>
-              </div>
-
-              {/* ACTIVE SELECTED CHAPTER CARD */}
-              {(() => {
-                const chList = (CURRICULUM_DATA[selectedClass] || CURRICULUM_DATA["Class 8th"])[selectedSubject] || [];
-                const currentCh = selectedChapter || (chList.length > 0 ? chList[0] : null);
-                if (!currentCh) return null;
-
-                const currentIndex = chList.indexOf(currentCh);
-                const parsedMaterials = dbMaterials.map(m => parseMaterialMetadata(m));
-
-                const currentNotes = parsedMaterials.filter(m => {
-                  if (!m.subject && !m.chapter) return m.title.toLowerCase().includes(currentCh.toLowerCase());
-                  const isSubMatch = m.subject && (m.subject.includes(selectedSubject.split(' ')[0]) || selectedSubject.includes(m.subject));
-                  const isChMatch = m.chapter && (m.chapter.trim() === currentCh.trim() || currentCh.includes(m.chapter) || m.chapter.includes(currentCh));
-                  return isSubMatch && isChMatch;
-                });
-
-                const hasNotes = currentNotes.length > 0;
-
-                return (
-                  <div style={{
-                    padding: '1.25rem',
-                    borderRadius: '12px',
-                    background: hasNotes ? 'rgba(14, 165, 233, 0.08)' : 'rgba(0, 0, 0, 0.25)',
-                    border: hasNotes ? '1px solid rgba(56, 189, 248, 0.4)' : '1px solid var(--glass-border)',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '1rem'
-                  }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.5rem' }}>
-                      <div>
-                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginBottom: '0.35rem' }}>
-                          <span style={{ fontSize: '0.75rem', background: '#0284c7', color: 'white', padding: '0.15rem 0.5rem', borderRadius: '4px', fontWeight: 'bold' }}>
-                            {(SUBJECT_ICONS[selectedSubject] || '📖')} {selectedSubject}
-                          </span>
-                          <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>
-                            Chapter {currentIndex >= 0 ? currentIndex + 1 : 1} of {chList.length}
-                          </span>
+                      <div key={idx} style={{ 
+                        display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
+                        padding: '0.75rem 1rem', background: 'rgba(0,0,0,0.2)', 
+                        border: '1px solid rgba(255,255,255,0.05)', borderRadius: '10px',
+                        gap: '0.75rem'
+                      }}>
+                        <div style={{ flex: 1 }}>
+                          <span style={{ fontSize: '0.65rem', color: '#94a3b8', display: 'block', marginBottom: '0.15rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Chapter {idx + 1}</span>
+                          <span style={{ fontSize: '0.85rem', color: 'white', lineHeight: '1.3' }}>{ch}</span>
                         </div>
-                        <h4 style={{ margin: 0, color: 'white', fontSize: '1.15rem', lineHeight: '1.4' }}>
-                          {currentCh}
-                        </h4>
+                        {hasNotes ? (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem', flexShrink: 0 }}>
+                            {currentNotes.map(note => (
+                              <button
+                                key={note.id}
+                                onClick={() => window.open(`/secure-notes/${note.id}`, '_blank')}
+                                style={{
+                                  padding: '0.3rem 0.75rem', background: 'rgba(14, 165, 233, 0.15)', color: '#38bdf8', 
+                                  border: '1px solid rgba(56, 189, 248, 0.3)', borderRadius: '6px', fontSize: '0.7rem', fontWeight: 'bold',
+                                  cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.2rem'
+                                }}
+                              >
+                                PDF <span style={{ fontSize: '1rem', lineHeight: 1 }}>›</span>
+                              </button>
+                            ))}
+                          </div>
+                        ) : (
+                          <span style={{ fontSize: '0.7rem', color: '#64748b', flexShrink: 0, padding: '0.3rem 0' }}>Wait</span>
+                        )}
                       </div>
-
-                      {hasNotes ? (
-                        <span style={{ fontSize: '0.8rem', background: 'rgba(16, 185, 129, 0.15)', color: '#10b981', padding: '0.25rem 0.65rem', borderRadius: '6px', fontWeight: 'bold' }}>
-                          🟢 {currentNotes.length} PDF Note Available
-                        </span>
-                      ) : (
-                        <span style={{ fontSize: '0.75rem', color: '#94a3b8', background: 'rgba(255,255,255,0.05)', padding: '0.2rem 0.5rem', borderRadius: '4px' }}>
-                          ⏳ Notes Coming Soon
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Action Buttons */}
-                    {hasNotes ? (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                        {currentNotes.map(note => (
-                          <button
-                            key={note.id}
-                            onClick={() => window.open(`/secure-notes/${note.id}`, '_blank')}
-                            className="btn-primary"
-                            style={{
-                              width: '100%',
-                              padding: '0.85rem 1.25rem',
-                              fontSize: '0.95rem',
-                              fontWeight: 'bold',
-                              background: 'linear-gradient(135deg, #0ea5e9, #2563eb)',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              gap: '0.5rem',
-                              boxShadow: '0 4px 15px rgba(14, 165, 233, 0.3)'
-                            }}
-                          >
-                            <span>🔒</span>
-                            <span>Open Chapter PDF Note (With Zoom Controls)</span>
-                          </button>
-                        ))}
-                      </div>
-                    ) : (
-                      <div style={{ padding: '0.75rem', textAlign: 'center', background: 'rgba(0,0,0,0.2)', borderRadius: '8px', fontSize: '0.85rem', color: '#94a3b8' }}>
-                        📝 Sir is chapter ke PDF notes jald hi upload karenge.
-                      </div>
-                    )}
-
-                    {/* Navigation Prev / Next Buttons */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', paddingTop: '0.5rem', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-                      <button
-                        type="button"
-                        disabled={currentIndex <= 0}
-                        onClick={() => setSelectedChapter(chList[currentIndex - 1])}
-                        className="btn-outline"
-                        style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', opacity: currentIndex <= 0 ? 0.4 : 1, cursor: currentIndex <= 0 ? 'not-allowed' : 'pointer' }}
-                      >
-                        ← Prev Chapter
-                      </button>
-                      <button
-                        type="button"
-                        disabled={currentIndex >= chList.length - 1}
-                        onClick={() => setSelectedChapter(chList[currentIndex + 1])}
-                        className="btn-outline"
-                        style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', opacity: currentIndex >= chList.length - 1 ? 0.4 : 1, cursor: currentIndex >= chList.length - 1 ? 'not-allowed' : 'pointer' }}
-                      >
-                        Next Chapter →
-                      </button>
-                    </div>
-                  </div>
-                );
-              })()}
+                    );
+                  });
+                })()}
+              </div>
             </div>
 
             {/* Enrolled Batch Course Materials Card */}
