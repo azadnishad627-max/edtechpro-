@@ -82,56 +82,7 @@ export default function StudentDashboard() {
 
   const showAdminChatModalRef = useRef(false);
 
-  const trapPushedRef = useRef(false);
-
-  useEffect(() => {
-    // Unregister service workers to clear cache for clients that are stuck on old versions
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.getRegistrations().then(function(registrations) {
-        for(let registration of registrations) {
-          registration.unregister();
-        }
-      });
-    }
-
-    const pushTrap = () => {
-      if (!trapPushedRef.current) {
-        window.history.pushState({ trap: true }, '');
-        trapPushedRef.current = true;
-      }
-    };
-
-    document.addEventListener('click', pushTrap);
-    document.addEventListener('touchstart', pushTrap, { passive: true });
-
-    const handlePopState = (e) => {
-      trapPushedRef.current = false;
-
-      let preventExit = false;
-      
-      if (showAdminChatModalRef.current) {
-        setShowAdminChatModal(false);
-        preventExit = true;
-      } else if (activeTabRef.current !== 'overview') {
-        switchTab('overview');
-        preventExit = true;
-      }
-
-      if (preventExit) {
-        window.history.pushState({ trap: true }, '');
-        trapPushedRef.current = true;
-      } else {
-        window.history.back();
-      }
-    };
-
-    window.addEventListener('popstate', handlePopState);
-    return () => {
-      window.removeEventListener('popstate', handlePopState);
-      document.removeEventListener('click', pushTrap);
-      document.removeEventListener('touchstart', pushTrap);
-    };
-  }, []);
+  
 
   useEffect(() => { showAdminChatModalRef.current = showAdminChatModal; }, [showAdminChatModal]);
 
@@ -958,7 +909,18 @@ export default function StudentDashboard() {
           )
         )}
 
-      <div style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center' }}>
+          {activeTab !== 'courses' && (
+            <button 
+              onClick={() => { window.history.length > 2 ? window.history.back() : switchTab('courses') }} 
+              className="btn-outline" 
+              style={{ padding: '0.4rem 1rem', display: 'inline-flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '8px' }}
+            >
+              ← Back
+            </button>
+          )}
+        </div>
+<div style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
           <div style={{ width: '55px', height: '55px', borderRadius: '50%', overflow: 'hidden', border: '2px solid var(--primary-color)', flexShrink: 0, boxShadow: '0 4px 15px rgba(0,0,0,0.3)' }}>
             {student.photo_url ? (
