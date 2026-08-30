@@ -57,7 +57,7 @@ export default function StudentDashboard() {
 
   // Festival Banner State (Default Active: Raksha Bandhan)
   const [festivalConfig, setFestivalConfig] = useState({
-    active: true,
+    active: false,
     type: 'raksha_bandhan',
     title: '🌸 रक्षाबंधन की हार्दिक शुभकामनाएं! 🪢',
     message: 'भाई-बहन के पवित्र स्नेह, विश्वास और सुरक्षा के पावन पर्व रक्षाबंधन की सभी विद्यार्थियों को ढेर सारी बधाई एवं शुभकामनाएं! 💖✨'
