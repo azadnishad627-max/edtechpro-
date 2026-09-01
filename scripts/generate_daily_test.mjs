@@ -22,7 +22,7 @@ if (!KIRA_KEY) {
 
 console.log("✅ All credentials loaded successfully.");
 
-const AI_MODEL = 'kira-auto';
+const AVAILABLE_MODELS = ['kira-auto', 'kira-mini-1.0', 'kira-2.0'];
 
 // 3. Day & Topic Schedule
 const now = new Date();
@@ -39,15 +39,13 @@ const schedule = {
 };
 
 const todayPlan = schedule[dayOfWeek];
-const dateStr = now.toISOString().split('T')[0]; // e.g. 2026-09-01
+const dateStr = now.toISOString().split('T')[0];
 console.log(`📅 Day: ${dayOfWeek} | Subject: ${todayPlan.subject} | Questions: ${todayPlan.qCount} | Date: ${dateStr}`);
 
 // 4. Helper: Extract JSON from AI response
 function extractJSON(text) {
   if (!text) return [];
-  // Remove markdown code blocks
   let clean = text.replace(/```json\s*/gi, '').replace(/```\s*/gi, '').trim();
-  // Try to find JSON array
   const match = clean.match(/\[\s*\{[\s\S]*\}\s*\]/);
   if (match) {
     try {
@@ -57,73 +55,93 @@ function extractJSON(text) {
       console.error("JSON parse error:", e.message);
     }
   }
-  // Fallback: try parsing the whole thing
   try {
     const parsed = JSON.parse(clean);
     if (Array.isArray(parsed)) return parsed;
   } catch (e) {
-    console.error("Fallback JSON parse error:", e.message);
+    // console.error("Fallback parse error:", e.message);
   }
   return [];
 }
 
-// 5. Helper: Generate a batch of questions
+// 5. Helper: Generate a batch of questions with multi-model fallback
 async function generateBatch(topic, count) {
   console.log(`🔄 Generating ${count} questions for "${topic}"...`);
   const seed = Date.now().toString(36) + Math.random().toString(36).substring(2, 6);
 
-  const systemPrompt = `You are a master question paper maker for NMMS (National Means Cum-Merit Scholarship) Class 8th Indian exam.
-Generate exactly ${count} MCQs for: "${topic}".
-ALL content MUST be in Hindi language.
-Return ONLY a raw JSON array (NO markdown, NO code blocks, NO extra text).
-Each object MUST have these keys:
-"question_text", "option_a", "option_b", "option_c", "option_d", "correct_answer", "explanation"
-The "correct_answer" must be the exact text of one of the four options.
-Unique seed: ${seed}`;
+  const systemPrompt = `You are an expert exam paper maker for NMMS (National Means Cum-Merit Scholarship) Class 8th exam.
+Generate exactly ${count} Multiple Choice Questions (MCQs) for the topic: "${topic}".
+ALL content MUST be strictly in Hindi language.
+Return ONLY a valid raw JSON array of objects. Do NOT wrap in markdown or backticks.
+Each object must have these exact fields:
+- "question_text": Question in Hindi
+- "option_a": Option A text
+- "option_b": Option B text
+- "option_c": Option C text
+- "option_d": Option D text
+- "correct_answer": Exact text of the correct option (must match one of option_a/b/c/d)
+- "explanation": Short reasoning in Hindi
+Seed: ${seed}`;
 
-  try {
-    const response = await fetch('https://kiraai.vn/api/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${KIRA_KEY}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        model: AI_MODEL,
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: `Generate ${count} unique NMMS MCQs for "${topic}" in Hindi. Return raw JSON array only, no markdown.` }
-        ],
-        temperature: 0.7,
-      })
-    });
+  for (const modelName of AVAILABLE_MODELS) {
+    try {
+      console.log(`   Trying model: ${modelName}...`);
+      const response = await fetch('https://kiraai.vn/api/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${KIRA_KEY}`,
+          'Content-Type': 'application/json',
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+          'Accept': 'application/json, text/plain, */*'
+        },
+        body: JSON.stringify({
+          model: modelName,
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: `Generate ${count} NMMS Class 8 MCQs in Hindi for "${topic}". Output JSON array only.` }
+          ],
+          temperature: 0.7,
+        })
+      });
 
-    if (!response.ok) {
-      const errText = await response.text();
-      console.error(`❌ API Error ${response.status}: ${errText.substring(0, 200)}`);
-      return [];
+      if (!response.ok) {
+        const errText = await response.text();
+        console.warn(`   ⚠️ Model ${modelName} returned status ${response.status}: ${errText.substring(0, 100)}`);
+        continue; // try next model
+      }
+
+      const rawText = await response.text();
+      let data;
+      try {
+        data = JSON.parse(rawText);
+      } catch (pe) {
+        console.warn(`   ⚠️ Model ${modelName} returned non-JSON response (${rawText.substring(0, 80)}...)`);
+        continue;
+      }
+
+      const content = data.choices?.[0]?.message?.content || '';
+      if (content.length < 20) {
+        console.warn(`   ⚠️ Model ${modelName} returned empty response content`);
+        continue;
+      }
+
+      const questions = extractJSON(content);
+      if (questions.length > 0) {
+        console.log(`   ✅ Successfully parsed ${questions.length} questions using ${modelName}`);
+        return questions;
+      } else {
+        console.warn(`   ⚠️ Failed to parse JSON array from ${modelName} output`);
+      }
+
+    } catch (err) {
+      console.error(`   ❌ Error with model ${modelName}:`, err.message);
     }
-
-    const data = await response.json();
-    const content = data.choices?.[0]?.message?.content || '';
-    console.log(`📝 AI response length: ${content.length} chars`);
-
-    if (content.length < 10) {
-      console.error("❌ AI returned very short/empty response");
-      return [];
-    }
-
-    const questions = extractJSON(content);
-    console.log(`✅ Parsed ${questions.length} questions from this batch`);
-    return questions;
-
-  } catch (error) {
-    console.error(`❌ Fetch error: ${error.message}`);
-    return [];
   }
+
+  return [];
 }
 
-// 6. Main
+// 6. Main Runner
 async function run() {
   // Get Batch
   const { data: batches, error: batchErr } = await supabase.from('batches').select('id, title');
@@ -134,20 +152,17 @@ async function run() {
   if (!targetBatch) targetBatch = batches[0];
   console.log(`🎯 Batch: ${targetBatch.title} (${targetBatch.id})`);
 
-  // Generate questions in batches of 10
   const BATCH_SIZE = 10;
   let allQuestions = [];
   let failures = 0;
-  const MAX_FAILURES = 10;
+  const MAX_FAILURES = 15;
 
-  // For combined mega test, cycle through subjects
   const megaSubjects = ['Science', 'History', 'Geography', 'Mental Ability (MAT)', 'Math'];
 
   while (allQuestions.length < todayPlan.qCount && failures < MAX_FAILURES) {
     const remaining = todayPlan.qCount - allQuestions.length;
     const batchCount = Math.min(BATCH_SIZE, remaining);
 
-    // For mega test, pick a subject based on current count
     let currentTopic = todayPlan.subject;
     if (todayPlan.qCount === 180) {
       const subjectIndex = Math.floor(allQuestions.length / 36) % megaSubjects.length;
@@ -159,20 +174,19 @@ async function run() {
     if (questions.length > 0) {
       allQuestions = allQuestions.concat(questions);
       console.log(`📊 Progress: ${allQuestions.length}/${todayPlan.qCount}`);
-      failures = 0; // Reset failure counter on success
+      failures = 0;
     } else {
       failures++;
-      console.log(`⚠️ Batch failed (${failures}/${MAX_FAILURES}). Retrying in 3s...`);
+      console.log(`⚠️ Batch failed (${failures}/${MAX_FAILURES}). Retrying in 4s...`);
     }
 
-    // Delay between batches
-    await new Promise(r => setTimeout(r, 3000));
+    await new Promise(r => setTimeout(r, 4000));
   }
 
   console.log(`\n🏁 Generation complete: ${allQuestions.length} questions total`);
 
   if (allQuestions.length === 0) {
-    console.error("FATAL: 0 questions generated. Aborting.");
+    console.error("FATAL: 0 questions generated. Aborting to avoid creating empty test.");
     process.exit(1);
   }
 
@@ -185,7 +199,6 @@ async function run() {
   if (oldTests && oldTests.length > 0) {
     console.log(`🗑️ Deleting ${oldTests.length} old auto-test(s)...`);
     for (const ot of oldTests) {
-      // Delete questions first, then test
       await supabase.from('questions').delete().eq('test_id', ot.id);
       await supabase.from('tests').delete().eq('id', ot.id);
       console.log(`  Deleted: ${ot.title}`);
@@ -206,49 +219,58 @@ async function run() {
     console.error("FATAL: Failed to create test:", testError);
     process.exit(1);
   }
-  console.log(`✅ Test created: "${newTest.title}" (ID: ${newTest.id})`);
+  console.log(`✅ Test created in Supabase: "${newTest.title}" (ID: ${newTest.id})`);
 
-  // Insert questions in chunks of 50 to avoid payload limits
+  // Insert questions in chunks
   const CHUNK = 50;
   let inserted = 0;
   for (let i = 0; i < allQuestions.length; i += CHUNK) {
-    const chunk = allQuestions.slice(i, i + CHUNK).map(q => ({
-      test_id: newTest.id,
-      question_text: q.question_text || 'प्रश्न उपलब्ध नहीं',
-      option_a: q.option_a || 'विकल्प A',
-      option_b: q.option_b || 'विकल्प B',
-      option_c: q.option_c || 'विकल्प C',
-      option_d: q.option_d || 'विकल्प D',
-      correct_answer: q.correct_answer || q.option_a || ''
-    }));
+    const chunk = allQuestions.slice(i, i + CHUNK).map(q => {
+      let correct = q.correct_answer || '';
+      if (!correct || (![q.option_a, q.option_b, q.option_c, q.option_d].includes(correct))) {
+        // Fallback matching if AI returned 'A', 'B', 'C', 'D'
+        const cUpper = String(correct).trim().toUpperCase();
+        if (cUpper === 'A' || cUpper === 'OPTION_A' || cUpper === 'OPTION A') correct = q.option_a || '';
+        else if (cUpper === 'B' || cUpper === 'OPTION_B' || cUpper === 'OPTION B') correct = q.option_b || '';
+        else if (cUpper === 'C' || cUpper === 'OPTION_C' || cUpper === 'OPTION C') correct = q.option_c || '';
+        else if (cUpper === 'D' || cUpper === 'OPTION_D' || cUpper === 'OPTION D') correct = q.option_d || '';
+        else correct = q.option_a || '';
+      }
 
-    console.log(`📤 Inserting chunk of ${chunk.length} questions (test_id: ${newTest.id})...`);
-    console.log(`   Sample Q: ${chunk[0]?.question_text?.substring(0, 60)}...`);
-    
+      return {
+        test_id: newTest.id,
+        question_text: q.question_text || 'प्रश्न उपलब्ध नहीं',
+        option_a: q.option_a || 'विकल्प A',
+        option_b: q.option_b || 'विकल्प B',
+        option_c: q.option_c || 'विकल्प C',
+        option_d: q.option_d || 'विकल्प D',
+        correct_answer: correct
+      };
+    });
+
+    console.log(`📤 Inserting chunk of ${chunk.length} questions into DB...`);
     const { data: insertedData, error: qError } = await supabase.from('questions').insert(chunk).select('id');
+    
     if (qError) {
-      console.error(`❌ Question insert error (batch ${i}):`, JSON.stringify(qError));
-      // Try inserting one by one to find the bad question
+      console.error(`❌ Question batch insert error:`, JSON.stringify(qError));
+      // Fallback single inserts
       for (const singleQ of chunk) {
         const { error: singleErr } = await supabase.from('questions').insert([singleQ]);
-        if (singleErr) {
-          console.error(`❌ Single Q error:`, JSON.stringify(singleErr), JSON.stringify(singleQ).substring(0, 200));
-        } else {
+        if (!singleErr) {
           inserted++;
         }
       }
     } else {
       inserted += chunk.length;
-      console.log(`📥 Inserted ${inserted}/${allQuestions.length} questions (IDs: ${insertedData?.map(d=>d.id).join(',').substring(0,50)}...)`);
+      console.log(`📥 Inserted ${inserted}/${allQuestions.length} questions`);
     }
   }
 
-  // Update total_questions to actual count
   await supabase.from('tests').update({ total_questions: inserted }).eq('id', newTest.id);
 
   console.log(`\n🎉 AUTO-TEST COMPLETE!`);
   console.log(`   Title: ${testTitle}`);
-  console.log(`   Questions: ${inserted}`);
+  console.log(`   Questions Inserted: ${inserted}`);
   console.log(`   Batch: ${targetBatch.title}`);
   process.exit(0);
 }
