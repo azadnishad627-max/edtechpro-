@@ -219,16 +219,27 @@ async function run() {
       option_b: q.option_b || 'विकल्प B',
       option_c: q.option_c || 'विकल्प C',
       option_d: q.option_d || 'विकल्प D',
-      correct_answer: q.correct_answer || q.option_a || '',
-      explanation: q.explanation || ''
+      correct_answer: q.correct_answer || q.option_a || ''
     }));
 
-    const { error: qError } = await supabase.from('questions').insert(chunk);
+    console.log(`📤 Inserting chunk of ${chunk.length} questions (test_id: ${newTest.id})...`);
+    console.log(`   Sample Q: ${chunk[0]?.question_text?.substring(0, 60)}...`);
+    
+    const { data: insertedData, error: qError } = await supabase.from('questions').insert(chunk).select('id');
     if (qError) {
-      console.error(`❌ Question insert error (batch ${i}):`, qError);
+      console.error(`❌ Question insert error (batch ${i}):`, JSON.stringify(qError));
+      // Try inserting one by one to find the bad question
+      for (const singleQ of chunk) {
+        const { error: singleErr } = await supabase.from('questions').insert([singleQ]);
+        if (singleErr) {
+          console.error(`❌ Single Q error:`, JSON.stringify(singleErr), JSON.stringify(singleQ).substring(0, 200));
+        } else {
+          inserted++;
+        }
+      }
     } else {
       inserted += chunk.length;
-      console.log(`📥 Inserted ${inserted}/${allQuestions.length} questions`);
+      console.log(`📥 Inserted ${inserted}/${allQuestions.length} questions (IDs: ${insertedData?.map(d=>d.id).join(',').substring(0,50)}...)`);
     }
   }
 
