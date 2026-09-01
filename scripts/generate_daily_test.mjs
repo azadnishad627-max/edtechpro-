@@ -6,8 +6,6 @@ const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PU
 
 if (!supabaseUrl || !supabaseKey) {
   console.error("FATAL: Missing Supabase credentials.");
-  console.error("SUPABASE_URL:", supabaseUrl ? "SET" : "MISSING");
-  console.error("SUPABASE_SERVICE_ROLE_KEY:", supabaseKey ? "SET" : "MISSING");
   process.exit(1);
 }
 
@@ -20,29 +18,33 @@ if (!KIRA_KEY) {
   process.exit(1);
 }
 
-console.log("✅ All credentials loaded successfully.");
+console.log("✅ Credentials loaded.");
 
 const AVAILABLE_MODELS = ['kira-auto', 'kira-mini-1.0', 'kira-2.0'];
 
-// 3. Day & Topic Schedule
-const now = new Date();
-const dayOfWeek = now.getUTCDay(); // Use UTC since GitHub Actions runs in UTC
+// 3. IST Date & Day of Week Calculation
+const istOffset = 5.5 * 60 * 60 * 1000;
+const istNow = new Date(Date.now() + istOffset);
+const dayOfWeek = istNow.getUTCDay(); // 0 = Sunday, 1 = Monday, 2 = Tuesday, 3 = Wednesday, 4 = Thursday, 5 = Friday, 6 = Saturday
+
+const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const istDayName = dayNames[dayOfWeek];
 
 const schedule = {
-  1: { subject: 'Science', qCount: 50 },
-  2: { subject: 'History', qCount: 50 },
-  3: { subject: 'Geography', qCount: 50 },
-  4: { subject: 'Mental Ability (MAT)', qCount: 50 },
-  5: { subject: 'Math', qCount: 50 },
-  6: { subject: 'Combined Mega Test', qCount: 180 },
-  0: { subject: 'Combined Mega Test', qCount: 180 }
+  1: { subject: 'Science', qCount: 50, duration: 60 },
+  2: { subject: 'History', qCount: 50, duration: 60 },
+  3: { subject: 'Geography', qCount: 50, duration: 60 },
+  4: { subject: 'Mental Ability (MAT)', qCount: 50, duration: 60 },
+  5: { subject: 'Math', qCount: 50, duration: 60 },
+  6: { subject: 'Combined Mega Test (All Subjects)', qCount: 180, duration: 180 },
+  0: { subject: 'Combined Mega Test (All Subjects)', qCount: 180, duration: 180 }
 };
 
 const todayPlan = schedule[dayOfWeek];
-const dateStr = now.toISOString().split('T')[0];
-console.log(`📅 Day: ${dayOfWeek} | Subject: ${todayPlan.subject} | Questions: ${todayPlan.qCount} | Date: ${dateStr}`);
+const dateFormatted = istNow.toISOString().split('T')[0]; // YYYY-MM-DD
+console.log(`📅 IST Day: ${istDayName} (Day ${dayOfWeek}) | Subject: ${todayPlan.subject} | Target Questions: ${todayPlan.qCount} | Date: ${dateFormatted}`);
 
-// 4. Helper: Extract JSON from AI response
+// 4. Helper: Extract & Validate JSON from AI response
 function extractJSON(text) {
   if (!text) return [];
   let clean = text.replace(/```json\s*/gi, '').replace(/```\s*/gi, '').trim();
@@ -51,41 +53,84 @@ function extractJSON(text) {
     try {
       const parsed = JSON.parse(match[0]);
       if (Array.isArray(parsed)) return parsed;
-    } catch (e) {
-      console.error("JSON parse error:", e.message);
-    }
+    } catch (e) {}
   }
   try {
     const parsed = JSON.parse(clean);
     if (Array.isArray(parsed)) return parsed;
-  } catch (e) {
-    // console.error("Fallback parse error:", e.message);
-  }
+  } catch (e) {}
   return [];
 }
 
-// 5. Helper: Generate a batch of questions with multi-model fallback
+// 5. Helper: Strict Validation for NMMS Question
+function validateAndCleanQuestion(q) {
+  if (!q) return null;
+  const qText = String(q.question_text || '').trim();
+  const opA = String(q.option_a || '').trim();
+  const opB = String(q.option_b || '').trim();
+  const opC = String(q.option_c || '').trim();
+  const opD = String(q.option_d || '').trim();
+
+  // Basic sanity checks
+  if (qText.length < 8 || !opA || !opB || !opC || !opD) return null;
+  
+  // All 4 options must be distinct
+  const uniqueOptions = new Set([opA, opB, opC, opD]);
+  if (uniqueOptions.size < 4) return null;
+
+  // Normalize correct answer
+  let correct = String(q.correct_answer || '').trim();
+  const cUpper = correct.toUpperCase();
+
+  if (cUpper === 'A' || cUpper === 'OPTION A' || cUpper === 'OPTION_A' || cUpper === '(A)') correct = opA;
+  else if (cUpper === 'B' || cUpper === 'OPTION B' || cUpper === 'OPTION_B' || cUpper === '(B)') correct = opB;
+  else if (cUpper === 'C' || cUpper === 'OPTION C' || cUpper === 'OPTION_C' || cUpper === '(C)') correct = opC;
+  else if (cUpper === 'D' || cUpper === 'OPTION D' || cUpper === 'OPTION_D' || cUpper === '(D)') correct = opD;
+
+  // Must match one of the 4 options exactly
+  if (![opA, opB, opC, opD].includes(correct)) {
+    // Try relaxed trimming match
+    if (correct.toLowerCase() === opA.toLowerCase()) correct = opA;
+    else if (correct.toLowerCase() === opB.toLowerCase()) correct = opB;
+    else if (correct.toLowerCase() === opC.toLowerCase()) correct = opC;
+    else if (correct.toLowerCase() === opD.toLowerCase()) correct = opD;
+    else return null; // Invalid answer key, discard
+  }
+
+  return {
+    question_text: qText,
+    option_a: opA,
+    option_b: opB,
+    option_c: opC,
+    option_d: opD,
+    correct_answer: correct
+  };
+}
+
+// 6. Helper: Generate verified batch of questions
 async function generateBatch(topic, count) {
-  console.log(`🔄 Generating ${count} questions for "${topic}"...`);
+  console.log(`🔄 Generating ${count} verified questions for "${topic}"...`);
   const seed = Date.now().toString(36) + Math.random().toString(36).substring(2, 6);
 
-  const systemPrompt = `You are an expert exam paper maker for NMMS (National Means Cum-Merit Scholarship) Class 8th exam.
-Generate exactly ${count} Multiple Choice Questions (MCQs) for the topic: "${topic}".
-ALL content MUST be strictly in Hindi language.
-Return ONLY a valid raw JSON array of objects. Do NOT wrap in markdown or backticks.
-Each object must have these exact fields:
-- "question_text": Question in Hindi
-- "option_a": Option A text
-- "option_b": Option B text
-- "option_c": Option C text
-- "option_d": Option D text
-- "correct_answer": Exact text of the correct option (must match one of option_a/b/c/d)
-- "explanation": Short reasoning in Hindi
+  const systemPrompt = `You are a certified senior question paper examiner for the official NMMS (National Means-cum-Merit Scholarship) Class 8th competitive examination in India.
+Your task: Generate exactly ${count} 100% FACTUALLY ACCURATE and VERIFIED Multiple Choice Questions (MCQs) for the topic: "${topic}".
+
+STRICT GUIDELINES:
+1. CURRICULUM: Strictly based on NCERT / State Board Class 8 syllabus.
+2. LANGUAGE: Pure, formal, and grammatically correct Hindi.
+3. ACCURACY: Every question must have only ONE definitively correct answer. No confusing or ambiguous options.
+4. FORMAT: Return ONLY a valid JSON array of objects with NO markdown formatting or commentary.
+5. KEYS REQUIRED for each object:
+   - "question_text": The complete Hindi question text.
+   - "option_a": Option A in Hindi.
+   - "option_b": Option B in Hindi.
+   - "option_c": Option C in Hindi.
+   - "option_d": Option D in Hindi.
+   - "correct_answer": The exact text of the correct option (must match option_a, option_b, option_c, or option_d).
 Seed: ${seed}`;
 
   for (const modelName of AVAILABLE_MODELS) {
     try {
-      console.log(`   Trying model: ${modelName}...`);
       const response = await fetch('https://kiraai.vn/api/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -98,39 +143,34 @@ Seed: ${seed}`;
           model: modelName,
           messages: [
             { role: "system", content: systemPrompt },
-            { role: "user", content: `Generate ${count} NMMS Class 8 MCQs in Hindi for "${topic}". Output JSON array only.` }
+            { role: "user", content: `Generate ${count} verified NMMS Class 8 MCQs in Hindi for "${topic}". Ensure 100% correct answer key. JSON array only.` }
           ],
-          temperature: 0.7,
+          temperature: 0.5,
         })
       });
 
       if (!response.ok) {
-        const errText = await response.text();
-        console.warn(`   ⚠️ Model ${modelName} returned status ${response.status}: ${errText.substring(0, 100)}`);
-        continue; // try next model
+        continue;
       }
 
       const rawText = await response.text();
       let data;
-      try {
-        data = JSON.parse(rawText);
-      } catch (pe) {
-        console.warn(`   ⚠️ Model ${modelName} returned non-JSON response (${rawText.substring(0, 80)}...)`);
-        continue;
-      }
+      try { data = JSON.parse(rawText); } catch (e) { continue; }
 
       const content = data.choices?.[0]?.message?.content || '';
-      if (content.length < 20) {
-        console.warn(`   ⚠️ Model ${modelName} returned empty response content`);
-        continue;
+      if (content.length < 20) continue;
+
+      const rawList = extractJSON(content);
+      const validatedList = [];
+
+      for (const q of rawList) {
+        const cleaned = validateAndCleanQuestion(q);
+        if (cleaned) validatedList.push(cleaned);
       }
 
-      const questions = extractJSON(content);
-      if (questions.length > 0) {
-        console.log(`   ✅ Successfully parsed ${questions.length} questions using ${modelName}`);
-        return questions;
-      } else {
-        console.warn(`   ⚠️ Failed to parse JSON array from ${modelName} output`);
+      if (validatedList.length > 0) {
+        console.log(`   ✅ Validated ${validatedList.length} high-accuracy questions using ${modelName}`);
+        return validatedList;
       }
 
     } catch (err) {
@@ -141,23 +181,24 @@ Seed: ${seed}`;
   return [];
 }
 
-// 6. Main Runner
+// 7. Main Execution
 async function run() {
-  // Get Batch
+  // 1. Fetch Target Batch
   const { data: batches, error: batchErr } = await supabase.from('batches').select('id, title');
-  if (batchErr) { console.error("Batch fetch error:", batchErr); process.exit(1); }
+  if (batchErr) { console.error("Batch error:", batchErr); process.exit(1); }
   if (!batches || batches.length === 0) { console.error("No batches found."); process.exit(1); }
 
   let targetBatch = batches.find(b => b.title.toLowerCase().includes('nmms'));
   if (!targetBatch) targetBatch = batches[0];
-  console.log(`🎯 Batch: ${targetBatch.title} (${targetBatch.id})`);
+  console.log(`🎯 Batch Target: ${targetBatch.title} (${targetBatch.id})`);
 
+  // 2. Multi-subject rotation for Combined Mega Tests
+  const megaSubjects = ['Science', 'History', 'Geography', 'Mental Ability (MAT)', 'Math'];
   const BATCH_SIZE = 10;
   let allQuestions = [];
+  let seenQuestionTexts = new Set();
   let failures = 0;
   const MAX_FAILURES = 15;
-
-  const megaSubjects = ['Science', 'History', 'Geography', 'Mental Ability (MAT)', 'Math'];
 
   while (allQuestions.length < todayPlan.qCount && failures < MAX_FAILURES) {
     const remaining = todayPlan.qCount - allQuestions.length;
@@ -169,96 +210,91 @@ async function run() {
       currentTopic = megaSubjects[subjectIndex];
     }
 
-    const questions = await generateBatch(currentTopic, batchCount);
+    const batch = await generateBatch(currentTopic, batchCount);
 
-    if (questions.length > 0) {
-      allQuestions = allQuestions.concat(questions);
-      console.log(`📊 Progress: ${allQuestions.length}/${todayPlan.qCount}`);
+    let addedFromBatch = 0;
+    for (const q of batch) {
+      if (!seenQuestionTexts.has(q.question_text) && allQuestions.length < todayPlan.qCount) {
+        seenQuestionTexts.add(q.question_text);
+        allQuestions.push(q);
+        addedFromBatch++;
+      }
+    }
+
+    if (addedFromBatch > 0) {
+      console.log(`📊 Progress: ${allQuestions.length}/${todayPlan.qCount} questions`);
       failures = 0;
     } else {
       failures++;
-      console.log(`⚠️ Batch failed (${failures}/${MAX_FAILURES}). Retrying in 4s...`);
+      console.log(`⚠️ Batch retry (${failures}/${MAX_FAILURES})...`);
     }
 
-    await new Promise(r => setTimeout(r, 4000));
+    await new Promise(r => setTimeout(r, 3000));
   }
 
-  console.log(`\n🏁 Generation complete: ${allQuestions.length} questions total`);
+  console.log(`\n🏁 Verified Generation Finished: ${allQuestions.length} questions`);
 
   if (allQuestions.length === 0) {
-    console.error("FATAL: 0 questions generated. Aborting to avoid creating empty test.");
+    console.error("FATAL: 0 verified questions generated. Aborting to protect app state.");
     process.exit(1);
   }
 
-  // Delete old auto-tests FIRST
+  // 3. Clean Title (No 'AI' or 'Auto' in display name)
+  let testTitle = `${todayPlan.subject} (${dateFormatted})`;
+  if (todayPlan.qCount === 180) {
+    testTitle = `Combined Mega Test (${dateFormatted})`;
+  }
+
+  // 4. Delete Previous Daily Tests
   const { data: oldTests } = await supabase.from('tests')
     .select('id, title')
     .eq('batch_id', targetBatch.id)
-    .ilike('title', '%Daily Auto Test%');
+    .or('title.ilike.%Daily Auto Test%,title.ilike.%Daily Test%,title.ilike.%Combined Mega Test%,title.ilike.%Science (%,title.ilike.%History (%,title.ilike.%Geography (%,title.ilike.%Mental Ability (MAT) (%,title.ilike.%Math (%');
 
   if (oldTests && oldTests.length > 0) {
-    console.log(`🗑️ Deleting ${oldTests.length} old auto-test(s)...`);
+    console.log(`🗑️ Deleting ${oldTests.length} old daily test(s)...`);
     for (const ot of oldTests) {
       await supabase.from('questions').delete().eq('test_id', ot.id);
       await supabase.from('tests').delete().eq('id', ot.id);
-      console.log(`  Deleted: ${ot.title}`);
+      console.log(`   Deleted: ${ot.title}`);
     }
   }
 
-  // Create new test
-  const testTitle = `${todayPlan.subject} - Daily Auto Test (${dateStr})`;
+  // 5. Create Fresh Test
   const { data: newTest, error: testError } = await supabase.from('tests').insert([{
     batch_id: targetBatch.id,
     title: testTitle,
-    duration_mins: todayPlan.qCount === 180 ? 180 : 60,
+    duration_mins: todayPlan.duration,
     total_questions: allQuestions.length,
-    start_time: now.toISOString()
+    start_time: new Date().toISOString()
   }]).select().single();
 
   if (testError || !newTest) {
-    console.error("FATAL: Failed to create test:", testError);
+    console.error("FATAL: Failed to insert test in Supabase:", testError);
     process.exit(1);
   }
-  console.log(`✅ Test created in Supabase: "${newTest.title}" (ID: ${newTest.id})`);
+  console.log(`✅ Test Created: "${newTest.title}" (ID: ${newTest.id})`);
 
-  // Insert questions in chunks
+  // 6. Insert All Verified Questions
   const CHUNK = 50;
   let inserted = 0;
   for (let i = 0; i < allQuestions.length; i += CHUNK) {
-    const chunk = allQuestions.slice(i, i + CHUNK).map(q => {
-      let correct = q.correct_answer || '';
-      if (!correct || (![q.option_a, q.option_b, q.option_c, q.option_d].includes(correct))) {
-        // Fallback matching if AI returned 'A', 'B', 'C', 'D'
-        const cUpper = String(correct).trim().toUpperCase();
-        if (cUpper === 'A' || cUpper === 'OPTION_A' || cUpper === 'OPTION A') correct = q.option_a || '';
-        else if (cUpper === 'B' || cUpper === 'OPTION_B' || cUpper === 'OPTION B') correct = q.option_b || '';
-        else if (cUpper === 'C' || cUpper === 'OPTION_C' || cUpper === 'OPTION C') correct = q.option_c || '';
-        else if (cUpper === 'D' || cUpper === 'OPTION_D' || cUpper === 'OPTION D') correct = q.option_d || '';
-        else correct = q.option_a || '';
-      }
+    const chunk = allQuestions.slice(i, i + CHUNK).map(q => ({
+      test_id: newTest.id,
+      question_text: q.question_text,
+      option_a: q.option_a,
+      option_b: q.option_b,
+      option_c: q.option_c,
+      option_d: q.option_d,
+      correct_answer: q.correct_answer
+    }));
 
-      return {
-        test_id: newTest.id,
-        question_text: q.question_text || 'प्रश्न उपलब्ध नहीं',
-        option_a: q.option_a || 'विकल्प A',
-        option_b: q.option_b || 'विकल्प B',
-        option_c: q.option_c || 'विकल्प C',
-        option_d: q.option_d || 'विकल्प D',
-        correct_answer: correct
-      };
-    });
-
-    console.log(`📤 Inserting chunk of ${chunk.length} questions into DB...`);
-    const { data: insertedData, error: qError } = await supabase.from('questions').insert(chunk).select('id');
-    
+    const { error: qError } = await supabase.from('questions').insert(chunk);
     if (qError) {
-      console.error(`❌ Question batch insert error:`, JSON.stringify(qError));
-      // Fallback single inserts
+      console.error(`❌ Batch insert error:`, JSON.stringify(qError));
       for (const singleQ of chunk) {
-        const { error: singleErr } = await supabase.from('questions').insert([singleQ]);
-        if (!singleErr) {
-          inserted++;
-        }
+        const { error: sErr } = await supabase.from('questions').insert([singleQ]);
+        if (!sErr) inserted++;
       }
     } else {
       inserted += chunk.length;
@@ -266,16 +302,18 @@ async function run() {
     }
   }
 
+  // Update total questions count to exact inserted number
   await supabase.from('tests').update({ total_questions: inserted }).eq('id', newTest.id);
 
-  console.log(`\n🎉 AUTO-TEST COMPLETE!`);
-  console.log(`   Title: ${testTitle}`);
-  console.log(`   Questions Inserted: ${inserted}`);
-  console.log(`   Batch: ${targetBatch.title}`);
+  console.log(`\n🎉 SUCCESS! TEST IS LIVE ON APP:`);
+  console.log(`   📌 Test Title: "${testTitle}"`);
+  console.log(`   📝 Total Questions: ${inserted}`);
+  console.log(`   ⏱️ Duration: ${todayPlan.duration} mins`);
+  console.log(`   🎯 Target Batch: ${targetBatch.title}`);
   process.exit(0);
 }
 
 run().catch(err => {
-  console.error("UNHANDLED ERROR:", err);
+  console.error("FATAL UNCAUGHT ERROR:", err);
   process.exit(1);
 });
