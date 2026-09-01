@@ -105,7 +105,7 @@ Format and Style instructions:
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          model: 'deepseek-v4-flash-free', // Kira API Model
+          model: 'kira-auto', // Kira API Model
           messages: messages,
           temperature: 0.2,
           max_tokens: Math.min(1200, Math.max(500, count * 500))

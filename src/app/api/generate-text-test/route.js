@@ -15,7 +15,7 @@ export async function POST(req) {
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
-          model: 'deepseek-v4-flash-free',
+          model: 'kira-auto',
           messages: [
             { "role": "system", "content": systemPrompt },
             { "role": "user", "content": "Here is the text:\n\n" + rawText }

@@ -24,7 +24,7 @@ if (!KIRA_KEY) {
   process.exit(1);
 }
 
-const AI_MODEL = 'deepseek-v4-flash-free'; 
+const AI_MODEL = 'kira-auto'; 
 // Using the free tier model from Bynara
 
 // 3. Logic: Determine Day and Topic
@@ -130,7 +130,7 @@ async function run() {
 
   // 3. Find and Delete previous auto-generated test
   // Auto-tests will have a specific title prefix so we can find them
-  const testTitle = `${todayPlan.isReasoning ? '[REASONING] ' : ''}Daily Auto Test (${now.toLocaleDateString()})`;
+  const testTitle = `${todayPlan.subject} - Daily Auto Test (${now.toLocaleDateString()})`;
   
   const { data: oldTests } = await supabase.from('tests')
     .select('id, title')

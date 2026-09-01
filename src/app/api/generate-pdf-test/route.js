@@ -52,7 +52,7 @@ Your task is to extract exactly ${questionCount} multiple choice questions from 
         });
         
         const response = await openai.chat.completions.create({
-          model: 'deepseek-v4-flash-vision-exp',
+          model: 'kira-auto',
           messages: [
             { role: "system", content: systemPrompt },
             { role: "user", content: "Extract and generate questions from this content:\n\n" + textContent }
