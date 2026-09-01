@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import WebSocket from 'ws';
 try { const dotenv = await import('dotenv'); dotenv.config({ path: '.env.local' }); } catch(e) {}
 
 
@@ -11,7 +12,10 @@ if (!supabaseUrl || !supabaseKey) {
   process.exit(1);
 }
 
-const supabase = createClient(supabaseUrl, supabaseKey);
+const supabase = createClient(supabaseUrl, supabaseKey, {
+  global: { fetch: fetch.bind(globalThis) },
+  realtime: { transport: WebSocket }
+});
 
 // 2. Initialize AI API
 const KIRA_KEY = process.env.KIRA_API_KEY || process.env.KIRA || process.env.BYNARA_KEY;

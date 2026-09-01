@@ -20,7 +20,7 @@ jobs:
           node-version: '22'
 
       - name: Install dependencies
-        run: npm install @supabase/supabase-js
+        run: npm install @supabase/supabase-js ws
 
       - name: Run Auto-Test Generator
         env:
