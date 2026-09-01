@@ -4,8 +4,8 @@ import { getSmartDiagramForQuestion } from '../../../lib/diagramGenerator';
 export const maxDuration = 60;
 export const dynamic = 'force-dynamic';
 
-const NVIDIA_KEY = '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';
-const BYNARA_KEY = 'sk-nry-N9x2vinWSSErTHlfxxHd5nzXpTS_vUvq1mKThFcbUS4';
+
+const KIRA_KEY = process.env.KIRA_API_KEY || process.env.BYNARA_KEY;
 
 function extractQuestionsFromAI(rawOutput) {
   let clean = rawOutput.replace(/```json/gi, "").replace(/```/g, "").trim();
@@ -97,65 +97,34 @@ Format and Style instructions:
 
     let rawOutput = "";
 
-    // 1. Try NVIDIA Vision Model
     try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 14000);
-
-      const nvRes = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
+      const kiraRes = await fetch('https://kiraai.vn/api/v1/chat/completions', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${NVIDIA_KEY}`,
+          'Authorization': `Bearer ${KIRA_KEY}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          model: 'meta/llama-3.2-11b-vision-instruct',
+          model: 'deepseek-v4-flash-free', // Kira API Model
           messages: messages,
           temperature: 0.2,
           max_tokens: Math.min(1200, Math.max(500, count * 500))
-        }),
-        signal: controller.signal
-      });
-      clearTimeout(timeoutId);
-
-      if (nvRes.ok) {
-        const nvData = await nvRes.json();
-        rawOutput = nvData.choices?.[0]?.message?.content || "";
-      }
-    } catch (e) {
-      console.warn("NVIDIA attempt timed out or failed, using Bynara fallback:", e.message);
-    }
-
-    // 2. Fallback to Bynara Qwen3.8-27b if NVIDIA fails or times out
-    if (!rawOutput) {
-      const byRes = await fetch('https://router.bynara.id/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${BYNARA_KEY}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          model: 'qwen3.8-27b',
-          messages: [
-            { role: "system", content: systemPrompt },
-            { role: "user", content: userMessageContent }
-          ],
-          temperature: 0.3,
-          max_tokens: Math.min(1200, Math.max(500, count * 500))
         })
       });
-
-      if (byRes.ok) {
-        const byData = await byRes.json();
-        rawOutput = byData.choices?.[0]?.message?.content || "";
-      } else {
-        const errText = await byRes.text();
-        throw new Error("AI generation failed (" + byRes.status + "): " + errText.substring(0, 100));
+      
+      if (!kiraRes.ok) {
+        const errText = await kiraRes.text();
+        throw new Error("AI generation failed: " + errText.substring(0, 100));
       }
-    }
+      
+      const kiraData = await kiraRes.json();
+      rawOutput = kiraData.choices?.[0]?.message?.content || "";
 
-    if (!rawOutput) {
-      throw new Error("AI returned empty response. Please try again.");
+      if (!rawOutput) {
+        throw new Error("AI returned empty response.");
+      }
+    } catch(e) {
+      throw new Error(e.message);
     }
 
     const rawQuestions = extractQuestionsFromAI(rawOutput);

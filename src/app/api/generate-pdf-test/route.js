@@ -4,20 +4,73 @@ import PDFParser from 'pdf2json';
 
 export const maxDuration = 60; // Set maximum duration for Vercel Serverless Function
 
-const API_CONFIGS = [
-  {
-    key: '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',
-    model: 'nvidia/ising-calibration-1.5-31b'
-  },
-  {
-    key: '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',
-    model: 'google/gemma-4-31b-it'
-  },
-  {
-    key: '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',
-    model: 'nvidia/nemotron-3.5-lightning-30b-a3b'
-  }
-];
+const KIRA_KEY = process.env.KIRA_API_KEY || process.env.BYNARA_KEY;
+
+export async function POST(req) {
+  try {
+    const formData = await req.formData();
+    const file = formData.get('pdf');
+    const questionCount = formData.get('questionCount');
+    
+    if (!file) {
+      return NextResponse.json({ error: "No PDF file uploaded" }, { status: 400 });
+    }
+
+    // Convert file to Buffer
+    const bytes = await file.arrayBuffer();
+    const buffer = Buffer.from(bytes);
+
+    // Extract text from PDF using pdf2json
+    const extractedText = await new Promise((resolve, reject) => {
+      const pdfParser = new PDFParser(this, 1); // 1 = raw text content
+      pdfParser.on("pdfParser_dataError", errData => reject(new Error(errData.parserError)));
+      pdfParser.on("pdfParser_dataReady", () => {
+          resolve(pdfParser.getRawTextContent());
+      });
+      pdfParser.parseBuffer(buffer);
+    });
+
+    if (!extractedText || extractedText.trim().length === 0) {
+      return NextResponse.json({ error: "Could not extract any text from the PDF. Make sure it's not a scanned image." }, { status: 400 });
+    }
+
+    const systemPrompt = `You are an expert educational test generator. The user has provided text extracted from a PDF containing questions and answers.
+Your task is to extract exactly ${questionCount} multiple choice questions from this text.
+  Return ONLY a valid JSON array of objects. Do not include markdown blocks like \`\`\`json.
+  Each object must have exactly these keys: "question_text", "option_a", "option_b", "option_c", "option_d", "correct_answer", "explanation".
+  The "correct_answer" MUST be the exact full text of the correct option (not just A/B/C/D).
+  The "explanation" MUST be a detailed step-by-step solution or reason explaining how to arrive at the correct answer.
+  If the text doesn't contain exactly ${questionCount} questions, extract as many as you can up to that number.`;
+
+    let completion = null;
+    let lastError = null;
+
+    try {
+        const openai = new OpenAI({
+          apiKey: KIRA_KEY,
+          baseURL: 'https://kiraai.vn/api/v1',
+        });
+        
+        const response = await openai.chat.completions.create({
+          model: 'deepseek-v4-flash-vision-exp',
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: "Extract and generate questions from this content:\n\n" + textContent }
+          ],
+          temperature: 0.2,
+          max_tokens: Math.min(1200, count * 500)
+        });
+
+        rawOutput = response.choices[0].message.content;
+      } catch (err) {
+        console.error("AI API Error:", err.message);
+        throw new Error("AI API attempt failed: " + err.message);
+      }mport OpenAI from 'openai';
+import PDFParser from 'pdf2json';
+
+export const maxDuration = 60; // Set maximum duration for Vercel Serverless Function
+
+const KIRA_KEY = process.env.KIRA_API_KEY || process.env.BYNARA_KEY;
 
 export async function POST(req) {
   try {
@@ -62,7 +115,7 @@ Your task is to extract exactly ${questionCount} multiple choice questions from 
       try {
         const openai = new OpenAI({
           apiKey: config.key,
-          baseURL: 'https://integrate.api.nvidia.com/v1',
+          baseURL: 'https://kiraai.vn/api/v1',
         });
         
         completion = await openai.chat.completions.create({

@@ -14,13 +14,13 @@ if (!supabaseUrl || !supabaseKey) {
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 // 2. Initialize AI API
-const BYNARA_KEY = process.env.BYNARA_KEY;
-if (!BYNARA_KEY) {
-  console.error("Missing BYNARA_KEY.");
+const KIRA_KEY = process.env.KIRA_API_KEY || process.env.BYNARA_KEY;
+if (!KIRA_KEY) {
+  console.error(\"Missing KIRA_API_KEY.\");
   process.exit(1);
 }
 
-const AI_MODEL = 'qwen3.8-flash-free'; 
+const AI_MODEL = 'deepseek-v4-flash-free'; 
 // Using the free tier model from Bynara
 
 // 3. Logic: Determine Day and Topic
@@ -57,10 +57,10 @@ Each object must have these exact keys:
 - "explanation": Step-by-step reasoning logic explaining how to solve it in Hindi.`;
 
   try {
-    const response = await fetch('https://router.bynara.id/v1/chat/completions', {
+    const response = await fetch('https://kiraai.vn/api/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${BYNARA_KEY}`,
+        'Authorization': `Bearer ${KIRA_KEY}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
