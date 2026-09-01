@@ -20,7 +20,7 @@ const supabase = createClient(supabaseUrl, supabaseKey, {
 // 2. Initialize AI API
 const KIRA_KEY = process.env.KIRA_API_KEY || process.env.KIRA || process.env.BYNARA_KEY;
 if (!KIRA_KEY) {
-  console.error(\"Missing KIRA_API_KEY.\");
+  console.error("Missing KIRA_API_KEY.");
   process.exit(1);
 }
 
