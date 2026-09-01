@@ -14,7 +14,7 @@ if (!supabaseUrl || !supabaseKey) {
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 // 2. Initialize AI API
-const KIRA_KEY = process.env.KIRA_API_KEY || process.env.BYNARA_KEY;
+const KIRA_KEY = process.env.KIRA_API_KEY || process.env.KIRA || process.env.BYNARA_KEY;
 if (!KIRA_KEY) {
   console.error(\"Missing KIRA_API_KEY.\");
   process.exit(1);
@@ -43,7 +43,9 @@ console.log(`[Auto-Test] Today is day ${dayOfWeek}. Topic: ${todayPlan.subject}.
 // Helper to generate a batch of questions
 async function generateBatch(topic, count) {
   console.log(`Generating batch of ${count} questions for ${topic}...`);
+  const seed = Math.random().toString(36).substring(7); // Random seed to prevent repetition
   const systemPrompt = `You are a master question paper maker for Indian competitive & scholarship exams, specially NMMS (National Means Cum-Merit Scholarship) Class 8th.
+IMPORTANT: Generate COMPLETELY NEW and UNIQUE questions. Do not repeat standard examples. (Randomization Seed: ${seed})
 Generate exactly ${count} multiple choice questions (MCQs) for the topic: "${topic}".
 The questions, options, and step-by-step reasoning solutions MUST be written in Hindi.
 Return ONLY a valid JSON array of objects. Do NOT include markdown code blocks like \`\`\`json or explanatory chat text.
@@ -69,7 +71,7 @@ Each object must have these exact keys:
           { role: "system", content: systemPrompt },
           { role: "user", content: `Generate ${count} high quality exam MCQs for "${topic}" in Hindi. Output JSON array only.` }
         ],
-        temperature: 0.3,
+        temperature: 0.7,
       })
     });
 
