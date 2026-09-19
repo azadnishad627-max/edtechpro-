@@ -6,8 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '../../../lib/supabaseClient';
 import dynamic from 'next/dynamic';
-
-
+import BattleRoyaleView from '../../../components/BattleRoyaleView';
 
 export default function TakeTest() {
   const params = useParams();
@@ -32,8 +31,8 @@ export default function TakeTest() {
   const [isTranslating, setIsTranslating] = useState(false);
   const [timeLeft, setTimeLeft] = useState(null);
   const [lockedUntil, setLockedUntil] = useState(null);
+  const [isBattleRoyale, setIsBattleRoyale] = useState(false);
   
-
   const [isTooEarly, setIsTooEarly] = useState(false);
   const [isTooLate, setIsTooLate] = useState(false);
 
@@ -296,6 +295,21 @@ export default function TakeTest() {
 
   const currentQuestions = language === 'hi' && translatedQuestions ? translatedQuestions : questions;
 
+  if (isBattleRoyale && !isSubmitted) {
+    return (
+      <BattleRoyaleView
+        questions={currentQuestions}
+        test={test}
+        studentInfo={studentInfo}
+        onExitNormalMode={() => setIsBattleRoyale(false)}
+        onSubmitAll={(answersMap) => {
+          setAnswers(answersMap);
+          handleSubmit();
+        }}
+      />
+    );
+  }
+
   if (isSubmitted && evaluationData) {
     return (
       <div className="container py-4 animate-fade-in">
@@ -414,7 +428,7 @@ export default function TakeTest() {
         }}>
         
         {/* Row 1: Timer + Camera */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', gap: '1rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', gap: '1rem', flexWrap: 'wrap' }}>
           {timeLeft !== null && !isSubmitted && (
             <div style={{ 
               display: 'flex',
@@ -439,6 +453,29 @@ export default function TakeTest() {
               </motion.div>
               <span style={{ fontVariantNumeric: 'tabular-nums' }}>{formatTime(timeLeft)}</span>
             </div>
+          )}
+
+          {!isSubmitted && (
+            <button
+              onClick={() => setIsBattleRoyale(true)}
+              style={{
+                background: 'linear-gradient(135deg, #ea580c 0%, #dc2626 100%)',
+                color: '#ffffff',
+                border: 'none',
+                padding: '0.6rem 1.2rem',
+                borderRadius: '50px',
+                fontWeight: '900',
+                fontSize: '0.95rem',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                boxShadow: '0 0 15px rgba(220, 38, 38, 0.6)',
+                letterSpacing: '0.5px'
+              }}
+            >
+              <span>🔥</span> PLAY BATTLE ROYALE MODE <span>⚔️</span>
+            </button>
           )}
         </div>
 
