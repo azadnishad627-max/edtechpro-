@@ -909,64 +909,167 @@ export default function StudentDashboard() {
           )
         )}
 
-              <div style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center' }}>
-          {activeTab !== 'courses' && (
-            <button 
-              onClick={() => { window.history.length > 2 ? window.history.back() : switchTab('courses') }} 
-              className="btn-outline" 
-              style={{ padding: '0.4rem 1rem', display: 'inline-flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '8px' }}
-            >
-              ← Back
-            </button>
-          )}
-        </div>
-<div style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <div style={{ width: '55px', height: '55px', borderRadius: '50%', overflow: 'hidden', border: '2px solid var(--primary-color)', flexShrink: 0, boxShadow: '0 4px 15px rgba(0,0,0,0.3)' }}>
-            {student.photo_url ? (
-              <img src={student.photo_url} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-            ) : (
-              <img src={`https://ui-avatars.com/api/?name=${student.name}&background=random`} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        {/* Top Profile Header Bar */}
+        <div style={{
+          marginBottom: '1.5rem',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: '1rem',
+          padding: '1rem 1.25rem',
+          background: 'rgba(15, 23, 42, 0.65)',
+          backdropFilter: 'blur(20px)',
+          WebkitBackdropFilter: 'blur(20px)',
+          border: '1px solid rgba(255, 255, 255, 0.08)',
+          borderRadius: '20px',
+          boxShadow: '0 8px 30px rgba(0, 0, 0, 0.4), inset 0 1px 1px rgba(255, 255, 255, 0.1)'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            {activeTab !== 'courses' && (
+              <button 
+                onClick={() => { window.history.length > 2 ? window.history.back() : switchTab('courses') }} 
+                className="btn-outline" 
+                style={{ 
+                  padding: '0.45rem 0.9rem', 
+                  display: 'inline-flex', 
+                  alignItems: 'center', 
+                  gap: '0.4rem', 
+                  background: 'rgba(255,255,255,0.06)', 
+                  border: '1px solid rgba(255,255,255,0.15)', 
+                  borderRadius: '12px',
+                  fontSize: '0.85rem'
+                }}
+              >
+                ← Back
+              </button>
             )}
-          </div>
-          <div>
-            <p className="text-muted" style={{ margin: '0 0 0.2rem 0', fontSize: '0.85rem' }}>Welcome back,</p>
-            <h1 className="animate-tab-enter" style={{ margin: 0, fontSize: 'clamp(1.4rem, 5vw, 1.8rem)', lineHeight: '1.2', fontWeight: '700' }}>{student.name} 👋</h1>
-            <div style={{ display: 'flex', gap: '0.8rem', marginTop: '0.3rem' }}>
-              <span style={{ fontSize: '0.85rem', background: 'rgba(255, 215, 0, 0.1)', color: '#ffd700', padding: '0.2rem 0.6rem', borderRadius: '20px', border: '1px solid rgba(255, 215, 0, 0.3)' }}>🏆 {student.points || 0} Pts</span>
-              <span style={{ fontSize: '0.85rem', background: 'rgba(255, 68, 68, 0.1)', color: '#ff4444', padding: '0.2rem 0.6rem', borderRadius: '20px', border: '1px solid rgba(255, 68, 68, 0.3)' }}>🔥 {student.streak || 0} Day Streak</span>
+
+            <div style={{ 
+              width: '52px', 
+              height: '52px', 
+              borderRadius: '50%', 
+              overflow: 'hidden', 
+              border: '2.5px solid #38bdf8', 
+              flexShrink: 0, 
+              boxShadow: '0 0 16px rgba(56, 189, 248, 0.35)' 
+            }}>
+              {student.photo_url ? (
+                <img src={student.photo_url} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              ) : (
+                <img src={`https://ui-avatars.com/api/?name=${encodeURIComponent(student.name)}&background=0284c7&color=fff&bold=true`} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              )}
+            </div>
+
+            <div>
+              <p style={{ margin: '0 0 0.15rem 0', fontSize: '0.82rem', color: '#94a3b8', fontWeight: '500' }}>
+                Welcome back,
+              </p>
+              <h1 className="animate-tab-enter" style={{ margin: 0, fontSize: 'clamp(1.25rem, 4vw, 1.6rem)', lineHeight: '1.2', fontWeight: '800', color: '#ffffff' }}>
+                {student.name} 👋
+              </h1>
+              <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.35rem', flexWrap: 'wrap' }}>
+                <span className="badge-pill" style={{ background: 'rgba(245, 158, 11, 0.14)', color: '#fbbf24', border: '1px solid rgba(245, 158, 11, 0.3)' }}>
+                  🏆 {student.points || 0} Pts
+                </span>
+                <span className="badge-pill" style={{ background: 'rgba(239, 68, 68, 0.14)', color: '#f87171', border: '1px solid rgba(239, 68, 68, 0.3)' }}>
+                  🔥 {student.streak || 0} Day Streak
+                </span>
+              </div>
             </div>
           </div>
-        </div>
-        <button 
-          onClick={() => setShowAnnouncements(true)}
-          style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid var(--glass-border)', borderRadius: '50%', width: '45px', height: '45px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', position: 'relative' }}
-        >
-          🔔
-          {announcements.length > 0 && <span style={{ position: 'absolute', top: '0px', right: '0px', width: '12px', height: '12px', background: '#ff4444', borderRadius: '50%', border: '2px solid var(--bg-dark)' }}></span>}
-        </button>
-      </div>
-      
-      <div className="flex gap-4 mb-4 mobile-hide" style={{ gap: '1rem', overflowX: 'auto', paddingBottom: '0.5rem', whiteSpace: 'nowrap' }}>
-        <button className={activeTab === 'courses' ? 'btn-primary' : 'btn-outline'} onClick={() => { switchTab('courses'); setSelectedBatch(null); }}>My Courses</button>
-        <button className={activeTab === 'leaderboard' ? 'btn-primary' : 'btn-outline'} onClick={() => switchTab('leaderboard')}>🏆 Leaderboard</button>
-        <button className={activeTab === 'tests' ? 'btn-primary' : 'btn-outline'} onClick={() => switchTab('tests')} style={{ position: 'relative' }}>
-          Online Tests
-          {(() => {
-            const takenTestIds = new Set(myTestAttempts.map(a => a.test_id));
-            const activeTestIds = dbTests.filter(t => t.is_active && !t.title.startsWith('[ARCHIVED]') && (!t.batch_id || t.batch_id === student?.batch_id)).map(t => t.id);
-            const missedCount = activeTestIds.filter(id => !takenTestIds.has(id)).length;
-            return missedCount > 0 ? (
-              <span style={{ position: 'absolute', top: '-5px', right: '-5px', background: '#ff4444', color: 'white', borderRadius: '50%', padding: '2px 6px', fontSize: '10px', fontWeight: 'bold' }}>
-                🔔 {missedCount}
-              </span>
-            ) : null;
-          })()}
-        </button>
 
-        <button className={activeTab === 'profile' ? 'btn-primary' : 'btn-outline'} onClick={() => switchTab('profile')}>👤 Profile</button>
-        <button className={activeTab === 'more' ? 'btn-primary' : 'btn-outline'} onClick={() => switchTab('more')}>🎮 More</button>
-      </div>
+          <button 
+            onClick={() => setShowAnnouncements(true)}
+            title="Notifications"
+            style={{ 
+              background: 'rgba(255, 255, 255, 0.06)', 
+              border: '1px solid rgba(255, 255, 255, 0.12)', 
+              borderRadius: '50%', 
+              width: '44px', 
+              height: '44px', 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center', 
+              cursor: 'pointer', 
+              position: 'relative',
+              fontSize: '1.1rem',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+              transition: 'all 0.2s'
+            }}
+          >
+            🔔
+            {announcements.length > 0 && (
+              <span style={{ 
+                position: 'absolute', 
+                top: '2px', 
+                right: '2px', 
+                width: '11px', 
+                height: '11px', 
+                background: '#ef4444', 
+                borderRadius: '50%', 
+                border: '2px solid #070b14',
+                boxShadow: '0 0 8px #ef4444'
+              }}></span>
+            )}
+          </button>
+        </div>
+        
+        {/* Modern Segmented Navigation Bar (Desktop) */}
+        {(() => {
+          const takenTestIds = new Set(myTestAttempts.map(a => a.test_id));
+          const activeTestIds = dbTests.filter(t => t.is_active && !t.title.startsWith('[ARCHIVED]') && (!t.batch_id || t.batch_id === student?.batch_id)).map(t => t.id);
+          const missedCount = activeTestIds.filter(id => !takenTestIds.has(id)).length;
+
+          return (
+            <div className="nav-segmented-control mb-4 mobile-hide">
+              <button 
+                className={`nav-segmented-item ${activeTab === 'courses' ? 'active' : ''}`} 
+                onClick={() => { switchTab('courses'); setSelectedBatch(null); }}
+              >
+                <span>📚</span> My Courses
+              </button>
+              <button 
+                className={`nav-segmented-item ${activeTab === 'leaderboard' ? 'active' : ''}`} 
+                onClick={() => switchTab('leaderboard')}
+              >
+                <span>🏆</span> Leaderboard
+              </button>
+              <button 
+                className={`nav-segmented-item ${activeTab === 'tests' ? 'active' : ''}`} 
+                onClick={() => switchTab('tests')}
+                style={{ position: 'relative' }}
+              >
+                <span>📝</span> Online Tests
+                {missedCount > 0 && (
+                  <span style={{ 
+                    background: '#ef4444', 
+                    color: 'white', 
+                    borderRadius: '999px', 
+                    padding: '2px 8px', 
+                    fontSize: '11px', 
+                    fontWeight: '800',
+                    boxShadow: '0 0 10px rgba(239, 68, 68, 0.5)'
+                  }}>
+                    {missedCount} NEW
+                  </span>
+                )}
+              </button>
+              <button 
+                className={`nav-segmented-item ${activeTab === 'profile' ? 'active' : ''}`} 
+                onClick={() => switchTab('profile')}
+              >
+                <span>👤</span> Profile
+              </button>
+              <button 
+                className={`nav-segmented-item ${activeTab === 'more' ? 'active' : ''}`} 
+                onClick={() => switchTab('more')}
+              >
+                <span>🎮</span> More
+              </button>
+            </div>
+          );
+        })()}
 
       <div className="animate-tab-enter">
         {activeTab === 'courses' && !selectedBatch && (
@@ -1248,35 +1351,107 @@ export default function StudentDashboard() {
                 const isTooEarly = start && now < start;
                 const isTooLate = end && now >= end;
                 
+                const userAttempt = myTestAttempts.find(a => a.test_id === test.id);
+
                 return (
-                <div key={test.id} className="glass-card mb-4" style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', justifyContent: 'space-between', alignItems: 'center', opacity: isTooLate ? 0.5 : 1 }}>
-                  <div>
-                    {test.title.startsWith('[REASONING]') ? (
-                      <h3 className="mb-2">
-                        {test.title.replace('[REASONING] ', '')}
-                        <span style={{ fontSize: '0.7rem', background: 'rgba(255, 23, 68, 0.2)', color: '#ff1744', padding: '0.2rem 0.5rem', borderRadius: '4px', marginLeft: '0.5rem', verticalAlign: 'middle' }}>
+                <div 
+                  key={test.id} 
+                  className="glass-card mb-4" 
+                  style={{ 
+                    display: 'flex', 
+                    flexWrap: 'wrap', 
+                    gap: '1.25rem', 
+                    justifyContent: 'space-between', 
+                    alignItems: 'center', 
+                    borderLeft: userAttempt ? '4px solid #10b981' : isTooEarly ? '4px solid #f59e0b' : isTooLate ? '4px solid #64748b' : '4px solid #0284c7',
+                    opacity: isTooLate && !userAttempt ? 0.6 : 1,
+                    padding: '1.5rem 1.75rem'
+                  }}
+                >
+                  <div style={{ flex: 1, minWidth: '260px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.4rem' }}>
+                      {test.title.startsWith('[REASONING]') ? (
+                        <span className="badge-pill" style={{ background: 'rgba(244, 63, 94, 0.15)', color: '#fb7185', border: '1px solid rgba(244, 63, 94, 0.3)' }}>
                           🧠 Reasoning Test
                         </span>
-                      </h3>
-                    ) : (
-                      <h3 className="mb-2">{test.title}</h3>
-                    )}
-                    <p className="text-muted" style={{ fontSize: '0.9rem', marginBottom: '0.25rem' }}>Batch: {test.batches?.title} | Duration: {test.duration_mins} Mins | {test.total_questions} Questions</p>
+                      ) : (
+                        <span className="badge-pill" style={{ background: 'rgba(2, 132, 199, 0.15)', color: '#38bdf8', border: '1px solid rgba(2, 132, 199, 0.3)' }}>
+                          📝 Standard Test
+                        </span>
+                      )}
+
+                      {userAttempt ? (
+                        <span className="badge-pill" style={{ background: 'rgba(16, 185, 129, 0.15)', color: '#34d399', border: '1px solid rgba(16, 185, 129, 0.3)' }}>
+                          ✅ Attempted ({userAttempt.score}/{userAttempt.total_questions || test.total_questions} Pts)
+                        </span>
+                      ) : isTooEarly ? (
+                        <span className="badge-pill" style={{ background: 'rgba(245, 158, 11, 0.15)', color: '#fbbf24', border: '1px solid rgba(245, 158, 11, 0.3)' }}>
+                          ⏳ Upcoming
+                        </span>
+                      ) : isTooLate ? (
+                        <span className="badge-pill" style={{ background: 'rgba(100, 116, 139, 0.15)', color: '#94a3b8', border: '1px solid rgba(100, 116, 139, 0.3)' }}>
+                          🏁 Ended
+                        </span>
+                      ) : (
+                        <span className="badge-pill" style={{ background: 'rgba(34, 197, 94, 0.15)', color: '#4ade80', border: '1px solid rgba(34, 197, 94, 0.3)' }}>
+                          🟢 LIVE NOW
+                        </span>
+                      )}
+                    </div>
+
+                    <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.2rem', fontWeight: '700', color: '#ffffff', lineHeight: '1.3' }}>
+                      {test.title.replace('[REASONING] ', '')}
+                    </h3>
+
+                    {/* Metadata Chips */}
+                    <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center', fontSize: '0.85rem', color: '#94a3b8' }}>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                        ⏱️ <b>{test.duration_mins} Mins</b>
+                      </span>
+                      <span>•</span>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                        ❓ <b>{test.total_questions} Qs</b>
+                      </span>
+                      {test.batches?.title && (
+                        <>
+                          <span>•</span>
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: '#38bdf8' }}>
+                            🎯 <b>{test.batches.title}</b>
+                          </span>
+                        </>
+                      )}
+                    </div>
+
                     {(start || end) && (
-                      <p className="text-muted" style={{ fontSize: '0.85rem', color: isTooEarly ? '#ffd700' : isTooLate ? '#ff4444' : '#44ff44' }}>
+                      <p style={{ margin: '0.4rem 0 0 0', fontSize: '0.8rem', color: isTooEarly ? '#fbbf24' : isTooLate ? '#f87171' : '#4ade80' }}>
                         {isTooEarly ? `Starts at: ${start.toLocaleString()}` : isTooLate ? `Ended at: ${end.toLocaleString()}` : `Ends at: ${end ? end.toLocaleString() : 'No limit'}`}
                       </p>
                     )}
                   </div>
-                  <button onClick={() => {
-                    if(test.test_url) {
-                      setActiveTestUrl(test.test_url);
-                    } else {
-                      router.push(`/test/${test.id}?practice=true`);
-                    }
-                  }} className="btn-primary" style={{ padding: '0.5rem 1rem', background: isTooEarly || isTooLate ? '#555' : '', cursor: isTooEarly || isTooLate ? 'not-allowed' : 'pointer' }} disabled={isTooEarly || isTooLate}>
-                    {isTooEarly ? 'Upcoming' : isTooLate ? 'Ended' : 'Start Test'}
-                  </button>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+                    <button 
+                      onClick={() => {
+                        if(test.test_url) {
+                          setActiveTestUrl(test.test_url);
+                        } else {
+                          router.push(`/test/${test.id}?practice=true`);
+                        }
+                      }} 
+                      className="btn-primary" 
+                      style={{ 
+                        padding: '0.65rem 1.3rem', 
+                        background: isTooEarly || (isTooLate && !userAttempt) ? 'rgba(255,255,255,0.08)' : userAttempt ? 'linear-gradient(135deg, #059669, #10b981)' : 'var(--gradient-brand)', 
+                        color: isTooEarly || (isTooLate && !userAttempt) ? '#64748b' : '#ffffff',
+                        cursor: isTooEarly || (isTooLate && !userAttempt) ? 'not-allowed' : 'pointer',
+                        border: isTooEarly || (isTooLate && !userAttempt) ? '1px solid rgba(255,255,255,0.1)' : 'none',
+                        boxShadow: isTooEarly || (isTooLate && !userAttempt) ? 'none' : '0 4px 15px rgba(2, 132, 199, 0.4)'
+                      }} 
+                      disabled={isTooEarly || (isTooLate && !userAttempt)}
+                    >
+                      {isTooEarly ? 'Upcoming' : isTooLate && !userAttempt ? 'Ended' : userAttempt ? 'Practice Again ➔' : 'Start Test ➔'}
+                    </button>
+                  </div>
                 </div>
               );
               })
@@ -1887,7 +2062,7 @@ export default function StudentDashboard() {
         )}
       </div>
 
-      {/* Mobile Bottom Navigation */}
+      {/* Mobile Floating Bottom Navigation */}
       <div className="bottom-nav">
         <div className={`bottom-nav-item ${activeTab === 'courses' ? 'active' : ''}`} onClick={() => { switchTab('courses'); setSelectedBatch(null); }}>
           <span className="bottom-nav-icon">📚</span>
@@ -1895,10 +2070,29 @@ export default function StudentDashboard() {
         </div>
         <div className={`bottom-nav-item ${activeTab === 'leaderboard' ? 'active' : ''}`} onClick={() => switchTab('leaderboard')}>
           <span className="bottom-nav-icon">🏆</span>
-          <span>Leaderboard</span>
+          <span>Ranks</span>
         </div>
         <div className={`bottom-nav-item ${activeTab === 'tests' ? 'active' : ''}`} onClick={() => switchTab('tests')}>
-          <span className="bottom-nav-icon">📝</span>
+          <span className="bottom-nav-icon" style={{ position: 'relative' }}>
+            📝
+            {(() => {
+              const takenTestIds = new Set(myTestAttempts.map(a => a.test_id));
+              const activeTestIds = dbTests.filter(t => t.is_active && !t.title.startsWith('[ARCHIVED]') && (!t.batch_id || t.batch_id === student?.batch_id)).map(t => t.id);
+              const missedCount = activeTestIds.filter(id => !takenTestIds.has(id)).length;
+              return missedCount > 0 ? (
+                <span style={{ 
+                  position: 'absolute', 
+                  top: '-2px', 
+                  right: '-6px', 
+                  width: '8px', 
+                  height: '8px', 
+                  background: '#ef4444', 
+                  borderRadius: '50%', 
+                  boxShadow: '0 0 6px #ef4444' 
+                }}></span>
+              ) : null;
+            })()}
+          </span>
           <span>Tests</span>
         </div>
 
