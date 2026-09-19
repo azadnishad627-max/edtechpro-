@@ -200,13 +200,14 @@ export default function TakeTest() {
     setAnswers({ ...answers, [qId]: option });
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (overrideAnswers = null) => {
     setIsEvaluating(true);
     try {
+      const activeAnswers = (overrideAnswers && typeof overrideAnswers === 'object' && Object.keys(overrideAnswers).length > 0) ? overrideAnswers : answers;
       const res = await fetch('/api/evaluate-test', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ testId: id, answers, student_id: studentInfo?.id })
+        body: JSON.stringify({ testId: id, answers: activeAnswers, student_id: studentInfo?.id })
       });
       const data = await res.json();
       if (data.results) {
@@ -304,7 +305,7 @@ export default function TakeTest() {
         onExitNormalMode={() => setIsBattleRoyale(false)}
         onSubmitAll={(answersMap) => {
           setAnswers(answersMap);
-          handleSubmit();
+          handleSubmit(answersMap);
         }}
       />
     );
@@ -474,7 +475,7 @@ export default function TakeTest() {
                 letterSpacing: '0.5px'
               }}
             >
-              <span>🔥</span> PLAY BATTLE ROYALE MODE <span>⚔️</span>
+              <span>🏎️</span> PLAY F1 CAR RACE BATTLE <span>🏁</span>
             </button>
           )}
         </div>
