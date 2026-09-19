@@ -131,6 +131,7 @@ export default function StudentDashboard() {
   const [selectedSubject, setSelectedSubject] = useState('Science (विज्ञान)');
   const [selectedChapter, setSelectedChapter] = useState(null);
   const [chapterSearch, setChapterSearch] = useState('');
+  const [isChapterListExpanded, setIsChapterListExpanded] = useState(false);
 
   // Profile Edit & Batch State
   const [studentBatchId, setStudentBatchId] = useState(null);
@@ -1122,12 +1123,12 @@ export default function StudentDashboard() {
               ) : null;
             })()}
 
-            {/* SMART COMPACT CHAPTER-WISE NOTES */}
-            <div className="glass-card" style={{ padding: '1rem', borderRadius: '16px', border: '1px solid rgba(56, 189, 248, 0.25)', background: 'linear-gradient(135deg, rgba(14, 165, 233, 0.05) 0%, rgba(99, 102, 241, 0.05) 100%)', marginBottom: '2rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '1rem' }}>
+            {/* MODERN COMPACT CHAPTER-WISE NOTES (DROPDOWN & ACCORDION) */}
+            <div className="glass-card" style={{ padding: '1.25rem', borderRadius: '18px', border: '1px solid rgba(56, 189, 248, 0.25)', background: 'linear-gradient(135deg, rgba(14, 165, 233, 0.05) 0%, rgba(99, 102, 241, 0.05) 100%)', marginBottom: '2rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.75rem' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <span style={{ fontSize: '1.4rem' }}>📚</span>
-                  <h3 style={{ margin: 0, color: 'white', fontSize: '1.1rem', fontWeight: 'bold' }}>
+                  <span style={{ fontSize: '1.3rem' }}>📚</span>
+                  <h3 style={{ margin: 0, color: 'white', fontSize: '1.1rem', fontWeight: '800' }}>
                     {selectedClass} Chapter Notes
                   </h3>
                 </div>
@@ -1140,11 +1141,22 @@ export default function StudentDashboard() {
                     const clsSubs = Object.keys(CURRICULUM_DATA[newCls] || CURRICULUM_DATA["Class 8th"]);
                     const firstSub = clsSubs[0] || 'Science (विज्ञान)';
                     setSelectedSubject(firstSub);
+                    setSelectedChapter(null);
                   }}
-                  style={{ padding: '0.4rem 0.8rem', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.2)', background: 'rgba(0,0,0,0.4)', color: '#ffd700', fontWeight: 'bold', fontSize: '0.85rem' }}
+                  style={{ 
+                    padding: '0.4rem 0.85rem', 
+                    borderRadius: '10px', 
+                    border: '1px solid rgba(255,255,255,0.2)', 
+                    background: 'rgba(15, 23, 42, 0.85)', 
+                    color: '#fbbf24', 
+                    fontWeight: 'bold', 
+                    fontSize: '0.85rem',
+                    cursor: 'pointer',
+                    outline: 'none'
+                  }}
                 >
                   {CLASSES_LIST.map(cls => (
-                    <option key={cls} value={cls}>{cls}</option>
+                    <option key={cls} value={cls} style={{ background: '#0b1329', color: '#ffffff' }}>{cls}</option>
                   ))}
                 </select>
               </div>
@@ -1154,7 +1166,7 @@ export default function StudentDashboard() {
                 {Object.keys(CURRICULUM_DATA[selectedClass] || CURRICULUM_DATA["Class 8th"]).map(sub => (
                   <button 
                     key={sub}
-                    onClick={() => setSelectedSubject(sub)}
+                    onClick={() => { setSelectedSubject(sub); setSelectedChapter(null); }}
                     style={{
                       padding: '0.4rem 1rem',
                       borderRadius: '20px',
@@ -1162,9 +1174,10 @@ export default function StudentDashboard() {
                       fontSize: '0.85rem',
                       fontWeight: 'bold',
                       border: selectedSubject === sub ? '1px solid #38bdf8' : '1px solid rgba(255,255,255,0.1)',
-                      background: selectedSubject === sub ? 'rgba(56,189,248,0.15)' : 'rgba(0,0,0,0.2)',
+                      background: selectedSubject === sub ? 'rgba(56,189,248,0.18)' : 'rgba(0,0,0,0.25)',
                       color: selectedSubject === sub ? '#38bdf8' : '#94a3b8',
-                      transition: 'all 0.2s'
+                      transition: 'all 0.2s',
+                      boxShadow: selectedSubject === sub ? '0 0 12px rgba(56,189,248,0.25)' : 'none'
                     }}
                   >
                     {(SUBJECT_ICONS[sub] || '📄')} {sub.split(' ')[0]}
@@ -1172,58 +1185,218 @@ export default function StudentDashboard() {
                 ))}
               </div>
 
-              {/* Scrollable Chapter List */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxHeight: '400px', overflowY: 'auto', paddingRight: '0.3rem' }}>
-                {(() => {
-                  const classCurriculum = CURRICULUM_DATA[selectedClass] || CURRICULUM_DATA["Class 8th"];
-                  const chList = classCurriculum[selectedSubject] || [];
-                  const parsedMaterials = dbMaterials.map(m => parseMaterialMetadata(m));
+              {(() => {
+                const classCurriculum = CURRICULUM_DATA[selectedClass] || CURRICULUM_DATA["Class 8th"];
+                const chList = classCurriculum[selectedSubject] || [];
+                const parsedMaterials = dbMaterials.map(m => parseMaterialMetadata(m));
 
-                  return chList.map((ch, idx) => {
-                    const currentNotes = parsedMaterials.filter(m => {
-                      if (!m.subject && !m.chapter) return m.title.toLowerCase().includes(ch.toLowerCase());
-                      const isSubMatch = m.subject && (m.subject.includes(selectedSubject.split(' ')[0]) || selectedSubject.includes(m.subject));
-                      const isChMatch = m.chapter && (m.chapter.trim() === ch.trim() || ch.includes(m.chapter) || m.chapter.includes(ch));
-                      return isSubMatch && isChMatch;
-                    });
-
-                    const hasNotes = currentNotes.length > 0;
-
-                    return (
-                      <div key={idx} style={{ 
-                        display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
-                        padding: '0.75rem 1rem', background: 'rgba(0,0,0,0.2)', 
-                        border: '1px solid rgba(255,255,255,0.05)', borderRadius: '10px',
-                        gap: '0.75rem'
-                      }}>
-                        <div style={{ flex: 1 }}>
-                          <span style={{ fontSize: '0.65rem', color: '#94a3b8', display: 'block', marginBottom: '0.15rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Chapter {idx + 1}</span>
-                          <span style={{ fontSize: '0.85rem', color: 'white', lineHeight: '1.3' }}>{ch}</span>
-                        </div>
-                        {hasNotes ? (
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem', flexShrink: 0 }}>
-                            {currentNotes.map(note => (
-                              <button
-                                key={note.id}
-                                onClick={() => window.open(`/secure-notes/${note.id}`, '_blank')}
-                                style={{
-                                  padding: '0.3rem 0.75rem', background: 'rgba(14, 165, 233, 0.15)', color: '#38bdf8', 
-                                  border: '1px solid rgba(56, 189, 248, 0.3)', borderRadius: '6px', fontSize: '0.7rem', fontWeight: 'bold',
-                                  cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.2rem'
-                                }}
-                              >
-                                PDF <span style={{ fontSize: '1rem', lineHeight: 1 }}>›</span>
-                              </button>
-                            ))}
-                          </div>
-                        ) : (
-                          <span style={{ fontSize: '0.7rem', color: '#64748b', flexShrink: 0, padding: '0.3rem 0' }}>Wait</span>
+                return (
+                  <div>
+                    {/* Modern Interactive Chapter Dropdown Selector */}
+                    <div style={{ position: 'relative', marginBottom: '1rem' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
+                        <label style={{ fontSize: '0.82rem', color: '#94a3b8', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span>📖</span> Choose Chapter to View Notes:
+                        </label>
+                        {selectedChapter && (
+                          <button 
+                            onClick={() => setSelectedChapter(null)}
+                            style={{ background: 'transparent', border: 'none', color: '#38bdf8', fontSize: '0.78rem', cursor: 'pointer', textDecoration: 'underline' }}
+                          >
+                            Clear selection
+                          </button>
                         )}
                       </div>
-                    );
-                  });
-                })()}
-              </div>
+
+                      <div style={{ position: 'relative' }}>
+                        <select 
+                          value={selectedChapter || ''} 
+                          onChange={(e) => setSelectedChapter(e.target.value || null)}
+                          style={{
+                            width: '100%',
+                            padding: '0.8rem 2.5rem 0.8rem 1rem',
+                            borderRadius: '12px',
+                            border: '1.5px solid rgba(56, 189, 248, 0.35)',
+                            background: 'rgba(15, 23, 42, 0.9)',
+                            color: selectedChapter ? '#ffffff' : '#94a3b8',
+                            fontSize: '0.92rem',
+                            fontWeight: '600',
+                            cursor: 'pointer',
+                            outline: 'none',
+                            boxShadow: '0 4px 15px rgba(0,0,0,0.3)',
+                            appearance: 'none',
+                            WebkitAppearance: 'none'
+                          }}
+                        >
+                          <option value="" style={{ background: '#0b1329', color: '#94a3b8' }}>
+                            -- Click here to select a Chapter ({chList.length} Chapters) ▾ --
+                          </option>
+                          {chList.map((ch, idx) => {
+                            const hasNotesForCh = parsedMaterials.some(m => {
+                              if (!m.subject && !m.chapter) return m.title.toLowerCase().includes(ch.toLowerCase());
+                              const isSubMatch = m.subject && (m.subject.includes(selectedSubject.split(' ')[0]) || selectedSubject.includes(m.subject));
+                              const isChMatch = m.chapter && (m.chapter.trim() === ch.trim() || ch.includes(m.chapter) || m.chapter.includes(ch));
+                              return isSubMatch && isChMatch;
+                            });
+                            return (
+                              <option key={idx} value={ch} style={{ background: '#0b1329', color: '#ffffff' }}>
+                                Ch {idx + 1}: {ch} {hasNotesForCh ? '📄 [Notes Ready]' : ''}
+                              </option>
+                            );
+                          })}
+                        </select>
+                        <div style={{ position: 'absolute', right: '14px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: '#38bdf8', fontSize: '0.85rem' }}>
+                          ▼
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Active Selected Chapter Notes Card */}
+                    {selectedChapter ? (() => {
+                      const chIdx = chList.indexOf(selectedChapter);
+                      const currentNotes = parsedMaterials.filter(m => {
+                        if (!m.subject && !m.chapter) return m.title.toLowerCase().includes(selectedChapter.toLowerCase());
+                        const isSubMatch = m.subject && (m.subject.includes(selectedSubject.split(' ')[0]) || selectedSubject.includes(m.subject));
+                        const isChMatch = m.chapter && (m.chapter.trim() === selectedChapter.trim() || selectedChapter.includes(m.chapter) || m.chapter.includes(selectedChapter));
+                        return isSubMatch && isChMatch;
+                      });
+
+                      return (
+                        <div style={{
+                          background: 'linear-gradient(135deg, rgba(2, 132, 199, 0.15) 0%, rgba(99, 102, 241, 0.15) 100%)',
+                          border: '1.5px solid rgba(56, 189, 248, 0.4)',
+                          borderRadius: '14px',
+                          padding: '1.25rem',
+                          marginBottom: '1rem',
+                          boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
+                          animation: 'fadeIn 0.3s ease-out'
+                        }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem', flexWrap: 'wrap' }}>
+                            <div style={{ flex: 1, minWidth: '220px' }}>
+                              <span className="badge-pill" style={{ background: 'rgba(56, 189, 248, 0.2)', color: '#38bdf8', border: '1px solid rgba(56, 189, 248, 0.4)', marginBottom: '0.4rem' }}>
+                                {chIdx !== -1 ? `Chapter ${chIdx + 1}` : 'Chapter'} • {selectedSubject.split(' ')[0]}
+                              </span>
+                              <h4 style={{ margin: '0.3rem 0', color: '#ffffff', fontSize: '1.15rem', fontWeight: '800', lineHeight: '1.3' }}>
+                                {selectedChapter}
+                              </h4>
+                              <p style={{ margin: '0.2rem 0 0 0', color: '#94a3b8', fontSize: '0.85rem' }}>
+                                {currentNotes.length > 0 ? `✅ ${currentNotes.length} Verified Study Notes / PDF available` : '⏳ Notes for this chapter will be uploaded soon.'}
+                              </p>
+                            </div>
+
+                            {currentNotes.length > 0 ? (
+                              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                {currentNotes.map(note => (
+                                  <button
+                                    key={note.id}
+                                    onClick={() => window.open(`/secure-notes/${note.id}`, '_blank')}
+                                    className="btn-primary"
+                                    style={{ padding: '0.6rem 1.2rem', fontSize: '0.88rem', display: 'inline-flex', alignItems: 'center', gap: '0.5rem', boxShadow: '0 4px 15px rgba(2, 132, 199, 0.4)' }}
+                                  >
+                                    <span>📖</span> Open PDF Notes <span>➔</span>
+                                  </button>
+                                ))}
+                              </div>
+                            ) : (
+                              <span style={{ fontSize: '0.85rem', color: '#fbbf24', background: 'rgba(245, 158, 11, 0.15)', padding: '0.45rem 0.9rem', borderRadius: '8px', border: '1px solid rgba(245, 158, 11, 0.3)', fontWeight: '600' }}>
+                                ⏳ Coming Soon
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })() : (
+                      <div style={{ padding: '0.8rem 1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', border: '1px dashed rgba(255,255,255,0.1)', textAlign: 'center', marginBottom: '1rem' }}>
+                        <p style={{ margin: 0, color: '#94a3b8', fontSize: '0.85rem' }}>
+                          💡 Upar diye gaye dropdown me se koi bhi chapter select karein uske PDF notes padhne ke liye.
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Collapsible Accordion Toggle for Complete List */}
+                    <div style={{ display: 'flex', justifyContent: 'center', marginTop: '0.5rem' }}>
+                      <button 
+                        onClick={() => setIsChapterListExpanded(prev => !prev)}
+                        style={{
+                          background: 'rgba(255, 255, 255, 0.05)',
+                          border: '1px solid rgba(255, 255, 255, 0.12)',
+                          color: isChapterListExpanded ? '#38bdf8' : '#94a3b8',
+                          padding: '0.45rem 1.1rem',
+                          borderRadius: '20px',
+                          fontSize: '0.82rem',
+                          fontWeight: '600',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.5rem',
+                          transition: 'all 0.2s'
+                        }}
+                      >
+                        <span>{isChapterListExpanded ? '▲ Hide Chapter List' : `📑 Browse All Chapters List (${chList.length}) ▾`}</span>
+                      </button>
+                    </div>
+
+                    {/* Optional Expanded Chapter List */}
+                    {isChapterListExpanded && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxHeight: '350px', overflowY: 'auto', paddingRight: '0.3rem', marginTop: '1rem', animation: 'fadeIn 0.3s ease-out' }}>
+                        {chList.map((ch, idx) => {
+                          const currentNotes = parsedMaterials.filter(m => {
+                            if (!m.subject && !m.chapter) return m.title.toLowerCase().includes(ch.toLowerCase());
+                            const isSubMatch = m.subject && (m.subject.includes(selectedSubject.split(' ')[0]) || selectedSubject.includes(m.subject));
+                            const isChMatch = m.chapter && (m.chapter.trim() === ch.trim() || ch.includes(m.chapter) || m.chapter.includes(ch));
+                            return isSubMatch && isChMatch;
+                          });
+
+                          const hasNotes = currentNotes.length > 0;
+
+                          return (
+                            <div 
+                              key={idx} 
+                              onClick={() => setSelectedChapter(ch)}
+                              style={{ 
+                                display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
+                                padding: '0.75rem 1rem', background: selectedChapter === ch ? 'rgba(56, 189, 248, 0.12)' : 'rgba(0,0,0,0.25)', 
+                                border: selectedChapter === ch ? '1px solid #38bdf8' : '1px solid rgba(255,255,255,0.06)', borderRadius: '10px',
+                                gap: '0.75rem',
+                                cursor: 'pointer',
+                                transition: 'all 0.2s'
+                              }}
+                            >
+                              <div style={{ flex: 1 }}>
+                                <span style={{ fontSize: '0.65rem', color: '#94a3b8', display: 'block', marginBottom: '0.15rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                  Chapter {idx + 1}
+                                </span>
+                                <span style={{ fontSize: '0.88rem', color: selectedChapter === ch ? '#38bdf8' : 'white', lineHeight: '1.3', fontWeight: selectedChapter === ch ? '700' : '500' }}>
+                                  {ch}
+                                </span>
+                              </div>
+                              {hasNotes ? (
+                                <div style={{ display: 'flex', gap: '0.3rem', flexShrink: 0 }}>
+                                  {currentNotes.map(note => (
+                                    <button
+                                      key={note.id}
+                                      onClick={(e) => { e.stopPropagation(); window.open(`/secure-notes/${note.id}`, '_blank'); }}
+                                      style={{
+                                        padding: '0.3rem 0.75rem', background: 'rgba(14, 165, 233, 0.15)', color: '#38bdf8', 
+                                        border: '1px solid rgba(56, 189, 248, 0.3)', borderRadius: '6px', fontSize: '0.72rem', fontWeight: 'bold',
+                                        cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.2rem'
+                                      }}
+                                    >
+                                      PDF <span style={{ fontSize: '1rem', lineHeight: 1 }}>›</span>
+                                    </button>
+                                  ))}
+                                </div>
+                              ) : (
+                                <span style={{ fontSize: '0.72rem', color: '#64748b', flexShrink: 0 }}>Coming soon</span>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
             </div>
 
             {/* Enrolled Batch Course Materials Card */}
