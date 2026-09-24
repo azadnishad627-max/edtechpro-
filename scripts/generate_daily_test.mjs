@@ -150,15 +150,25 @@ Seed: ${seed}`;
       });
 
       if (!response.ok) {
+        const errBody = await response.text().catch(() => '');
+        console.error(`   ❌ [${modelName}] HTTP ${response.status} ${response.statusText}: ${errBody.substring(0, 300)}`);
         continue;
       }
 
       const rawText = await response.text();
       let data;
-      try { data = JSON.parse(rawText); } catch (e) { continue; }
+      try { 
+        data = JSON.parse(rawText); 
+      } catch (e) { 
+        console.error(`   ❌ [${modelName}] JSON parse error:`, e.message, rawText.substring(0, 150));
+        continue; 
+      }
 
       const content = data.choices?.[0]?.message?.content || '';
-      if (content.length < 20) continue;
+      if (content.length < 20) {
+        console.warn(`   ⚠️ [${modelName}] Empty/short content:`, JSON.stringify(data).substring(0, 200));
+        continue;
+      }
 
       const rawList = extractJSON(content);
       const validatedList = [];
@@ -171,6 +181,8 @@ Seed: ${seed}`;
       if (validatedList.length > 0) {
         console.log(`   ✅ Validated ${validatedList.length} high-accuracy questions using ${modelName}`);
         return validatedList;
+      } else {
+        console.warn(`   ⚠️ [${modelName}] extractJSON returned ${rawList.length} items, but 0 passed validation. Sample raw content: ${content.substring(0, 200)}`);
       }
 
     } catch (err) {
