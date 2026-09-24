@@ -203,7 +203,18 @@ export default function TakeTest() {
   const handleSubmit = async (overrideAnswers = null) => {
     setIsEvaluating(true);
     try {
-      const activeAnswers = (overrideAnswers && typeof overrideAnswers === 'object' && Object.keys(overrideAnswers).length > 0) ? overrideAnswers : answers;
+      // Safely check if overrideAnswers is a valid plain answer map and NOT a React DOM event
+      const isEvent = overrideAnswers && (
+        overrideAnswers.nativeEvent || 
+        overrideAnswers.target || 
+        typeof overrideAnswers.preventDefault === 'function' ||
+        overrideAnswers._reactName ||
+        (typeof Event !== 'undefined' && overrideAnswers instanceof Event)
+      );
+      const activeAnswers = (!isEvent && overrideAnswers && typeof overrideAnswers === 'object' && Object.keys(overrideAnswers).length > 0)
+        ? overrideAnswers
+        : answers;
+
       const res = await fetch('/api/evaluate-test', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -580,7 +591,21 @@ export default function TakeTest() {
         </button>
         
         {currentIdx === questions.length - 1 ? (
-          <button className="btn-primary" onClick={handleSubmit}>Submit Test</button>
+          <button 
+            className="btn-primary" 
+            onClick={() => handleSubmit()}
+            disabled={isEvaluating}
+            style={{ 
+              minWidth: '130px', 
+              display: 'inline-flex', 
+              alignItems: 'center', 
+              justifyContent: 'center',
+              cursor: isEvaluating ? 'not-allowed' : 'pointer',
+              opacity: isEvaluating ? 0.7 : 1
+            }}
+          >
+            {isEvaluating ? 'Submitting...' : 'Submit Test'}
+          </button>
         ) : (
           <button className="btn-primary" onClick={() => setCurrentIdx(prev => prev + 1)}>Next</button>
         )}
