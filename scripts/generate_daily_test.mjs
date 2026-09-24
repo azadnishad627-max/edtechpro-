@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { getFallbackQuestionsForSubject } from './fallbackQuestions.mjs';
 
 // 1. Initialize Supabase
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
@@ -11,16 +12,21 @@ if (!supabaseUrl || !supabaseKey) {
 
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-// 2. Initialize AI API
+// 2. Initialize AI API Credentials
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
 const KIRA_KEY = process.env.KIRA_API_KEY || process.env.KIRA || process.env.BYNARA_KEY;
-if (!KIRA_KEY) {
-  console.error("FATAL: Missing KIRA_API_KEY.");
-  process.exit(1);
+
+if (GEMINI_API_KEY) {
+  console.log("✅ Google Gemini API key detected.");
+}
+if (KIRA_KEY) {
+  console.log("✅ Kira API key detected.");
+}
+if (!GEMINI_API_KEY && !KIRA_KEY) {
+  console.warn("⚠️ No AI API key provided. Will use high-accuracy verified NMMS question bank fallback.");
 }
 
-console.log("✅ Credentials loaded.");
-
-const AVAILABLE_MODELS = ['kira-auto', 'kira-mini-1.0', 'kira-2.0'];
+const AVAILABLE_KIRA_MODELS = ['kira-mini-1.0', 'kira-auto', 'kira-2.0'];
 
 // 3. IST Date & Day of Week Calculation
 const istOffset = 5.5 * 60 * 60 * 1000;
@@ -89,7 +95,6 @@ function validateAndCleanQuestion(q) {
 
   // Must match one of the 4 options exactly
   if (![opA, opB, opC, opD].includes(correct)) {
-    // Try relaxed trimming match
     if (correct.toLowerCase() === opA.toLowerCase()) correct = opA;
     else if (correct.toLowerCase() === opB.toLowerCase()) correct = opB;
     else if (correct.toLowerCase() === opC.toLowerCase()) correct = opC;
@@ -107,7 +112,121 @@ function validateAndCleanQuestion(q) {
   };
 }
 
-// 6. Helper: Generate verified batch of questions
+// 6. AI Generator: Google Gemini
+async function generateWithGemini(topic, count, systemPrompt) {
+  if (!GEMINI_API_KEY) return [];
+  try {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+    const userPrompt = `Generate ${count} verified NMMS Class 8 MCQs in Hindi for "${topic}". Ensure 100% correct answer key. Return a JSON array of objects with keys: question_text, option_a, option_b, option_c, option_d, correct_answer.`;
+
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [
+          {
+            role: 'user',
+            parts: [{ text: `${systemPrompt}\n\nTask: ${userPrompt}` }]
+          }
+        ],
+        generationConfig: {
+          temperature: 0.4,
+          responseMimeType: 'application/json'
+        }
+      })
+    });
+
+    if (!res.ok) {
+      const err = await res.text();
+      console.warn(`   ⚠️ Gemini API error (${res.status}):`, err.substring(0, 200));
+      return [];
+    }
+
+    const data = await res.json();
+    const rawContent = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    const rawList = extractJSON(rawContent);
+    const validatedList = [];
+
+    for (const q of rawList) {
+      const cleaned = validateAndCleanQuestion(q);
+      if (cleaned) validatedList.push(cleaned);
+    }
+
+    if (validatedList.length > 0) {
+      console.log(`   ✅ Validated ${validatedList.length} questions using Gemini 1.5 Flash`);
+      return validatedList;
+    }
+  } catch (err) {
+    console.error(`   ❌ Gemini error:`, err.message);
+  }
+  return [];
+}
+
+// 7. AI Generator: Kira AI
+async function generateWithKira(topic, count, systemPrompt) {
+  if (!KIRA_KEY) return [];
+  for (const modelName of AVAILABLE_KIRA_MODELS) {
+    try {
+      const response = await fetch('https://kiraai.vn/api/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${KIRA_KEY}`,
+          'Content-Type': 'application/json',
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
+          'Accept': 'application/json, text/plain, */*'
+        },
+        body: JSON.stringify({
+          model: modelName,
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: `Generate ${count} verified NMMS Class 8 MCQs in Hindi for "${topic}". Ensure 100% correct answer key. JSON array only.` }
+          ],
+          temperature: 0.5,
+        })
+      });
+
+      if (!response.ok) {
+        const errBody = await response.text().catch(() => '');
+        console.error(`   ❌ [${modelName}] HTTP ${response.status} ${response.statusText}: ${errBody.substring(0, 200)}`);
+        // If wallet balance exhausted (402), stop retrying Kira models
+        if (response.status === 402) {
+          console.warn("   ⚠️ Kira wallet balance exhausted (0 VND). Skipping Kira models.");
+          break;
+        }
+        continue;
+      }
+
+      const rawText = await response.text();
+      let data;
+      try { 
+        data = JSON.parse(rawText); 
+      } catch (e) { 
+        continue; 
+      }
+
+      const content = data.choices?.[0]?.message?.content || '';
+      if (content.length < 20) continue;
+
+      const rawList = extractJSON(content);
+      const validatedList = [];
+
+      for (const q of rawList) {
+        const cleaned = validateAndCleanQuestion(q);
+        if (cleaned) validatedList.push(cleaned);
+      }
+
+      if (validatedList.length > 0) {
+        console.log(`   ✅ Validated ${validatedList.length} questions using ${modelName}`);
+        return validatedList;
+      }
+    } catch (err) {
+      console.error(`   ❌ Error with Kira model ${modelName}:`, err.message);
+    }
+  }
+  return [];
+}
+
+// 8. Helper: Generate verified batch of questions
 async function generateBatch(topic, count) {
   console.log(`🔄 Generating ${count} verified questions for "${topic}"...`);
   const seed = Date.now().toString(36) + Math.random().toString(36).substring(2, 6);
@@ -129,71 +248,22 @@ STRICT GUIDELINES:
    - "correct_answer": The exact text of the correct option (must match option_a, option_b, option_c, or option_d).
 Seed: ${seed}`;
 
-  for (const modelName of AVAILABLE_MODELS) {
-    try {
-      const response = await fetch('https://kiraai.vn/api/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${KIRA_KEY}`,
-          'Content-Type': 'application/json',
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-          'Accept': 'application/json, text/plain, */*'
-        },
-        body: JSON.stringify({
-          model: modelName,
-          messages: [
-            { role: "system", content: systemPrompt },
-            { role: "user", content: `Generate ${count} verified NMMS Class 8 MCQs in Hindi for "${topic}". Ensure 100% correct answer key. JSON array only.` }
-          ],
-          temperature: 0.5,
-        })
-      });
+  // 1. Try Google Gemini first if key available
+  if (GEMINI_API_KEY) {
+    const list = await generateWithGemini(topic, count, systemPrompt);
+    if (list.length > 0) return list;
+  }
 
-      if (!response.ok) {
-        const errBody = await response.text().catch(() => '');
-        console.error(`   ❌ [${modelName}] HTTP ${response.status} ${response.statusText}: ${errBody.substring(0, 300)}`);
-        continue;
-      }
-
-      const rawText = await response.text();
-      let data;
-      try { 
-        data = JSON.parse(rawText); 
-      } catch (e) { 
-        console.error(`   ❌ [${modelName}] JSON parse error:`, e.message, rawText.substring(0, 150));
-        continue; 
-      }
-
-      const content = data.choices?.[0]?.message?.content || '';
-      if (content.length < 20) {
-        console.warn(`   ⚠️ [${modelName}] Empty/short content:`, JSON.stringify(data).substring(0, 200));
-        continue;
-      }
-
-      const rawList = extractJSON(content);
-      const validatedList = [];
-
-      for (const q of rawList) {
-        const cleaned = validateAndCleanQuestion(q);
-        if (cleaned) validatedList.push(cleaned);
-      }
-
-      if (validatedList.length > 0) {
-        console.log(`   ✅ Validated ${validatedList.length} high-accuracy questions using ${modelName}`);
-        return validatedList;
-      } else {
-        console.warn(`   ⚠️ [${modelName}] extractJSON returned ${rawList.length} items, but 0 passed validation. Sample raw content: ${content.substring(0, 200)}`);
-      }
-
-    } catch (err) {
-      console.error(`   ❌ Error with model ${modelName}:`, err.message);
-    }
+  // 2. Try Kira AI if available
+  if (KIRA_KEY) {
+    const list = await generateWithKira(topic, count, systemPrompt);
+    if (list.length > 0) return list;
   }
 
   return [];
 }
 
-// 7. Main Execution
+// 9. Main Execution
 async function run() {
   // 1. Fetch Target Batch
   const { data: batches, error: batchErr } = await supabase.from('batches').select('id, title');
@@ -210,54 +280,67 @@ async function run() {
   let allQuestions = [];
   let seenQuestionTexts = new Set();
   let failures = 0;
-  const MAX_FAILURES = 15;
+  const MAX_FAILURES = 2; // Don't hang in loops if AI is offline/unfunded
 
-  while (allQuestions.length < todayPlan.qCount && failures < MAX_FAILURES) {
-    const remaining = todayPlan.qCount - allQuestions.length;
-    const batchCount = Math.min(BATCH_SIZE, remaining);
+  if (GEMINI_API_KEY || KIRA_KEY) {
+    while (allQuestions.length < todayPlan.qCount && failures < MAX_FAILURES) {
+      const remaining = todayPlan.qCount - allQuestions.length;
+      const batchCount = Math.min(BATCH_SIZE, remaining);
 
-    let currentTopic = todayPlan.subject;
-    if (todayPlan.qCount === 180) {
-      const subjectIndex = Math.floor(allQuestions.length / 36) % megaSubjects.length;
-      currentTopic = megaSubjects[subjectIndex];
-    }
-
-    const batch = await generateBatch(currentTopic, batchCount);
-
-    let addedFromBatch = 0;
-    for (const q of batch) {
-      if (!seenQuestionTexts.has(q.question_text) && allQuestions.length < todayPlan.qCount) {
-        seenQuestionTexts.add(q.question_text);
-        allQuestions.push(q);
-        addedFromBatch++;
+      let currentTopic = todayPlan.subject;
+      if (todayPlan.qCount === 180) {
+        const subjectIndex = Math.floor(allQuestions.length / 36) % megaSubjects.length;
+        currentTopic = megaSubjects[subjectIndex];
       }
-    }
 
-    if (addedFromBatch > 0) {
-      console.log(`📊 Progress: ${allQuestions.length}/${todayPlan.qCount} questions`);
-      failures = 0;
-    } else {
-      failures++;
-      console.log(`⚠️ Batch retry (${failures}/${MAX_FAILURES})...`);
-    }
+      const batch = await generateBatch(currentTopic, batchCount);
 
-    await new Promise(r => setTimeout(r, 3000));
+      let addedFromBatch = 0;
+      for (const q of batch) {
+        if (!seenQuestionTexts.has(q.question_text) && allQuestions.length < todayPlan.qCount) {
+          seenQuestionTexts.add(q.question_text);
+          allQuestions.push(q);
+          addedFromBatch++;
+        }
+      }
+
+      if (addedFromBatch > 0) {
+        console.log(`📊 Progress: ${allQuestions.length}/${todayPlan.qCount} questions`);
+        failures = 0;
+      } else {
+        failures++;
+        console.log(`⚠️ AI generation unavailable or returned 0 (${failures}/${MAX_FAILURES})...`);
+      }
+
+      await new Promise(r => setTimeout(r, 2000));
+    }
   }
 
-  console.log(`\n🏁 Verified Generation Finished: ${allQuestions.length} questions`);
+  // 3. Fallback: If AI is unavailable or couldn't generate all questions, fill immediately from verified Question Bank
+  if (allQuestions.length < todayPlan.qCount) {
+    console.log(`\n🛡️ Filling ${todayPlan.qCount - allQuestions.length} remaining question(s) using verified NMMS Question Bank...`);
+    const fallbackQuestions = getFallbackQuestionsForSubject(todayPlan.subject, todayPlan.qCount);
+    for (const fq of fallbackQuestions) {
+      if (!seenQuestionTexts.has(fq.question_text) && allQuestions.length < todayPlan.qCount) {
+        seenQuestionTexts.add(fq.question_text);
+        allQuestions.push(fq);
+      }
+    }
+    console.log(`✅ Ready with ${allQuestions.length}/${todayPlan.qCount} verified questions!`);
+  }
 
   if (allQuestions.length === 0) {
-    console.error("FATAL: 0 verified questions generated. Aborting to protect app state.");
+    console.error("FATAL: 0 questions prepared. Aborting to protect app state.");
     process.exit(1);
   }
 
-  // 3. Clean Title (No 'AI' or 'Auto' in display name)
+  // 4. Clean Title (No 'AI' or 'Auto' in display name)
   let testTitle = `${todayPlan.subject} (${dateFormatted})`;
   if (todayPlan.qCount === 180) {
     testTitle = `Combined Mega Test (${dateFormatted})`;
   }
 
-  // 4. Delete Previous Daily Tests
+  // 5. Delete Previous Daily Tests
   const { data: oldTests } = await supabase.from('tests')
     .select('id, title')
     .eq('batch_id', targetBatch.id)
@@ -272,7 +355,7 @@ async function run() {
     }
   }
 
-  // 5. Create Fresh Test
+  // 6. Create Fresh Test
   const { data: newTest, error: testError } = await supabase.from('tests').insert([{
     batch_id: targetBatch.id,
     title: testTitle,
@@ -287,7 +370,7 @@ async function run() {
   }
   console.log(`✅ Test Created: "${newTest.title}" (ID: ${newTest.id})`);
 
-  // 6. Insert All Verified Questions
+  // 7. Insert All Verified Questions
   const CHUNK = 50;
   let inserted = 0;
   for (let i = 0; i < allQuestions.length; i += CHUNK) {
